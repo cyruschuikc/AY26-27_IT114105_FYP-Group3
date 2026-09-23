@@ -36,7 +36,3 @@ Unlicensed works, modifications, and larger works may be distributed under diffe
 [Quick download xDebug｜php_xdebug-2.9.8-7.3-vc15.dll](http://xdebug.org/files/php_xdebug-2.9.8-7.3-vc15.dll)
 ### PhpStorme
 ### MySQL
-
-```diff
-## New Section
-````
