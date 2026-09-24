@@ -15,7 +15,7 @@ Unlicensed works, modifications, and larger works may be distributed under diffe
 
 ## Developing Tools
 ### Android Studio
-**Quick Download here**
+**Quick Download here ⬇️：**
 |[Panda4（recommend）](https://edgedl.me.gvt1.com/android/studio/install/2025.3.4.6/android-studio-panda4-windows.exe)|[Quail4](https://developer.android.com/studio?hl=zh-tw)|
 |-|-|
 ### VS Code
