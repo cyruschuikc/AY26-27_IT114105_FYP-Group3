@@ -1,130 +1,33 @@
 <?php
 // team-detail.php
-
-require 'db.php';
+// 先不管数据库，全部用假数据
 
 $teamId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 
-// ===== 查 Team + Project =====
-// 注意：这里假设后面会补 Teams / Projects 表。
-// 先用假数据顶替，直接看下面那段
-$team = null;
-try {
-    $sql = "
-        SELECT
-            t.id            AS team_id,
-            t.name          AS team_name,
-            p.name          AS project_name,
-            p.category      AS project_category,
-            p.supervisor    AS project_supervisor,
-            p.period_start,
-            p.period_end,
-            t.status,
-            t.formed_at,
-            t.roster_locked_at,
-            t.leader_elected_at,
-            t.last_activity_at
-        FROM Teams t
-        JOIN Projects p ON p.id = t.project_id
-        WHERE t.id = :id
-        LIMIT 1
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute(array(':id' => $teamId));
-    $team = $stmt->fetch();
-} catch (PDOException $e) {
-    $team = null;
-}
+// ===== 假数据 =====
+$team = array(
+    'team_name'          => 'Team 01',
+    'project_name'       => 'TeamBox',
+    'project_category'   => 'Software Engineering',
+    'project_supervisor' => 'Esther Yuen',
+    'period_start'       => '2026-09-01',
+    'period_end'         => '2027-04-30',
+    'status'             => 'Executing',
+    'formed_at'          => '2026-09-15',
+    'roster_locked_at'   => '2026-09-20',
+    'leader_elected_at'  => '2026-09-21',
+    'last_activity_at'   => '2026-09-29 10:42:00',
+);
 
-// fallback：如果数据库里没有 Teams / Projects 表，就用假数据
-if (!$team) {
-    $team = [
-        'team_id'            => $teamId,
-        'team_name'          => 'Team 01',
-        'project_name'       => 'TeamBox',
-        'project_category'   => 'Software Engineering',
-        'project_supervisor' => 'Esther Yuen',
-        'period_start'       => '2026-09-01',
-        'period_end'         => '2027-04-30',
-        'status'             => 'Executing',
-        'formed_at'          => '2026-09-15',
-        'roster_locked_at'   => '2026-09-20',
-        'leader_elected_at'  => '2026-09-21',
-        'last_activity_at'   => '2026-09-29 10:42:00',
-    ];
-}
+$members = array(
+    array('name'=>'CHAN Ho Yin',     'student_number'=>'260222111', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Leader · Full-stack',   'is_leader'=>1, 'tasks_done'=>'2 / 3'),
+    array('name'=>'CHUI Ka Chun',    'student_number'=>'260222112', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Android Developer',     'is_leader'=>0, 'tasks_done'=>'1 / 2'),
+    array('name'=>'LAI Ka-Yu Savio', 'student_number'=>'260222113', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Backend Developer',     'is_leader'=>0, 'tasks_done'=>'1 / 2'),
+    array('name'=>'MIAO Tung',       'student_number'=>'260222114', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Frontend Developer',    'is_leader'=>0, 'tasks_done'=>'0 / 2'),
+);
 
-// ===== 查 Members =====
-// JOIN Users + Students + Team_Members（Team_Members 之后要建）
-// 现在还没有 Team_Members 表，也用 fallback。
-$members = [];
-try {
-    $sql = "
-        SELECT
-            u.username      AS name,
-            s.student_number,
-            s.major,
-            s.grade_level,
-            tm.role         AS team_role,
-            tm.is_leader,
-            tm.tasks_done
-        FROM Team_Members tm
-        JOIN Students s ON s.id = tm.student_id
-        JOIN Users u    ON u.id = s.user_id
-        WHERE tm.team_id = :team_id
-        ORDER BY tm.is_leader DESC, tm.joined_at ASC
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':team_id' => $teamId]);
-    $members = $stmt->fetchAll();
-} catch (PDOException $e) {
-    $members = [];
-}
-
-if (!$members) {
-    $members = [
-        [
-            'name'           => 'CHAN Ho Yin',
-            'student_number' => '260222111',
-            'major'          => 'SE',
-            'grade_level'    => 12,
-            'team_role'      => 'Leader · Full-stack',
-            'is_leader'      => 1,
-            'tasks_done'     => '2 / 3',
-        ],
-        [
-            'name'           => 'CHUI Ka Chun',
-            'student_number' => '260222112',
-            'major'          => 'SE',
-            'grade_level'    => 12,
-            'team_role'      => 'Android Developer',
-            'is_leader'      => 0,
-            'tasks_done'     => '1 / 2',
-        ],
-        [
-            'name'           => 'LAI Ka-Yu Savio',
-            'student_number' => '260222113',
-            'major'          => 'SE',
-            'grade_level'    => 12,
-            'team_role'      => 'Backend Developer',
-            'is_leader'      => 0,
-            'tasks_done'     => '1 / 2',
-        ],
-        [
-            'name'           => 'MIAO Tung',
-            'student_number' => '260222114',
-            'major'          => 'SE',
-            'grade_level'    => 12,
-            'team_role'      => 'Frontend Developer',
-            'is_leader'      => 0,
-            'tasks_done'     => '0 / 2',
-        ],
-    ];
-}
-
-// ===== 把 grade_level 转成人类看得懂的班级 =====
+// ===== grade_level 转班级 =====
 function formatClass($major, $gradeLevel) {
-    // 12 -> SE-2A 这种；这里只是粗略映射，按你项目实际规则再调
     if ($gradeLevel >= 12) {
         $year = $gradeLevel - 10; // 12 -> 2
     } else {
@@ -134,63 +37,63 @@ function formatClass($major, $gradeLevel) {
 }
 
 // ===== Progress =====
-$progress = [
-    ['label' => 'Overall',         'value' => '<span class="progress"><span class="bar"><span style="width: 60%"></span></span>60%</span>', 'raw' => true],
-    ['label' => 'Tasks Completed', 'value' => '3 / 5'],
-    ['label' => 'Team Formed',     'value' => date('d M Y', strtotime($team['formed_at']))],
-    ['label' => 'Roster Locked',   'value' => date('d M Y', strtotime($team['roster_locked_at']))],
-    ['label' => 'Leader Elected',  'value' => date('d M Y', strtotime($team['leader_elected_at']))],
-    ['label' => 'Last Activity',   'value' => date('H:i', strtotime($team['last_activity_at'])) . ' today'],
-];
+$progress = array(
+    array('label'=>'Overall',         'value'=>'<span class="progress"><span class="bar"><span style="width: 60%"></span></span>60%</span>', 'raw'=>true),
+    array('label'=>'Tasks Completed', 'value'=>'3 / 5'),
+    array('label'=>'Team Formed',     'value'=>date('d M Y', strtotime($team['formed_at']))),
+    array('label'=>'Roster Locked',   'value'=>date('d M Y', strtotime($team['roster_locked_at']))),
+    array('label'=>'Leader Elected',  'value'=>date('d M Y', strtotime($team['leader_elected_at']))),
+    array('label'=>'Last Activity',   'value'=>date('H:i', strtotime($team['last_activity_at'])) . ' today'),
+);
 
-// ===== Division of Work（暂时写死，等 Tasks 表建好再从数据库取） =====
-$division = [
-    ['CHAN Ho Yin',     'Proposal, Architecture, Web UI'],
-    ['CHUI Ka Chun',    'Android App, Push Notification'],
-    ['LAI Ka-Yu Savio', 'Database, REST API'],
-    ['MIAO Tung',       'Web Frontend, File Module'],
-    ['Shared',          'Testing, Documentation'],
-];
+// ===== Division of Work =====
+$division = array(
+    array('CHAN Ho Yin',     'Proposal, Architecture, Web UI'),
+    array('CHUI Ka Chun',    'Android App, Push Notification'),
+    array('LAI Ka-Yu Savio', 'Database, REST API'),
+    array('MIAO Tung',       'Web Frontend, File Module'),
+    array('Shared',          'Testing, Documentation'),
+);
 
-// ===== Tasks（之后从 Tasks 表取） =====
-$tasks = [
-    ['name' => 'Complete Project Proposal', 'owner' => 'CHAN Ho Yin · CHUI Ka Chun', 'status' => 'Completed',   'due' => '30 Sep 2026'],
-    ['name' => 'Requirement Analysis',      'owner' => 'LAI Ka-Yu Savio',           'status' => 'Completed',   'due' => '05 Oct 2026'],
-    ['name' => 'Create System Interface',   'owner' => 'MIAO Tung',                 'status' => 'In Progress', 'due' => '10 Oct 2026'],
-    ['name' => 'Database Schema Design',    'owner' => 'LAI Ka-Yu Savio',           'status' => 'Pending',     'due' => '15 Oct 2026'],
-    ['name' => 'Android Prototype',         'owner' => 'CHUI Ka Chun',              'status' => 'Pending',     'due' => '25 Oct 2026'],
-];
+// ===== Tasks =====
+$tasks = array(
+    array('name'=>'Complete Project Proposal', 'owner'=>'CHAN Ho Yin · CHUI Ka Chun', 'status'=>'Completed',   'due'=>'30 Sep 2026'),
+    array('name'=>'Requirement Analysis',      'owner'=>'LAI Ka-Yu Savio',            'status'=>'Completed',   'due'=>'05 Oct 2026'),
+    array('name'=>'Create System Interface',   'owner'=>'MIAO Tung',                  'status'=>'In Progress', 'due'=>'10 Oct 2026'),
+    array('name'=>'Database Schema Design',    'owner'=>'LAI Ka-Yu Savio',            'status'=>'Pending',     'due'=>'15 Oct 2026'),
+    array('name'=>'Android Prototype',         'owner'=>'CHUI Ka Chun',               'status'=>'Pending',     'due'=>'25 Oct 2026'),
+);
 
-// ===== Files（之后从 Files 表取） =====
-$files = [
-    ['name' => 'Proposal_v2.docx',         'owner' => 'CHAN Ho Yin',     'meta' => '2.4 MB · 10:42 today'],
-    ['name' => 'Requirement_Analysis.pdf', 'owner' => 'LAI Ka-Yu Savio', 'meta' => '1.8 MB · Yesterday'],
-    ['name' => 'UI_Wireframe.fig',         'owner' => 'MIAO Tung',       'meta' => '5.1 MB · 2 days ago'],
-];
+// ===== Files =====
+$files = array(
+    array('name'=>'Proposal_v2.docx',         'owner'=>'CHAN Ho Yin',     'meta'=>'2.4 MB · 10:42 today'),
+    array('name'=>'Requirement_Analysis.pdf', 'owner'=>'LAI Ka-Yu Savio', 'meta'=>'1.8 MB · Yesterday'),
+    array('name'=>'UI_Wireframe.fig',         'owner'=>'MIAO Tung',       'meta'=>'5.1 MB · 2 days ago'),
+);
 
-// ===== Contribution（之后从 Contributions 表取） =====
-$contributions = [
-    ['CHAN Ho Yin',     2, 3, 14, '32%'],
-    ['CHUI Ka Chun',    1, 1,  8, '24%'],
-    ['LAI Ka-Yu Savio', 1, 2, 11, '26%'],
-    ['MIAO Tung',       0, 1,  6, '18%'],
-];
+// ===== Contribution =====
+$contributions = array(
+    array('CHAN Ho Yin',     2, 3, 14, '32%'),
+    array('CHUI Ka Chun',    1, 1,  8, '24%'),
+    array('LAI Ka-Yu Savio', 1, 2, 11, '26%'),
+    array('MIAO Tung',       0, 1,  6, '18%'),
+);
 
-// ===== Activity（之后从 Activity_Log 表取） =====
-$activities = [
-    ['CHAN Ho Yin uploaded Proposal_v2.docx',                '10:42'],
-    ['LAI Ka-Yu Savio marked Requirement Analysis complete', '09:20'],
-    ['MIAO Tung commented on UI_Wireframe',                  'Yesterday'],
-    ['Team roster locked',                                   '20 Sep'],
-    ['CHAN Ho Yin elected as team leader',                   '21 Sep'],
-];
+// ===== Activity =====
+$activities = array(
+    array('CHAN Ho Yin uploaded Proposal_v2.docx',                '10:42'),
+    array('LAI Ka-Yu Savio marked Requirement Analysis complete', '09:20'),
+    array('MIAO Tung commented on UI_Wireframe',                  'Yesterday'),
+    array('Team roster locked',                                   '20 Sep'),
+    array('CHAN Ho Yin elected as team leader',                   '21 Sep'),
+);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($team['team_name']) ?> | TeamBox</title>
+    <title><?php echo htmlspecialchars($team['team_name']); ?> | TeamBox</title>
     <style>
         * {
             margin: 0;
@@ -541,10 +444,10 @@ $activities = [
 
         <div class="page-head">
             <div>
-                <h1><?= htmlspecialchars($team['team_name']) ?></h1>
+                <h1><?php echo htmlspecialchars($team['team_name']); ?></h1>
                 <div class="meta">
-                    <?= htmlspecialchars($team['project_name']) ?> ·
-                    <?= htmlspecialchars($team['project_category']) ?>
+                    <?php echo htmlspecialchars($team['project_name']); ?> ·
+                    <?php echo htmlspecialchars($team['project_category']); ?>
                 </div>
             </div>
         </div>
@@ -560,13 +463,13 @@ $activities = [
                     <th>Project Period</th>
                 </tr>
                 <tr>
-                    <td><?= htmlspecialchars($team['project_name']) ?></td>
-                    <td><?= htmlspecialchars($team['project_category']) ?></td>
-                    <td><?= htmlspecialchars($team['project_supervisor']) ?></td>
+                    <td><?php echo htmlspecialchars($team['project_name']); ?></td>
+                    <td><?php echo htmlspecialchars($team['project_category']); ?></td>
+                    <td><?php echo htmlspecialchars($team['project_supervisor']); ?></td>
                     <td>
-                        <?= date('M Y', strtotime($team['period_start'])) ?>
+                        <?php echo date('M Y', strtotime($team['period_start'])); ?>
                         –
-                        <?= date('M Y', strtotime($team['period_end'])) ?>
+                        <?php echo date('M Y', strtotime($team['period_end'])); ?>
                     </td>
                 </tr>
             </table>
@@ -586,15 +489,15 @@ $activities = [
                 <?php foreach ($members as $m): ?>
                     <tr>
                         <td>
-                            <?= htmlspecialchars($m['name']) ?>
+                            <?php echo htmlspecialchars($m['name']); ?>
                             <?php if (!empty($m['is_leader'])): ?>
                                 <span class="leader-mark">LEADER</span>
                             <?php endif; ?>
                         </td>
-                        <td><?= htmlspecialchars($m['student_number']) ?></td>
-                        <td><?= htmlspecialchars(formatClass($m['major'], $m['grade_level'])) ?></td>
-                        <td><?= htmlspecialchars($m['team_role']) ?></td>
-                        <td><?= htmlspecialchars($m['tasks_done']) ?></td>
+                        <td><?php echo htmlspecialchars($m['student_number']); ?></td>
+                        <td><?php echo htmlspecialchars(formatClass($m['major'], $m['grade_level'])); ?></td>
+                        <td><?php echo htmlspecialchars($m['team_role']); ?></td>
+                        <td><?php echo htmlspecialchars($m['tasks_done']); ?></td>
                     </tr>
                 <?php endforeach; ?>
             </table>
@@ -608,12 +511,12 @@ $activities = [
                     <table class="progress-table">
                         <?php foreach ($progress as $p): ?>
                             <tr>
-                                <td><?= htmlspecialchars($p['label']) ?></td>
+                                <td><?php echo htmlspecialchars($p['label']); ?></td>
                                 <td>
                                     <?php if (!empty($p['raw'])): ?>
-                                        <?= $p['value'] ?>
+                                        <?php echo $p['value']; ?>
                                     <?php else: ?>
-                                        <?= htmlspecialchars($p['value']) ?>
+                                        <?php echo htmlspecialchars($p['value']); ?>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -628,8 +531,8 @@ $activities = [
                     <table class="progress-table">
                         <?php foreach ($division as $d): ?>
                             <tr>
-                                <td><?= htmlspecialchars($d[0]) ?></td>
-                                <td><?= htmlspecialchars($d[1]) ?></td>
+                                <td><?php echo htmlspecialchars($d[0]); ?></td>
+                                <td><?php echo htmlspecialchars($d[1]); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </table>
@@ -643,12 +546,12 @@ $activities = [
             <?php foreach ($tasks as $t): ?>
                 <div class="task-row">
                     <div>
-                        <div class="task-name"><?= htmlspecialchars($t['name']) ?></div>
-                        <div class="task-owner"><?= htmlspecialchars($t['owner']) ?></div>
+                        <div class="task-name"><?php echo htmlspecialchars($t['name']); ?></div>
+                        <div class="task-owner"><?php echo htmlspecialchars($t['owner']); ?></div>
                     </div>
                     <div class="task-right">
-                        <div><?= htmlspecialchars($t['status']) ?></div>
-                        <div class="task-due"><?= htmlspecialchars($t['due']) ?></div>
+                        <div><?php echo htmlspecialchars($t['status']); ?></div>
+                        <div class="task-due"><?php echo htmlspecialchars($t['due']); ?></div>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -661,10 +564,10 @@ $activities = [
                 <?php foreach ($files as $f): ?>
                     <li>
                     <span>
-                        <?= htmlspecialchars($f['name']) ?>
-                        <span class="muted">· <?= htmlspecialchars($f['owner']) ?></span>
+                        <?php echo htmlspecialchars($f['name']); ?>
+                        <span class="muted">· <?php echo htmlspecialchars($f['owner']); ?></span>
                     </span>
-                        <span class="muted"><?= htmlspecialchars($f['meta']) ?></span>
+                        <span class="muted"><?php echo htmlspecialchars($f['meta']); ?></span>
                     </li>
                 <?php endforeach; ?>
             </ul>
@@ -683,11 +586,11 @@ $activities = [
                 </tr>
                 <?php foreach ($contributions as $c): ?>
                     <tr>
-                        <td><?= htmlspecialchars($c[0]) ?></td>
-                        <td><?= htmlspecialchars($c[1]) ?></td>
-                        <td><?= htmlspecialchars($c[2]) ?></td>
-                        <td><?= htmlspecialchars($c[3]) ?></td>
-                        <td><?= htmlspecialchars($c[4]) ?></td>
+                        <td><?php echo htmlspecialchars($c[0]); ?></td>
+                        <td><?php echo htmlspecialchars($c[1]); ?></td>
+                        <td><?php echo htmlspecialchars($c[2]); ?></td>
+                        <td><?php echo htmlspecialchars($c[3]); ?></td>
+                        <td><?php echo htmlspecialchars($c[4]); ?></td>
                     </tr>
                 <?php endforeach; ?>
             </table>
@@ -699,8 +602,8 @@ $activities = [
             <ul class="activity-list">
                 <?php foreach ($activities as $a): ?>
                     <li>
-                        <span><?= htmlspecialchars($a[0]) ?></span>
-                        <span class="muted"><?= htmlspecialchars($a[1]) ?></span>
+                        <span><?php echo htmlspecialchars($a[0]); ?></span>
+                        <span class="muted"><?php echo htmlspecialchars($a[1]); ?></span>
                     </li>
                 <?php endforeach; ?>
             </ul>
