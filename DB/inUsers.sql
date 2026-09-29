@@ -1,41 +1,29 @@
+-- inUsers.sql
+-- A sql queries file using acts to insert data into Users
+-- then throught start a transaction to transfer the UID of in Users to Teacher
+-- if the user is teacher, transact to Teachers
+-- else, transact to Students
+-- This queries statement file is using acts to insert users data, teachers data, students data
+
 START TRANSACTION;
 
--- =========================================================
--- 1. add 1 Teacher (User + Teacher Record)
--- =========================================================
 INSERT INTO Users (username, email, password_hash, role) 
-VALUES ('YUEN Wai Ying', 'estherywy@tea.vtc.edu.hk', 'Eywy8582@vtchk', 'teacher');
-
--- 取得剛剛產生的 User ID，並寫入 Teachers 表
-SET @teacher_user_id = LAST_INSERT_ID();
+VALUES
+  ('CHAN Tai Man Bob', 'bobctm@iit.edu.hk', 'ctmb2627@iit.edu.hk', 'teacher'),
+  ('CHAN Siu Ming Alice', 'alicesim@stu.iit.edu.hk', 'stu-1009823@iit.edu.hk', 'student');
 
 INSERT INTO Teachers (user_id, hire_date, department, title) 
-VALUES (@teacher_user_id, '2020-09-01', 'Computer Science', 'Associate Professor');
-
--- 取得剛產生的 Teacher ID
-SET @teacher_id = LAST_INSERT_ID();
-
-
--- =========================================================
--- 2. 新增 1 位 Student (User + Student Record)
--- =========================================================
-INSERT INTO Users (username, email, password_hash, role) 
-VALUES ('alice_wong', 'alice.wong@student.edu', '$2b$10$e8.yK...hashedpasswordexample...', 'student');
-
--- 取得剛剛產生的 User ID，並寫入 Students 表
-SET @student_user_id = LAST_INSERT_ID();
+VALUES (
+    (SELECT id FROM Users WHERE email = 'bobctm@iit.edu.hk'), '2020-09-01', 'Computer Science', 'Associate Professor');
 
 INSERT INTO Students (user_id, student_number, major, grade_level) 
-VALUES (@student_user_id, 'ST1009823', 'Computer Science', 10); -- 10 代表 S4 / DVE-Y1
+VALUES (
+    (SELECT id FROM Users WHERE email = 'alicesim@stu.iit.edu.hk'), 'ST1009823', 'Computer Science', 13);
 
--- 取得剛產生的 Student ID
-SET @student_id = LAST_INSERT_ID();
-
-
--- =========================================================
--- 3. 綁定 師生關係 (Teacher_Student)
--- =========================================================
 INSERT INTO Teacher_Student (teacher_id, student_id) 
-VALUES (@teacher_id, @student_id);
+VALUES (
+    (SELECT t.id FROM Teachers t JOIN Users u ON t.user_id = u.id WHERE u.email = 'bobctm@iit.edu.hk'),
+    (SELECT s.id FROM Students s JOIN Users u ON s.user_id = u.id WHERE u.email = 'alicesim@stu.iit.edu.hk')
+);
 
 COMMIT;
