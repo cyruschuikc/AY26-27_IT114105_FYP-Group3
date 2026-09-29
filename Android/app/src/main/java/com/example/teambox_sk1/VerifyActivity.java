@@ -2,9 +2,9 @@ package com.example.teambox_sk1;
 
 import android.os.Bundle;
 
-import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
+import androidx.activity.*;
+import androidx.appcompat.app.*;
+import androidx.core.graphics.*;
 import androidx.core.view.*;
 
 public class VerifyActivity extends AppCompatActivity {
