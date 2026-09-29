@@ -12,13 +12,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TeamBox_sk1">
         <activity
+            android:name=".RegistActivity"
+            android:exported="false" />
+        <activity
             android:name=".TeacherHomeActivity"
             android:exported="false" />
         <activity
             android:name=".StuHomeActivity"
-            android:exported="false" />
-        <activity
-            android:name=".VerifyActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
