@@ -10,7 +10,7 @@ START TRANSACTION;
 INSERT INTO Users (username, email, password_hash, role) 
 VALUES
   ('CHAN Tai Man Bob', 'bobctm@iit.edu.hk', 'ctmb2627@iit.edu.hk', 'teacher'),
-  ('CHAN Siu Ming Alice', 'alicesim@stu.iit.edu.hk', 'stu-1009823@iit.edu.hk', 'student');
+  ('CHAN Siu Ming Alice', 'alicesim@stu.iit.edu.hk', 'stu-000001@iit.edu.hk', 'student');
 
 INSERT INTO Teachers (user_id, hire_date, department, title) 
 VALUES (
@@ -18,7 +18,7 @@ VALUES (
 
 INSERT INTO Students (user_id, student_number, major, grade_level) 
 VALUES (
-    (SELECT id FROM Users WHERE email = 'alicesim@stu.iit.edu.hk'), 'ST1009823', 'Computer Science', 13);
+    (SELECT id FROM Users WHERE email = 'alicesim@stu.iit.edu.hk'), 'ST267000001', 'Computer Science', 13);
 
 INSERT INTO Teacher_Student (teacher_id, student_id) 
 VALUES (
