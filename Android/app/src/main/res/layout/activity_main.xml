@@ -41,7 +41,7 @@
                 android:layout_height="100dp"
                 android:contentDescription="@string/AppName"
                 app:srcCompat="@drawable/teambox_logo_black"
-                android:background="@color/gray_mdn90"/>
+                android:background="@color/blue_200"/>
 
             <TextView
                 android:id="@+id/appName"
