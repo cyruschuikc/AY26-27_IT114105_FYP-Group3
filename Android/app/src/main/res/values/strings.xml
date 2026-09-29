@@ -2,6 +2,8 @@
     <string name="app_name">TeamBox_sk1</string>
     <string name="AppName">TeamBox</string>
     <string name="welStaText">Welcome to use TeamBox!</string>
+    <string name="welStuText">Welcome Back, </string>
+    <string name="StuName">Student Name</string>
     <string name="registMsg">Are you new?</string>
     <string name="loginMsg">Or, have an account? (Flash Sign-In in here)</string>
     <string name="regist">Sign Up</string>
