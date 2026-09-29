@@ -1,3 +1,6 @@
+-- This sql query file is acts for DB/Table debugging
+-- not is using for create table/store data/create view
+
 SELECT 
     u.id AS user_id,
     u.username,
