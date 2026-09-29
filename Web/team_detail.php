@@ -4,7 +4,7 @@
 
 $teamId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 
-// ===== 假数据 =====
+//假数据
 $team = array(
     'team_name'          => 'Team 01',
     'project_name'       => 'TeamBox',
