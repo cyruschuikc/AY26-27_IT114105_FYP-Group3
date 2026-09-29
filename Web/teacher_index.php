@@ -156,10 +156,6 @@
             font-weight: bold;
         }
 
-        .link.danger {
-            color: #c62828;
-        }
-
         @media (max-width: 700px) {
             body { flex-direction: column; }
             .sidebar { width: 100%; min-height: auto; position: static; }
