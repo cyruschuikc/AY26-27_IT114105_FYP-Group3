@@ -215,7 +215,7 @@
     <div class="card">
         <table>
             <tr>
-                <th>Team</th>
+                <th>TeamName</th>
                 <th>Leader</th>
                 <th>Members</th>
                 <th>Progress</th>
@@ -228,7 +228,7 @@
                 <td>4 / 4</td>
                 <td>3 / 5</td>
                 <td><span class="pill">Executing</span></td>
-                <td><button class="link">View</button></td>
+                <td><a href="team_detail.php?id=1" class="link">View</a></td>
             </tr>
             <tr>
                 <td>Team 02</td>
@@ -236,7 +236,7 @@
                 <td>4 / 4</td>
                 <td>1 / 5</td>
                 <td><span class="pill">Voting</span></td>
-                <td><button class="link">View</button></td>
+                <td><a href="team_detail.php?id=2" class="link">View</a></td>
             </tr>
             <tr>
                 <td>Team 03</td>
@@ -244,7 +244,7 @@
                 <td>3 / 4</td>
                 <td>0 / 5</td>
                 <td><span class="pill">Recruiting</span></td>
-                <td><button class="link">View</button></td>
+                <td><a href="team_detail.php?id=3" class="link">View</a></td>
             </tr>
             <tr>
                 <td>Team 04</td>
@@ -252,7 +252,7 @@
                 <td>2 / 4</td>
                 <td class="muted">—</td>
                 <td><span class="pill">Recruiting</span></td>
-                <td><button class="link">View</button></td>
+                <td><a href="team_detail.php?id=4" class="link">View</a></td>
             </tr>
         </table>
     </div>
