@@ -189,7 +189,7 @@
             Log in to your TeamBox teacher account
         </p>
 
-
+        <form action="teacher_index.php" method="post">
 
         <div class="form-group">
             <label for="teacherID">
