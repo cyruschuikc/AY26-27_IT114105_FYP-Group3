@@ -33,7 +33,6 @@ try {
     $stmt->execute(array(':id' => $teamId));
     $team = $stmt->fetch();
 } catch (PDOException $e) {
-    // 表还没建，用 fallback 假数据
     $team = null;
 }
 
