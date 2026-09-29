@@ -3,14 +3,14 @@
     <string name="AppName">TeamBox</string>
     <string name="welStaText">Welcome to use TeamBox!</string>
     <string name="registMsg">Are you new?</string>
-    <string name="loginMsg">Or, have a account? (Flash Sign-In in here)</string>
+    <string name="loginMsg">Or, have an account? (Flash Sign-In in here)</string>
     <string name="regist">Sign Up</string>
     <string name="lbDomain">Domain Selection：</string>
     <string name="lbIdentity">Identity Selection：</string>
     <string name="field_tag_1">Your Username：</string>
     <string name="field_tag_2">Enter Password：</string>
     <string name="login">Login</string>
-    <string name="ver">DEVAndroidAPIL36+v1.0.1_P870e8dd_G6c6c77a_D65926841_C66965504_R1482</string>
+    <string name="ver">LCDEPAndroid1.0.2_G4e606db_C107107_D66128342_S67010560_R665_F588</string>
 
     <!--Identity Options-->
     <string-array name="identity_array">
