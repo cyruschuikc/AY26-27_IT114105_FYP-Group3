@@ -121,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
      * Generates a random verification code using SecureRandom for improved security.
      */
     private String generateVerificationCode(int length) {
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         StringBuilder codeBuilder = new StringBuilder();
         SecureRandom random = new SecureRandom();
 
