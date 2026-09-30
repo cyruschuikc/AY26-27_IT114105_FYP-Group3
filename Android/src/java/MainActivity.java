@@ -2,7 +2,6 @@ package com.example.teambox_sk1;
 
 import android.os.*;
 import android.text.*;
-import android.util.*;
 import android.widget.*;
 import androidx.activity.*;
 import androidx.appcompat.app.*;
@@ -10,7 +9,7 @@ import androidx.core.graphics.*;
 import androidx.core.view.*;
 import java.util.*;
 
-public class MainActivity extends AppCompatActivity implements BackGate {
+public class MainActivity extends AppCompatActivity {
     private String user = "", pwd = ""; // Initialized to prevent null pointer bugs
     private TextView tvWelcome, tvRegistMsg, tvLoginMsg, tvField1, tvField2, tvField3, tvField4, tvVer;
     private EditText etUser, etPWD, etOTC;
@@ -128,27 +127,6 @@ public class MainActivity extends AppCompatActivity implements BackGate {
         }
 
         return codeBuilder.toString();
-    }
-
-    @Override
-    public void onGateOpen() {
-        Log.d("BackGate", "The gate is open. Starting operation...");
-    }
-
-    @Override
-    public void onDataReceived(String data) {
-        Log.d("BackGate", "Data received through the gate: " + data);
-        // Update your UI here
-    }
-
-    @Override
-    public void onError(String errorMessage) {
-        Log.e("BackGate", "Error: " + errorMessage);
-    }
-
-    @Override
-    public void onGateClose() {
-        Log.d("BackGate", "The gate is closed. Operation finished.");
     }
 
     @Override protected void onStart() { super.onStart(); }
