@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">TeamBox_sk1</string>
+
+    <!--strings for MainActivity below-->
     <string name="AppName">TeamBox</string>
     <string name="welStaText">Welcome to use TeamBox!</string>
-    <string name="welStuText">Welcome Back, </string>
-    <string name="StuName">Student Name</string>
     <string name="registMsg">Are you new?</string>
     <string name="loginMsg">Or, have an account? (Flash Sign-In in here)</string>
     <string name="regist">Sign Up</string>
@@ -16,5 +16,11 @@
     <string name="getVC">Get OTC</string>
     <string name="login">Login</string>
     <string name="ver">LCDEPAndroid1.0.2_G77e02d3_R24e606db_C142107107_S1245</string>
-</resources>
 
+    <!--strings for StuHomeActivity below-->
+    <string name="stuHome">TeamBox｜STUDENT</string>
+    <string name="welStuText">Welcome Back, </string>
+    <string name="StuName">Student Name</string>
+    <string name="stuDashMsg">This is your Dashboard. You can view your projects, assigned tasks, team progress, shared DOCs and recent notifications.</string>
+
+</resources>
