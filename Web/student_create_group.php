@@ -12,8 +12,8 @@ session_start();
     <meta charset="UTF-8">
 
     <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
     >
 
     <title>Create Group | TeamBox</title>
@@ -171,7 +171,7 @@ session_start();
             font-size: 23px;
         }
 
-        /* Form (inside Current Group) */
+        /* Form */
 
         .form-group {
             margin-bottom: 19px;
@@ -207,7 +207,7 @@ session_start();
             border-color: black;
         }
 
-        /* Classroom list */
+        /* Classmate List */
 
         .class-list {
             display: flex;
@@ -226,20 +226,12 @@ session_start();
             align-items: center;
             gap: 14px;
 
-            cursor: pointer;
             transition: 0.3s;
         }
 
         .class-item:hover {
             border-color: black;
             background: white;
-        }
-
-        .class-item input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: black;
-            cursor: pointer;
         }
 
         .class-avatar {
@@ -273,24 +265,41 @@ session_start();
             font-size: 13px;
         }
 
-        .class-status {
-            padding: 5px 10px;
+        /* Invite Button (small) */
 
-            background: #e5f0ff;
-            color: #245889;
-            border-radius: 15px;
+        .invite-btn {
+            min-width: 90px;
+            height: 38px;
+            padding: 0 12px;
 
-            font-size: 11px;
+            background: white;
+            color: black;
+            border: 2px solid black;
+            border-radius: 7px;
+
+            font-size: 13px;
             font-weight: bold;
-            white-space: nowrap;
+            cursor: pointer;
+            transition: 0.3s;
         }
 
-        .class-status.taken {
+        .invite-btn:hover {
+            background: black;
+            color: white;
+        }
+
+        .invite-btn:active {
+            transform: scale(0.97);
+        }
+
+        .invite-btn:disabled {
             background: #eeeeee;
             color: #888;
+            border-color: #cccccc;
+            cursor: not-allowed;
         }
 
-        /* Buttons */
+        /* Big Buttons */
 
         .primary-btn {
             width: 100%;
@@ -361,6 +370,8 @@ session_start();
             color: #176b2c;
         }
 
+        /* Member item */
+
         .member-item {
             padding: 14px 0;
             border-bottom: 1px solid #eeeeee;
@@ -383,6 +394,27 @@ session_start();
         .member-item p {
             color: #777;
             font-size: 13px;
+        }
+
+        /* Member status badges */
+
+        .member-status {
+            padding: 6px 12px;
+            border-radius: 18px;
+
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .status-accepted {
+            background: #d9f5df;
+            color: #176b2c;
+        }
+
+        .status-waiting {
+            background: #fff1c2;
+            color: #765900;
         }
 
         .remove-btn {
@@ -526,6 +558,11 @@ session_start();
             .page-heading h1 {
                 font-size: 28px;
             }
+
+            .class-item,
+            .member-item {
+                flex-wrap: wrap;
+            }
         }
     </style>
 </head>
@@ -546,9 +583,11 @@ session_start();
         <a href="student_index.php" class="nav-link">
             Dashboard
         </a>
+
         <a href="student_create_group.php" class="nav-link active">
             Create Group
         </a>
+
         <a href="my_project.php" class="nav-link">
             My Project
         </a>
@@ -556,8 +595,6 @@ session_start();
         <a href="my_team.php" class="nav-link">
             My Team
         </a>
-
-
 
         <a href="student_task.php" class="nav-link">
             Tasks
@@ -570,7 +607,9 @@ session_start();
         <a href="student_chat.php" class="nav-link">
             Group Chat
         </a>
-
+        <a href="student_contribution.php" class="nav-link">
+            Contribution
+        </a>
         <a href="student_notifications.php" class="nav-link">
             Notifications
         </a>
@@ -596,8 +635,8 @@ session_start();
         <h1>Create Group</h1>
 
         <p>
-            Name your group, set the project, pick classmates from the
-            classroom list, then lock the team and vote for a leader.
+            Name your group, set the project, invite classmates from the
+            classmate list, then lock the team and vote for a leader.
         </p>
 
     </section>
@@ -605,112 +644,104 @@ session_start();
     <div class="info-note">
         <strong>How it works:</strong>
         1. Enter Group Name &amp; Project Name &nbsp;→&nbsp;
-        2. Tick classmates in the Classroom List &nbsp;→&nbsp;
-        3. Click "Add Selected to Group" &nbsp;→&nbsp;
+        2. Click "Invite" on classmates &nbsp;→&nbsp;
+        3. Wait for them to accept &nbsp;→&nbsp;
         4. Group fills to 4/4 &nbsp;→&nbsp;
         5. Lock Team &nbsp;→&nbsp;
         6. Vote Group Leader.
     </div>
 
-    <!-- Top Section: Classroom List + Current Group -->
+    <!-- Top Section: Classmate List + Current Group -->
 
     <section class="section-grid">
 
-        <!-- Classroom List (select members) -->
+        <!-- Classmate List (send invitations) -->
 
         <div class="content-box">
 
             <h2>Classmate List</h2>
 
-            <form action="#" method="post">
+            <div class="class-list">
 
-                <div class="class-list">
+                <div class="class-item">
+                    <div class="class-avatar">SA</div>
 
-                    <label class="class-item">
-                        <input type="checkbox" name="members[]" value="A">
+                    <div class="class-info">
+                        <h3>Student A</h3>
+                        <p>Student ID: 250000001</p>
+                    </div>
 
-                        <div class="class-avatar">SA</div>
-
-                        <div class="class-info">
-                            <h3>Student A</h3>
-                            <p>Student ID: 250000001</p>
-                        </div>
-
-                        <span class="class-status">Available</span>
-                    </label>
-
-                    <label class="class-item">
-                        <input type="checkbox" name="members[]" value="B">
-
-                        <div class="class-avatar">SB</div>
-
-                        <div class="class-info">
-                            <h3>Student B</h3>
-                            <p>Student ID: 250000002</p>
-                        </div>
-
-                        <span class="class-status">Available</span>
-                    </label>
-
-                    <label class="class-item">
-                        <input type="checkbox" name="members[]" value="C">
-
-                        <div class="class-avatar">SC</div>
-
-                        <div class="class-info">
-                            <h3>Student C</h3>
-                            <p>Student ID: 250000003</p>
-                        </div>
-
-                        <span class="class-status">Available</span>
-                    </label>
-
-                    <label class="class-item">
-                        <input type="checkbox" name="members[]" value="D">
-
-                        <div class="class-avatar">SD</div>
-
-                        <div class="class-info">
-                            <h3>Student D</h3>
-                            <p>Student ID: 250000004</p>
-                        </div>
-
-                        <span class="class-status">Available</span>
-                    </label>
-
-                    <label class="class-item">
-                        <input type="checkbox" name="members[]" value="E" disabled>
-
-                        <div class="class-avatar">SE</div>
-
-                        <div class="class-info">
-                            <h3>Student E</h3>
-                            <p>Student ID: 250000005</p>
-                        </div>
-
-                        <span class="class-status taken">In a Group</span>
-                    </label>
-
-                    <label class="class-item">
-                        <input type="checkbox" name="members[]" value="F">
-
-                        <div class="class-avatar">SF</div>
-
-                        <div class="class-info">
-                            <h3>Student F</h3>
-                            <p>Student ID: 250000006</p>
-                        </div>
-
-                        <span class="class-status">Available</span>
-                    </label>
-
+                    <button type="button" class="invite-btn">
+                        Invite
+                    </button>
                 </div>
 
-                <button type="submit" class="primary-btn">
-                    Add Selected to Group
-                </button>
+                <div class="class-item">
+                    <div class="class-avatar">SB</div>
 
-            </form>
+                    <div class="class-info">
+                        <h3>Student B</h3>
+                        <p>Student ID: 250000002</p>
+                    </div>
+
+                    <button type="button" class="invite-btn">
+                        Invite
+                    </button>
+                </div>
+
+                <div class="class-item">
+                    <div class="class-avatar">SC</div>
+
+                    <div class="class-info">
+                        <h3>Student C</h3>
+                        <p>Student ID: 250000003</p>
+                    </div>
+
+                    <button type="button" class="invite-btn">
+                        Invite
+                    </button>
+                </div>
+
+                <div class="class-item">
+                    <div class="class-avatar">SD</div>
+
+                    <div class="class-info">
+                        <h3>Student D</h3>
+                        <p>Student ID: 250000004</p>
+                    </div>
+
+                    <button type="button" class="invite-btn">
+                        Invite
+                    </button>
+                </div>
+
+                <div class="class-item">
+                    <div class="class-avatar">SE</div>
+
+                    <div class="class-info">
+                        <h3>Student E</h3>
+                        <p>Student ID: 250000005</p>
+                    </div>
+
+                    <button type="button" class="invite-btn" disabled>
+                        In a Group
+                    </button>
+                </div>
+
+                <div class="class-item">
+                    <div class="class-avatar">SF</div>
+
+                    <div class="class-info">
+                        <h3>Student F</h3>
+                        <p>Student ID: 250000006</p>
+                    </div>
+
+                    <button type="button" class="invite-btn">
+                        Invite
+                    </button>
+                </div>
+
+            </div>
 
         </div>
 
@@ -726,12 +757,12 @@ session_start();
                     <label for="groupName">Group Name</label>
 
                     <input
-                        type="text"
-                        id="groupName"
-                        name="groupName"
-                        placeholder="e.g. Team A"
-                        value="Team A"
-                        required
+                            type="text"
+                            id="groupName"
+                            name="groupName"
+                            placeholder="e.g. Team A"
+                            value="Team A"
+                            required
                     >
                 </div>
 
@@ -739,12 +770,12 @@ session_start();
                     <label for="projectName">Project Name</label>
 
                     <input
-                        type="text"
-                        id="projectName"
-                        name="projectName"
-                        placeholder="e.g. TeamBox Collaboration System"
-                        value="TeamBox Collaboration System"
-                        required
+                            type="text"
+                            id="projectName"
+                            name="projectName"
+                            placeholder="e.g. TeamBox Collaboration System"
+                            value="TeamBox Collaboration System"
+                            required
                     >
                 </div>
 
@@ -763,10 +794,12 @@ session_start();
             </form>
 
             <div class="group-info">
-                <strong>Members:</strong> 3 / 4<br>
+                <strong>Members:</strong> 2 accepted / 1 waiting / 4 max<br>
                 <strong>Status:</strong>
                 <span class="status-badge">Recruiting</span>
             </div>
+
+            <!-- Accepted member -->
 
             <div class="member-item">
                 <div>
@@ -774,10 +807,16 @@ session_start();
                     <p>Student ID: 250000001</p>
                 </div>
 
+                <span class="member-status status-accepted">
+                    Accepted
+                </span>
+
                 <button type="button" class="remove-btn">
                     Remove
                 </button>
             </div>
+
+            <!-- Accepted member -->
 
             <div class="member-item">
                 <div>
@@ -785,10 +824,16 @@ session_start();
                     <p>Student ID: 250000002</p>
                 </div>
 
+                <span class="member-status status-accepted">
+                    Accepted
+                </span>
+
                 <button type="button" class="remove-btn">
                     Remove
                 </button>
             </div>
+
+            <!-- Waiting member -->
 
             <div class="member-item">
                 <div>
@@ -796,8 +841,12 @@ session_start();
                     <p>Student ID: 250000003</p>
                 </div>
 
+                <span class="member-status status-waiting">
+                    Waiting for acceptance
+                </span>
+
                 <button type="button" class="remove-btn">
-                    Remove
+                    Cancel
                 </button>
             </div>
 

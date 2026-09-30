@@ -1,19 +1,11 @@
-<?php
-session_start();
-
-// if (!isset($_SESSION['studentID'])) {
-//     header('Location: student_login.php');
-//     exit;
-// }
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
 
     <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
     >
 
     <title>My Tasks | TeamBox</title>
@@ -32,9 +24,7 @@ session_start();
             color: #222;
         }
 
-        /* =========================
-           Top Navigation Bar
-        ========================= */
+        /* Top Navigation Bar */
 
         .navbar {
             width: 100%;
@@ -69,8 +59,6 @@ session_start();
             font-weight: bold;
         }
 
-        /* Navigation text links */
-
         .function-menu {
             width: 100%;
 
@@ -95,18 +83,12 @@ session_start();
             color: #bbbbbb;
         }
 
-        .nav-link:active {
-            color: #ffffff;
-        }
-
-        /* Current page */
         .nav-link.active {
             color: white;
             font-weight: bold;
             border-bottom: 2px solid white;
         }
 
-        /* Log out */
         .logout-link {
             color: #ff8888;
         }
@@ -115,9 +97,7 @@ session_start();
             color: #ff4444;
         }
 
-        /* =========================
-           Main Content
-        ========================= */
+        /* Main Content */
 
         .main-content {
             width: 90%;
@@ -132,6 +112,12 @@ session_start();
             background: white;
             border-radius: 15px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
         }
 
         .page-heading h1 {
@@ -145,9 +131,48 @@ session_start();
             line-height: 1.6;
         }
 
-        /* =========================
-           Task Summary Cards
-        ========================= */
+        /* Leader Badge */
+
+        .leader-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            margin-bottom: 8px;
+
+            background: black;
+            color: white;
+            border-radius: 18px;
+
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* Create Task Button */
+
+        .create-task-btn {
+            min-width: 160px;
+            height: 48px;
+            padding: 0 20px;
+
+            background: black;
+            color: white;
+            border: 2px solid black;
+            border-radius: 9px;
+
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .create-task-btn:hover {
+            background: #333;
+        }
+
+        .create-task-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Task Summary Cards */
 
         .summary-grid {
             display: grid;
@@ -193,12 +218,130 @@ session_start();
             font-size: 13px;
         }
 
-        /* =========================
-           Toolbar
-        ========================= */
+        /* Create Task Section */
+
+        .create-task-section {
+            padding: 28px;
+            margin-bottom: 25px;
+
+            background: white;
+            border-radius: 15px;
+            border-left: 5px solid black;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .create-task-section h2 {
+            padding-bottom: 15px;
+            margin-bottom: 22px;
+
+            border-bottom: 2px solid #eeeeee;
+            font-size: 23px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 19px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+
+            color: #333;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0 13px;
+
+            background: white;
+            color: #222;
+            border: 2px solid #cccccc;
+            border-radius: 8px;
+
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .form-group input,
+        .form-group select {
+            height: 47px;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            padding-top: 12px;
+            resize: vertical;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: black;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .cancel-btn {
+            min-width: 130px;
+            height: 46px;
+            padding: 0 16px;
+
+            background: white;
+            color: black;
+            border: 2px solid black;
+            border-radius: 8px;
+
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .cancel-btn:hover {
+            background: black;
+            color: white;
+        }
+
+        .submit-btn {
+            min-width: 150px;
+            height: 46px;
+            padding: 0 16px;
+
+            background: black;
+            color: white;
+            border: 2px solid black;
+            border-radius: 8px;
+
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .submit-btn:hover {
+            background: #333;
+        }
+
+        /* Task Section */
 
         .task-section {
             padding: 28px;
+            margin-bottom: 25px;
 
             background: white;
             border-radius: 15px;
@@ -254,9 +397,7 @@ session_start();
             border-color: black;
         }
 
-        /* =========================
-           Task Cards
-        ========================= */
+        /* Task Cards */
 
         .task-list {
             display: flex;
@@ -377,9 +518,7 @@ session_start();
             color: #245889;
         }
 
-        /* =========================
-           Task Actions (text links)
-        ========================= */
+        /* Task Actions */
 
         .task-actions {
             margin-top: 18px;
@@ -401,19 +540,71 @@ session_start();
             color: #555555;
         }
 
-        .action-link:active {
-            color: #000000;
-        }
-
         .action-link.disabled {
             color: #aaaaaa;
             cursor: not-allowed;
             text-decoration: none;
         }
 
-        /* =========================
-           Information Box
-        ========================= */
+        /* Team Progress Bar */
+
+        .team-progress-section {
+            padding: 28px;
+
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .team-progress-section h2 {
+            padding-bottom: 15px;
+            margin-bottom: 22px;
+
+            border-bottom: 2px solid #eeeeee;
+            font-size: 23px;
+        }
+
+        .progress-info {
+            margin-bottom: 12px;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-info strong {
+            font-size: 17px;
+        }
+
+        .progress-info span {
+            font-size: 17px;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 18px;
+
+            background: #dddddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-value {
+            width: 50%;
+            height: 100%;
+
+            background: black;
+            border-radius: 10px;
+        }
+
+        .progress-note {
+            margin-top: 12px;
+            color: #777;
+            font-size: 14px;
+        }
+
+        /* Information Note */
 
         .task-note {
             padding: 18px;
@@ -428,9 +619,7 @@ session_start();
             line-height: 1.6;
         }
 
-        /* =========================
-           Responsive Design
-        ========================= */
+        /* Responsive Design */
 
         @media (max-width: 1000px) {
             .summary-grid {
@@ -453,6 +642,11 @@ session_start();
 
             .task-details {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 0;
             }
         }
 
@@ -484,6 +678,15 @@ session_start();
                 font-size: 28px;
             }
 
+            .page-heading {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .create-task-btn {
+                width: 100%;
+            }
+
             .summary-grid {
                 grid-template-columns: 1fr;
             }
@@ -510,6 +713,15 @@ session_start();
                 flex-direction: column;
                 align-items: flex-start;
             }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .cancel-btn,
+            .submit-btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -525,14 +737,14 @@ session_start();
         <span>TeamBox</span>
     </div>
 
-    <!-- Navigation text links -->
-
     <div class="function-menu">
 
         <a href="student_index.php" class="nav-link">
             Dashboard
         </a>
-        <a href="student_create_group.php" class="nav-link">Create Group</a>
+        <a href="student_create_group.php" class="nav-link">
+            Create Group
+        </a>
         <a href="my_project.php" class="nav-link">
             My Project
         </a>
@@ -540,6 +752,8 @@ session_start();
         <a href="my_team.php" class="nav-link">
             My Team
         </a>
+
+
 
         <a href="student_task.php" class="nav-link active">
             Tasks
@@ -552,7 +766,9 @@ session_start();
         <a href="student_chat.php" class="nav-link">
             Group Chat
         </a>
-
+        <a href="student_contribution.php" class="nav-link">
+            Contribution
+        </a>
         <a href="student_notifications.php" class="nav-link">
             Notifications
         </a>
@@ -573,14 +789,28 @@ session_start();
 
 <main class="main-content">
 
+    <!-- Page Heading -->
+
     <section class="page-heading">
 
-        <h1>My Tasks</h1>
+        <div>
+            <span class="leader-badge">Team Leader</span>
 
-        <p>
-            View your assigned tasks, deadlines, priorities and completion
-            status. Update your task progress after completing your work.
-        </p>
+            <h1>My Tasks</h1>
+
+            <p>
+                Create and assign tasks to your team members. Only the
+                elected team leader can add or edit tasks.
+            </p>
+        </div>
+
+        <button
+                type="button"
+                class="create-task-btn"
+                onclick="document.getElementById('createTaskSection').scrollIntoView({behavior: 'smooth'});"
+        >
+            + Create Task
+        </button>
 
     </section>
 
@@ -591,7 +821,7 @@ session_start();
         <div class="summary-card">
             <h2>Total Assigned Tasks</h2>
             <p class="summary-number">6</p>
-            <p class="summary-description">All tasks assigned to you</p>
+            <p class="summary-description">All tasks in this team</p>
         </div>
 
         <div class="summary-card">
@@ -614,6 +844,105 @@ session_start();
 
     </section>
 
+    <!-- Create Task -->
+
+    <section class="create-task-section" id="createTaskSection">
+
+        <h2>Create New Task</h2>
+
+        <form action="#" method="post">
+
+            <div class="form-group">
+                <label for="taskTitle">Task Title</label>
+
+                <input
+                        type="text"
+                        id="taskTitle"
+                        name="taskTitle"
+                        placeholder="e.g. Complete Project Proposal Draft"
+                        required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="taskDescription">Description</label>
+
+                <textarea
+                        id="taskDescription"
+                        name="taskDescription"
+                        placeholder="Describe what needs to be done"
+                        required
+                ></textarea>
+            </div>
+
+            <div class="form-row">
+
+                <div class="form-group">
+                    <label for="assignedTo">Assign To</label>
+
+                    <select id="assignedTo" name="assignedTo" required>
+                        <option value="">-- Select Member --</option>
+                        <option value="A">Student A (You)</option>
+                        <option value="B">Student B</option>
+                        <option value="C">Student C</option>
+                        <option value="D">Student D</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="taskDeadline">Deadline</label>
+
+                    <input
+                            type="date"
+                            id="taskDeadline"
+                            name="taskDeadline"
+                            required
+                    >
+                </div>
+
+            </div>
+
+            <div class="form-row">
+
+                <div class="form-group">
+                    <label for="taskPriority">Priority</label>
+
+                    <select id="taskPriority" name="taskPriority" required>
+                        <option value="High">High</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="taskCategory">Category</label>
+
+                    <select id="taskCategory" name="taskCategory">
+                        <option value="Development">Development</option>
+                        <option value="Documentation">Documentation</option>
+                        <option value="Design">Design</option>
+                        <option value="Testing">Testing</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+
+                <button type="reset" class="cancel-btn">
+                    Clear
+                </button>
+
+                <button type="submit" class="submit-btn">
+                    Create Task
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
     <!-- Task List -->
 
     <section class="task-section">
@@ -625,15 +954,15 @@ session_start();
             <div class="toolbar">
 
                 <input
-                    type="search"
-                    class="search-input"
-                    placeholder="Search tasks"
-                    aria-label="Search tasks"
+                        type="search"
+                        class="search-input"
+                        placeholder="Search tasks"
+                        aria-label="Search tasks"
                 >
 
                 <select
-                    class="filter-select"
-                    aria-label="Filter task status"
+                        class="filter-select"
+                        aria-label="Filter task status"
                 >
                     <option value="all">All Status</option>
                     <option value="pending">Pending</option>
@@ -670,13 +999,13 @@ session_start();
                 <div class="task-details">
 
                     <div class="detail-box">
-                        <h4>Assigned By</h4>
-                        <p>Student A</p>
+                        <h4>Assigned To</h4>
+                        <p>Student B</p>
                     </div>
 
                     <div class="detail-box">
-                        <h4>Assigned Date</h4>
-                        <p>23 September 2026</p>
+                        <h4>Assigned By</h4>
+                        <p>Student A (Leader)</p>
                     </div>
 
                     <div class="detail-box">
@@ -695,6 +1024,10 @@ session_start();
 
                     <a href="#" class="action-link">
                         View Details
+                    </a>
+
+                    <a href="#" class="action-link">
+                        Edit Task
                     </a>
 
                     <a href="#" class="action-link">
@@ -728,13 +1061,13 @@ session_start();
                 <div class="task-details">
 
                     <div class="detail-box">
-                        <h4>Assigned By</h4>
-                        <p>Student A</p>
+                        <h4>Assigned To</h4>
+                        <p>Student C</p>
                     </div>
 
                     <div class="detail-box">
-                        <h4>Assigned Date</h4>
-                        <p>25 September 2026</p>
+                        <h4>Assigned By</h4>
+                        <p>Student A (Leader)</p>
                     </div>
 
                     <div class="detail-box">
@@ -753,6 +1086,10 @@ session_start();
 
                     <a href="#" class="action-link">
                         View Details
+                    </a>
+
+                    <a href="#" class="action-link">
+                        Edit Task
                     </a>
 
                     <a href="#" class="action-link">
@@ -786,13 +1123,13 @@ session_start();
                 <div class="task-details">
 
                     <div class="detail-box">
-                        <h4>Assigned By</h4>
-                        <p>Student A</p>
+                        <h4>Assigned To</h4>
+                        <p>Student D</p>
                     </div>
 
                     <div class="detail-box">
-                        <h4>Assigned Date</h4>
-                        <p>26 September 2026</p>
+                        <h4>Assigned By</h4>
+                        <p>Student A (Leader)</p>
                     </div>
 
                     <div class="detail-box">
@@ -814,6 +1151,10 @@ session_start();
                     </a>
 
                     <a href="#" class="action-link">
+                        Edit Task
+                    </a>
+
+                    <a href="#" class="action-link">
                         Start Task
                     </a>
 
@@ -822,64 +1163,6 @@ session_start();
             </article>
 
             <!-- Task 4 -->
-
-            <article class="task-card">
-
-                <div class="task-top">
-
-                    <div class="task-title">
-                        <h3>Design Project Database</h3>
-                        <p>
-                            Create the initial database structure for users,
-                            projects, teams, tasks, files and activities.
-                        </p>
-                    </div>
-
-                    <span class="task-status status-pending">
-                        Pending
-                    </span>
-
-                </div>
-
-                <div class="task-details">
-
-                    <div class="detail-box">
-                        <h4>Assigned By</h4>
-                        <p>Student A</p>
-                    </div>
-
-                    <div class="detail-box">
-                        <h4>Assigned Date</h4>
-                        <p>27 September 2026</p>
-                    </div>
-
-                    <div class="detail-box">
-                        <h4>Deadline</h4>
-                        <p>25 October 2026</p>
-                    </div>
-
-                    <div class="detail-box">
-                        <h4>Priority</h4>
-                        <span class="priority priority-low">Low</span>
-                    </div>
-
-                </div>
-
-                <div class="task-actions">
-
-                    <a href="#" class="action-link">
-                        View Details
-                    </a>
-
-                    <a href="#" class="action-link">
-                        Start Task
-                    </a>
-
-                </div>
-
-            </article>
-
-            <!-- Task 5 -->
 
             <article class="task-card">
 
@@ -902,13 +1185,13 @@ session_start();
                 <div class="task-details">
 
                     <div class="detail-box">
-                        <h4>Assigned By</h4>
-                        <p>Student A</p>
+                        <h4>Assigned To</h4>
+                        <p>Student B</p>
                     </div>
 
                     <div class="detail-box">
-                        <h4>Assigned Date</h4>
-                        <p>15 September 2026</p>
+                        <h4>Assigned By</h4>
+                        <p>Student A (Leader)</p>
                     </div>
 
                     <div class="detail-box">
@@ -937,73 +1220,37 @@ session_start();
 
             </article>
 
-            <!-- Task 6 -->
-
-            <article class="task-card">
-
-                <div class="task-top">
-
-                    <div class="task-title">
-                        <h3>Prepare Requirement Analysis</h3>
-                        <p>
-                            Document the project background, identified
-                            problems, user requirements and system functions.
-                        </p>
-                    </div>
-
-                    <span class="task-status status-completed">
-                        Completed
-                    </span>
-
-                </div>
-
-                <div class="task-details">
-
-                    <div class="detail-box">
-                        <h4>Assigned By</h4>
-                        <p>Project Supervisor</p>
-                    </div>
-
-                    <div class="detail-box">
-                        <h4>Assigned Date</h4>
-                        <p>5 September 2026</p>
-                    </div>
-
-                    <div class="detail-box">
-                        <h4>Completed Date</h4>
-                        <p>18 September 2026</p>
-                    </div>
-
-                    <div class="detail-box">
-                        <h4>Priority</h4>
-                        <span class="priority priority-medium">Medium</span>
-                    </div>
-
-                </div>
-
-                <div class="task-actions">
-
-                    <a href="#" class="action-link">
-                        View Details
-                    </a>
-
-                    <span class="action-link disabled">
-                        Task Completed
-                    </span>
-
-                </div>
-
-            </article>
-
-        </div>
-
-        <div class="task-note">
-            The links on this page currently demonstrate the user
-            interface only. Task status updates will require PHP and
-            database functions in the final system.
         </div>
 
     </section>
+
+    <!-- Team Progress -->
+
+    <section class="team-progress-section">
+
+        <h2>Team Progress</h2>
+
+        <div class="progress-info">
+            <strong>Overall Completion</strong>
+            <span>50% (2 / 4 tasks)</span>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-value"></div>
+        </div>
+
+        <p class="progress-note">
+            The progress bar updates automatically when tasks are marked
+            as completed by assigned members.
+        </p>
+
+    </section>
+
+    <div class="task-note">
+        Only the elected team leader can create and assign tasks.
+        Members can mark their own tasks as complete, and the progress
+        bar refreshes in real time.
+    </div>
 
 </main>
 

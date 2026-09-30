@@ -446,6 +446,9 @@ session_start();
             Group Chat
         </a>
 
+        <a href="student_contribution.php" class="nav-link">
+            Contribution
+        </a>
         <a href="student_notifications.php" class="nav-link">
             Notifications
         </a>
