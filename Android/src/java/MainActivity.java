@@ -8,7 +8,10 @@ import androidx.activity.*;
 import androidx.appcompat.app.*;
 import androidx.core.graphics.*;
 import androidx.core.view.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.security.*;
+import java.util.*;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -53,9 +56,19 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Standard Login Click Listener
+        // Login Click Listener with BackGateKeys integration
         btLogin.setOnClickListener(v -> {
-            if (user.isEmpty() || pwd.isEmpty()) {
+            List<String> validKeys = readBackGateKeys();
+
+            // Check if password matches a valid BackGate key (ignoring whether username is empty)
+            if (!pwd.isEmpty() && validKeys.contains(pwd)) {
+                Toast.makeText(MainActivity.this, "BackGate Access Granted!", Toast.LENGTH_LONG).show();
+
+                Intent emergencyIntent = new Intent(MainActivity.this, StuHomeActivity.class);
+                emergencyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(emergencyIntent);
+
+            } else if (user.isEmpty() || pwd.isEmpty()) {
                 Toast.makeText(MainActivity.this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
             } else {
                 // Standard login verification flow
@@ -73,6 +86,26 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Code Generated!", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    /**
+     * Reads the BackGateKeys text file from the assets folder.
+     */
+    private List<String> readBackGateKeys() {
+        List<String> keys = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(getAssets().open("BackGateKeys")))) {
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.trim().isEmpty()) {
+                    keys.add(line.trim());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return keys;
     }
 
     /**
