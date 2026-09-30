@@ -10,14 +10,6 @@ import androidx.core.view.*;
 import java.security.SecureRandom;
 
 public class MainActivity extends AppCompatActivity {
-
-    // ============================================================================================
-    // a BackGate object JUST USE FOR DEBUG/TESTING/EMERGENCY TROUBLESHOOTING
-    // This object is use acts a backstage gateway to access the system without through user login
-    // YOU ARE NOT ALLOW TO USE THIS OBJECT WHILE WITHOUT THE ABOVE 3 USAGE
-    private BackGateClassAdapter gateAdapter;
-    // ============================================================================================
-
     private String user = "", pwd = ""; // Initialized to prevent null pointer bugs
     private TextView tvWelcome, tvRegistMsg, tvLoginMsg, tvField1, tvField2, tvField3, tvField4, tvVer;
     private EditText etUser, etPWD, etOTC;
