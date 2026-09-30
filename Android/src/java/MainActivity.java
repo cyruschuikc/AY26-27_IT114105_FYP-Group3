@@ -8,10 +8,10 @@ import androidx.core.graphics.*;
 import androidx.core.view.*;
 
 public class MainActivity extends AppCompatActivity {
-    private TextView tvWelcome, tvRegistMsg, tvLoginMsg, tvField1, tvField2, tvVer;
-    private EditText etUser, etPWD;
+    private TextView tvWelcome, tvRegistMsg, tvLoginMsg, tvField1, tvField2, tvField3, tvField4, tvVer;
+    private EditText etUser, etPWD, etOTC;
     private ImageView fav;
-    private Button btRegister, btLogin;
+    private Button btRegister, btLogin, btGetOTC;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,15 +24,19 @@ public class MainActivity extends AppCompatActivity {
         tvLoginMsg = findViewById(R.id.loginMsg);
         tvField1 = findViewById(R.id.field_tag_1);
         tvField2 = findViewById(R.id.field_tag_2);
+        tvField3 = findViewById(R.id.field_tag_3);
+        tvField4 = findViewById(R.id.field_tag_4);
         tvVer = findViewById(R.id.verTag);
 
         etUser = findViewById(R.id.uname);
         etPWD = findViewById(R.id.passwd);
+        etOTC = findViewById(R.id.OTC);
 
         fav = findViewById(R.id.AppIcon);
 
         btRegister = findViewById(R.id.registBtn);
         btLogin = findViewById(R.id.btLogin);
+        btGetOTC = findViewById(R.id.btGet);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
                     Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
