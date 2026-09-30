@@ -7,9 +7,17 @@ import androidx.activity.*;
 import androidx.appcompat.app.*;
 import androidx.core.graphics.*;
 import androidx.core.view.*;
-import java.util.*;
+import java.security.SecureRandom;
 
 public class MainActivity extends AppCompatActivity {
+
+    // ============================================================================================
+    // a BackGate object JUST USE FOR DEBUG/TESTING/EMERGENCY TROUBLESHOOTING
+    // This object is use acts a backstage gateway to access the system without through user login
+    // YOU ARE NOT ALLOW TO USE THIS OBJECT WHILE WITHOUT THE ABOVE 3 USAGE
+    private BackGateClassAdapter gateAdapter;
+    // ============================================================================================
+
     private String user = "", pwd = ""; // Initialized to prevent null pointer bugs
     private TextView tvWelcome, tvRegistMsg, tvLoginMsg, tvField1, tvField2, tvField3, tvField4, tvVer;
     private EditText etUser, etPWD, etOTC;
@@ -53,12 +61,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Triggering the methods when clicking the Login button
         btLogin.setOnClickListener(v -> {
-            // Note: currentUsername and currentPassword are no longer needed here
-            // because your 'user' and 'pwd' global variables are already completely up-to-date!
             if (user.isEmpty() || pwd.isEmpty()) {
                 Toast.makeText(MainActivity.this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
             } else {
                 // Proceed with your login logic here using global 'user' and 'pwd'
+                Toast.makeText(MainActivity.this, "Connecting to Server...", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -66,8 +73,7 @@ public class MainActivity extends AppCompatActivity {
         btGetOTC.setOnClickListener(v -> {
             if (user.isEmpty() || pwd.isEmpty()) {
                 Toast.makeText(MainActivity.this, "Please fill in username & password fields", Toast.LENGTH_SHORT).show();
-            }
-            else {
+            } else {
                 String verifyCode = generateVerificationCode(6);
                 tvField3.setText("Verify Code: " + verifyCode);
                 Toast.makeText(MainActivity.this, "Code Generated!", Toast.LENGTH_SHORT).show();
@@ -85,7 +91,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Instantly changes the value as the user types
                 user = s.toString().trim();
             }
 
@@ -104,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Instantly changes the value as the user types (No trim, spaces allowed in password)
                 pwd = s.toString();
             }
 
@@ -114,25 +118,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Generates a random alphanumeric verification code of a specified length.
+     * Generates a random verification code using SecureRandom for improved security.
      */
     private String generateVerificationCode(int length) {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder codeBuilder = new StringBuilder();
-        Random random = new Random();
+        SecureRandom random = new SecureRandom();
 
         for (int i = 0; i < length; i++) {
             int index = random.nextInt(characters.length());
             codeBuilder.append(characters.charAt(index));
         }
-
         return codeBuilder.toString();
     }
-
-    @Override protected void onStart() { super.onStart(); }
-    @Override protected void onPause() { super.onPause(); }
-    @Override protected void onResume() { super.onResume(); }
-    @Override protected void onStop() { super.onStop(); }
-    @Override protected void onRestart() { super.onRestart(); }
-    @Override protected void onDestroy() { super.onDestroy(); }
 }
