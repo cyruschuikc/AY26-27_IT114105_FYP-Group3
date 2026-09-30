@@ -1,4 +1,4 @@
--- Users.sql
+-- TeamBox_db.sql
 -- A sql queries file to create 3 tables below
 -- This queries statement file is use to create 3 empty tables (Users, Teachers, Students)
 -- Parent：Users (store all user account info)
