@@ -1,11 +1,19 @@
+<?php
+session_start();
+
+// if (!isset($_SESSION['studentID'])) {
+//     header('Location: student_login.php');
+//     exit;
+// }
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
 
     <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
     >
 
     <title>Student Dashboard | TeamBox</title>
@@ -41,8 +49,6 @@
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
         }
 
-        /* First row: Logo and TeamBox */
-
         .logo-area {
             display: flex;
             flex-direction: row;
@@ -64,7 +70,9 @@
             font-weight: bold;
         }
 
-        /* Second row: Function buttons */
+        /* =========================
+           Navigation text links
+        ========================= */
 
         .function-menu {
             width: 100%;
@@ -73,56 +81,41 @@
             justify-content: center;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 22px;
         }
 
-        .nav-btn {
-            min-width: 100px;
-            height: 44px;
-            padding: 0 15px;
-
-            background: black;
+        .nav-link {
             color: white;
-            border: 1px solid white;
-            border-radius: 8px;
+            font-size: 15px;
+            text-decoration: none;
 
-            font-size: 14px;
-            cursor: pointer;
+            padding: 6px 2px;
 
-            transition:
-                    background-color 0.3s,
-                    color 0.3s,
-                    transform 0.15s;
+            transition: color 0.3s;
         }
 
-        .nav-btn:hover {
-            background: white;
-            color: black;
+        .nav-link:hover {
+            color: #bbbbbb;
         }
 
-        .nav-btn:active {
-            background: #dddddd;
-            color: black;
-            transform: scale(0.96);
+        .nav-link:active {
+            color: #ffffff;
         }
 
-        /* Current selected function */
-
-        .nav-btn.active {
-            background: white;
-            color: black;
-        }
-
-        /* Logout button */
-
-        .logout-btn {
-            border-color: #ffdddd;
-        }
-
-        .logout-btn:hover {
-            background: #c62828;
+        /* Current page */
+        .nav-link.active {
             color: white;
-            border-color: #c62828;
+            font-weight: bold;
+            border-bottom: 2px solid white;
+        }
+
+        /* Log out */
+        .logout-link {
+            color: #ff8888;
+        }
+
+        .logout-link:hover {
+            color: #ff4444;
         }
 
         /* =========================
@@ -134,8 +127,6 @@
             max-width: 1250px;
             margin: 40px auto;
         }
-
-        /* Welcome section */
 
         .welcome-section {
             padding: 30px;
@@ -231,9 +222,7 @@
             font-size: 23px;
         }
 
-        /* =========================
-           Recent Tasks
-        ========================= */
+        /* Recent Tasks */
 
         .task-item {
             padding: 16px 0;
@@ -283,9 +272,7 @@
             color: #555;
         }
 
-        /* =========================
-           Team Progress
-        ========================= */
+        /* Team Progress */
 
         .progress-container {
             margin-top: 25px;
@@ -333,46 +320,36 @@
         }
 
         /* =========================
-           Quick Access Buttons
+           Quick Access (text links)
         ========================= */
 
-        .quick-btn {
-            width: 100%;
-            min-height: 50px;
-            padding: 0 15px;
-            margin-bottom: 13px;
+        .quick-links {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
 
-            background: white;
+        .text-link {
             color: black;
-            border: 2px solid black;
-            border-radius: 9px;
-
             font-size: 16px;
-            cursor: pointer;
+            text-decoration: underline;
 
-            transition:
-                    background-color 0.3s,
-                    color 0.3s,
-                    transform 0.15s;
+            transition: color 0.3s;
         }
 
-        .quick-btn:hover {
-            background: black;
-            color: white;
+        .text-link:hover {
+            color: #555555;
         }
 
-        .quick-btn:active {
-            background: #333;
-            color: white;
-            transform: scale(0.98);
+        .text-link:active {
+            color: #000000;
         }
 
         .quick-note {
-            margin-top: 12px;
+            margin-top: 16px;
             color: #777;
             font-size: 13px;
             line-height: 1.5;
-            text-align: center;
         }
 
         /* =========================
@@ -404,12 +381,8 @@
             }
 
             .function-menu {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .nav-btn {
-                width: 100%;
+                flex-direction: column;
+                gap: 12px;
             }
 
             .dashboard-grid {
@@ -435,98 +408,63 @@
 
 <body>
 
-<!-- =========================
-     Top Navigation Bar
-========================= -->
+<!-- Top Navigation Bar -->
 
 <nav class="navbar">
 
-    <!-- First row: Logo and TeamBox -->
     <div class="logo-area">
         <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
 
         <span>TeamBox</span>
     </div>
 
-    <!-- Second row: Function buttons -->
-    <!-- These buttons do not jump to another page yet -->
+    <!-- Navigation text links -->
 
     <div class="function-menu">
 
-        <button
-            type="button"
-            class="nav-btn active"
-        >
+        <a href="student_index.php" class="nav-link active">
             Dashboard
-        </button>
-
-        <button
-            type="button"
-            class="nav-btn"
-        >
+        </a>
+        <a href="student_create_group.php" class="nav-link">Create Group</a>
+        <a href="my_project.php" class="nav-link">
             My Project
-        </button>
+        </a>
 
-        <button
-            type="button"
-            class="nav-btn"
-        >
+        <a href="my_team.php" class="nav-link">
             My Team
-        </button>
+        </a>
 
-        <button
-            type="button"
-            class="nav-btn"
-        >
+        <a href="student_task.php" class="nav-link">
             Tasks
-        </button>
+        </a>
 
-        <button
-            type="button"
-            class="nav-btn"
-        >
+        <a href="student_files.php" class="nav-link">
             Files
-        </button>
+        </a>
 
-        <button
-            type="button"
-            class="nav-btn"
-        >
+        <a href="student_chat.php" class="nav-link">
             Group Chat
-        </button>
+        </a>
 
-        <button
-            type="button"
-            class="nav-btn"
-        >
+        <a href="student_notifications.php" class="nav-link">
             Notifications
-        </button>
+        </a>
 
-        <button
-            type="button"
-            class="nav-btn"
-        >
+        <a href="student_profile.php" class="nav-link">
             Profile
-        </button>
+        </a>
 
-        <button
-            type="button"
-            class="nav-btn logout-btn"
-        >
+        <a href="login.php" class="nav-link logout-link">
             Log Out
-        </button>
+        </a>
 
     </div>
 
 </nav>
 
-<!-- =========================
-     Main Dashboard Content
-========================= -->
+<!-- Main Dashboard Content -->
 
 <main class="main-content">
-
-    <!-- Welcome Section -->
 
     <section class="welcome-section">
 
@@ -540,128 +478,78 @@
 
     </section>
 
-    <!-- Dashboard Summary Cards -->
-
     <section class="dashboard-grid">
 
         <div class="dashboard-card">
-
             <h2>Active Projects</h2>
-
             <p class="number">1</p>
-
-            <p class="description">
-                Project currently in progress
-            </p>
-
+            <p class="description">Project currently in progress</p>
         </div>
 
         <div class="dashboard-card">
-
             <h2>Assigned Tasks</h2>
-
             <p class="number">4</p>
-
-            <p class="description">
-                Tasks assigned to you
-            </p>
-
+            <p class="description">Tasks assigned to you</p>
         </div>
 
         <div class="dashboard-card">
-
             <h2>Completed Tasks</h2>
-
             <p class="number">2</p>
-
-            <p class="description">
-                Tasks completed by you
-            </p>
-
+            <p class="description">Tasks completed by you</p>
         </div>
 
         <div class="dashboard-card">
-
             <h2>Notifications</h2>
-
             <p class="number">3</p>
-
-            <p class="description">
-                Unread project notifications
-            </p>
-
+            <p class="description">Unread project notifications</p>
         </div>
 
     </section>
 
-    <!-- Recent Tasks and Quick Access -->
-
     <section class="information-grid">
-
-        <!-- Recent Tasks -->
 
         <div class="content-box">
 
             <h2>Recent Tasks</h2>
 
             <div class="task-item">
-
                 <div class="task-information">
                     <h3>Complete Project Proposal</h3>
-
-                    <p>
-                        Deadline: 30 September 2026
-                    </p>
+                    <p>Deadline: 30 September 2026</p>
                 </div>
 
                 <span class="task-status in-progress">
                     In Progress
                 </span>
-
             </div>
 
             <div class="task-item">
-
                 <div class="task-information">
                     <h3>Create System Interface</h3>
-
-                    <p>
-                        Deadline: 10 October 2026
-                    </p>
+                    <p>Deadline: 10 October 2026</p>
                 </div>
 
                 <span class="task-status pending">
                     Pending
                 </span>
-
             </div>
 
             <div class="task-item">
-
                 <div class="task-information">
                     <h3>Prepare Requirement Analysis</h3>
-
-                    <p>
-                        Completed task
-                    </p>
+                    <p>Completed task</p>
                 </div>
 
                 <span class="task-status completed">
                     Completed
                 </span>
-
             </div>
-
-            <!-- Team Progress -->
 
             <div class="progress-container">
 
                 <div class="progress-information">
-
                     <strong>Team Progress</strong>
-
                     <span>50%</span>
-
                 </div>
 
                 <div class="progress-bar">
@@ -676,50 +564,38 @@
 
         </div>
 
-        <!-- Quick Access -->
+        <!-- Quick Access (text links) -->
 
         <div class="content-box">
 
             <h2>Quick Access</h2>
 
-            <button
-                type="button"
-                class="quick-btn"
-            >
-                View My Project
-            </button>
+            <div class="quick-links">
 
-            <button
-                type="button"
-                class="quick-btn"
-            >
-                View My Tasks
-            </button>
+                <a href="my_project.php" class="text-link">
+                    View My Project
+                </a>
 
-            <button
-                type="button"
-                class="quick-btn"
-            >
-                View My Team
-            </button>
+                <a href="student_task.php" class="text-link">
+                    View My Tasks
+                </a>
 
-            <button
-                type="button"
-                class="quick-btn"
-            >
-                Open Shared Files
-            </button>
+                <a href="my_team.php" class="text-link">
+                    View My Team
+                </a>
 
-            <button
-                type="button"
-                class="quick-btn"
-            >
-                Open Group Chat
-            </button>
+                <a href="student_files.php" class="text-link">
+                    Open Shared Files
+                </a>
+
+                <a href="student_chat.php" class="text-link">
+                    Open Group Chat
+                </a>
+
+            </div>
 
             <p class="quick-note">
-                These buttons are for interface testing and do not
-                open another page yet.
+                Click any link to open the matching page.
             </p>
 
         </div>
