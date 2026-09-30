@@ -5,6 +5,9 @@
 -- Child：Teachers (store teacher exclusive info) [1-Teacher ... 1-User] [1-Teacher _teach_ 1..*-Student]
 --        Students (store students exclusive info) [1-Student ... 1-User] [1-Student _taught by_ 1..*-Teacher]
 
+CREATE DATABASE TeamBox;
+USE DATABASE TeamBox;
+
 CREATE TABLE Users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
