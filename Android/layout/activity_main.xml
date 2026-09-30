@@ -164,7 +164,7 @@
                     android:textColor="@color/black"/>
 
                 <EditText
-                    android:id="@+id/OCT"
+                    android:id="@+id/OTC"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
