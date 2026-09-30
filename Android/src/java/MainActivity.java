@@ -1,5 +1,6 @@
 package com.example.teambox_sk1;
 
+import android.content.Intent;
 import android.os.*;
 import android.text.*;
 import android.widget.*;
@@ -7,9 +8,10 @@ import androidx.activity.*;
 import androidx.appcompat.app.*;
 import androidx.core.graphics.*;
 import androidx.core.view.*;
-import java.security.SecureRandom;
+import java.security.*;
 
 public class MainActivity extends AppCompatActivity {
+
     private String user = "", pwd = ""; // Initialized to prevent null pointer bugs
     private TextView tvWelcome, tvRegistMsg, tvLoginMsg, tvField1, tvField2, tvField3, tvField4, tvVer;
     private EditText etUser, etPWD, etOTC;
@@ -51,13 +53,13 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Triggering the methods when clicking the Login button
+        // Standard Login Click Listener
         btLogin.setOnClickListener(v -> {
             if (user.isEmpty() || pwd.isEmpty()) {
                 Toast.makeText(MainActivity.this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
             } else {
-                // Proceed with your login logic here using global 'user' and 'pwd'
-                Toast.makeText(MainActivity.this, "Connecting to Server...", Toast.LENGTH_SHORT).show();
+                // Standard login verification flow
+                Toast.makeText(MainActivity.this, "Connecting to Server for Standard Login...", Toast.LENGTH_SHORT).show();
             }
         });
 
