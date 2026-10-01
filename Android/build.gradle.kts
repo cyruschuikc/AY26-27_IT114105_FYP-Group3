@@ -14,8 +14,8 @@ android {
         applicationId = "com.example.teambox_sk1"
         minSdk = 32
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.0.1-dev-zeta"
+        versionCode = 6
+        versionName = "1.1.0-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
