@@ -207,36 +207,84 @@ session_start();
             border-color: black;
         }
 
-        /* Classmate List */
+        /* Create Group Section */
 
-        .class-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        .create-group-section {
+            padding: 28px;
+            margin-bottom: 25px;
+
+            background: white;
+            border-radius: 15px;
+            border-left: 6px solid black;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .class-item {
-            padding: 16px;
+        .create-group-section h2 {
+            padding-bottom: 15px;
+            margin-bottom: 22px;
+
+            border-bottom: 2px solid #eeeeee;
+            font-size: 23px;
+        }
+
+        .create-group-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 18px;
+        }
+
+        /* Invite Classmate Form */
+
+        .invite-form {
+            padding: 18px;
+            margin-bottom: 22px;
 
             background: #fafafa;
-            border: 2px solid #dddddd;
+            border: 2px dashed #cccccc;
+            border-radius: 12px;
+        }
+
+        .invite-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .invite-form .form-group {
+            margin-bottom: 0;
+        }
+
+        /* Invitation History */
+
+        .invite-history-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 12px;
+        }
+
+        .invite-history {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .invite-item {
+            padding: 14px;
+
+            background: #fafafa;
+            border: 1px solid #dddddd;
             border-radius: 10px;
 
             display: flex;
             align-items: center;
-            gap: 14px;
-
-            transition: 0.3s;
+            gap: 12px;
         }
 
-        .class-item:hover {
-            border-color: black;
-            background: white;
-        }
-
-        .class-avatar {
-            width: 42px;
-            height: 42px;
+        .invite-avatar {
+            width: 38px;
+            height: 38px;
             flex-shrink: 0;
 
             background: black;
@@ -247,56 +295,65 @@ session_start();
             justify-content: center;
             align-items: center;
 
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
         }
 
-        .class-info {
+        .invite-info {
             flex: 1;
         }
 
-        .class-info h3 {
-            font-size: 16px;
-            margin-bottom: 4px;
+        .invite-info h3 {
+            font-size: 15px;
+            margin-bottom: 3px;
         }
 
-        .class-info p {
+        .invite-info p {
             color: #777;
-            font-size: 13px;
+            font-size: 12px;
         }
 
-        /* Invite Button (small) */
+        .invite-status {
+            padding: 5px 10px;
+            border-radius: 15px;
 
-        .invite-btn {
-            min-width: 90px;
-            height: 38px;
-            padding: 0 12px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
 
+        .status-pending {
+            background: #fff1c2;
+            color: #765900;
+        }
+
+        .status-accepted {
+            background: #d9f5df;
+            color: #176b2c;
+        }
+
+        .status-rejected {
+            background: #ffe1e1;
+            color: #a21b1b;
+        }
+
+        .cancel-invite-btn {
             background: white;
-            color: black;
-            border: 2px solid black;
+            color: #c62828;
+            border: 2px solid #c62828;
             border-radius: 7px;
 
-            font-size: 13px;
+            padding: 5px 9px;
+
+            font-size: 11px;
             font-weight: bold;
             cursor: pointer;
             transition: 0.3s;
         }
 
-        .invite-btn:hover {
-            background: black;
+        .cancel-invite-btn:hover {
+            background: #c62828;
             color: white;
-        }
-
-        .invite-btn:active {
-            transform: scale(0.97);
-        }
-
-        .invite-btn:disabled {
-            background: #eeeeee;
-            color: #888;
-            border-color: #cccccc;
-            cursor: not-allowed;
         }
 
         /* Big Buttons */
@@ -331,6 +388,30 @@ session_start();
             border-color: #cccccc;
             color: #888;
             cursor: not-allowed;
+        }
+
+        .invite-btn-main {
+            width: 100%;
+            height: 47px;
+            padding: 0 20px;
+
+            background: black;
+            color: white;
+            border: 2px solid black;
+            border-radius: 8px;
+
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .invite-btn-main:hover {
+            background: #333;
+        }
+
+        .invite-btn-main:active {
+            transform: scale(0.98);
         }
 
         /* Current Group */
@@ -407,7 +488,7 @@ session_start();
             white-space: nowrap;
         }
 
-        .status-accepted {
+        .status-accepted-member {
             background: #d9f5df;
             color: #176b2c;
         }
@@ -525,6 +606,13 @@ session_start();
 
         /* Responsive */
 
+        @media (max-width: 1000px) {
+            .create-group-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+        }
+
         @media (max-width: 900px) {
             .section-grid {
                 grid-template-columns: 1fr;
@@ -559,8 +647,14 @@ session_start();
                 font-size: 28px;
             }
 
+            .invite-form-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
             .class-item,
-            .member-item {
+            .member-item,
+            .invite-item {
                 flex-wrap: wrap;
             }
         }
@@ -607,9 +701,11 @@ session_start();
         <a href="student_chat.php" class="nav-link">
             Group Chat
         </a>
+
         <a href="student_contribution.php" class="nav-link">
             Contribution
         </a>
+
         <a href="student_notifications.php" class="nav-link">
             Notifications
         </a>
@@ -630,115 +726,193 @@ session_start();
 
 <main class="main-content">
 
+    <!-- Page Heading -->
+
     <section class="page-heading">
 
         <h1>Create Group</h1>
 
         <p>
-            Name your group, set the project, invite classmates from the
-            classmate list, then lock the team and vote for a leader.
+            Name your group, set the project, invite classmates by
+            Student ID, then lock the team and vote for a leader.
         </p>
 
     </section>
 
     <div class="info-note">
         <strong>How it works:</strong>
-        1. Enter Group Name &amp; Project Name &nbsp;→&nbsp;
-        2. Click "Invite" on classmates &nbsp;→&nbsp;
+        1. Fill the Create Group form &nbsp;→&nbsp;
+        2. Enter Student ID &amp; Name, click "Invite" &nbsp;→&nbsp;
         3. Wait for them to accept &nbsp;→&nbsp;
         4. Group fills to 4/4 &nbsp;→&nbsp;
         5. Lock Team &nbsp;→&nbsp;
         6. Vote Group Leader.
     </div>
 
-    <!-- Top Section: Classmate List + Current Group -->
+    <!-- Create Group Section -->
+
+    <section class="create-group-section">
+
+        <h2>Create Group</h2>
+
+        <form action="#" method="post">
+
+            <div class="create-group-grid">
+
+                <div class="form-group">
+                    <label for="newGroupName">Group Name</label>
+
+                    <input
+                            type="text"
+                            id="newGroupName"
+                            name="newGroupName"
+                            placeholder="e.g. Team A"
+                            required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="newProjectName">Project Name</label>
+
+                    <input
+                            type="text"
+                            id="newProjectName"
+                            name="newProjectName"
+                            placeholder="e.g. TeamBox Collaboration System"
+                            required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="newMaxMembers">Maximum Members</label>
+
+                    <select id="newMaxMembers" name="newMaxMembers" required>
+                        <option value="2">2 Members</option>
+                        <option value="3">3 Members</option>
+                        <option value="4" selected>4 Members</option>
+                        <option value="5">5 Members</option>
+                        <option value="6">6 Members</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <button type="submit" class="primary-btn">
+                Create Group
+            </button>
+
+        </form>
+
+    </section>
+
+    <!-- Top Section: Invite Classmate + Current Group -->
 
     <section class="section-grid">
 
-        <!-- Classmate List (send invitations) -->
+        <!-- Invite Classmate -->
 
         <div class="content-box">
 
-            <h2>Classmate List</h2>
+            <h2>Invite Classmate</h2>
 
-            <div class="class-list">
+            <!-- Invite Form -->
 
-                <div class="class-item">
-                    <div class="class-avatar">SA</div>
+            <form action="#" method="post" class="invite-form">
 
-                    <div class="class-info">
+                <div class="invite-form-row">
+
+                    <div class="form-group">
+                        <label for="inviteStudentId">Student ID</label>
+
+                        <input
+                                type="text"
+                                id="inviteStudentId"
+                                name="inviteStudentId"
+                                placeholder="e.g. 250000002"
+                                required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inviteStudentName">Student Name</label>
+
+                        <input
+                                type="text"
+                                id="inviteStudentName"
+                                name="inviteStudentName"
+                                placeholder="e.g. Student B"
+                                required
+                        >
+                    </div>
+
+                </div>
+
+                <button type="submit" class="invite-btn-main">
+                    Invite to Group
+                </button>
+
+            </form>
+
+            <!-- Invitation History -->
+
+            <p class="invite-history-title">Invitation History</p>
+
+            <div class="invite-history">
+
+                <div class="invite-item">
+                    <div class="invite-avatar">SA</div>
+
+                    <div class="invite-info">
                         <h3>Student A</h3>
                         <p>Student ID: 250000001</p>
                     </div>
 
-                    <button type="button" class="invite-btn">
-                        Invite
-                    </button>
+                    <span class="invite-status status-accepted">
+                        Accepted
+                    </span>
                 </div>
 
-                <div class="class-item">
-                    <div class="class-avatar">SB</div>
+                <div class="invite-item">
+                    <div class="invite-avatar">SB</div>
 
-                    <div class="class-info">
+                    <div class="invite-info">
                         <h3>Student B</h3>
                         <p>Student ID: 250000002</p>
                     </div>
 
-                    <button type="button" class="invite-btn">
-                        Invite
-                    </button>
+                    <span class="invite-status status-accepted">
+                        Accepted
+                    </span>
                 </div>
 
-                <div class="class-item">
-                    <div class="class-avatar">SC</div>
+                <div class="invite-item">
+                    <div class="invite-avatar">SC</div>
 
-                    <div class="class-info">
+                    <div class="invite-info">
                         <h3>Student C</h3>
                         <p>Student ID: 250000003</p>
                     </div>
 
-                    <button type="button" class="invite-btn">
-                        Invite
+                    <span class="invite-status status-pending">
+                        Pending
+                    </span>
+
+                    <button type="button" class="cancel-invite-btn">
+                        Cancel
                     </button>
                 </div>
 
-                <div class="class-item">
-                    <div class="class-avatar">SD</div>
+                <div class="invite-item">
+                    <div class="invite-avatar">SF</div>
 
-                    <div class="class-info">
-                        <h3>Student D</h3>
-                        <p>Student ID: 250000004</p>
-                    </div>
-
-                    <button type="button" class="invite-btn">
-                        Invite
-                    </button>
-                </div>
-
-                <div class="class-item">
-                    <div class="class-avatar">SE</div>
-
-                    <div class="class-info">
-                        <h3>Student E</h3>
-                        <p>Student ID: 250000005</p>
-                    </div>
-
-                    <button type="button" class="invite-btn" disabled>
-                        In a Group
-                    </button>
-                </div>
-
-                <div class="class-item">
-                    <div class="class-avatar">SF</div>
-
-                    <div class="class-info">
+                    <div class="invite-info">
                         <h3>Student F</h3>
                         <p>Student ID: 250000006</p>
                     </div>
 
-                    <button type="button" class="invite-btn">
-                        Invite
-                    </button>
+                    <span class="invite-status status-rejected">
+                        Rejected
+                    </span>
                 </div>
 
             </div>
@@ -799,15 +973,13 @@ session_start();
                 <span class="status-badge">Recruiting</span>
             </div>
 
-            <!-- Accepted member -->
-
             <div class="member-item">
                 <div>
                     <h3>Student A</h3>
                     <p>Student ID: 250000001</p>
                 </div>
 
-                <span class="member-status status-accepted">
+                <span class="member-status status-accepted-member">
                     Accepted
                 </span>
 
@@ -815,8 +987,6 @@ session_start();
                     Remove
                 </button>
             </div>
-
-            <!-- Accepted member -->
 
             <div class="member-item">
                 <div>
@@ -824,7 +994,7 @@ session_start();
                     <p>Student ID: 250000002</p>
                 </div>
 
-                <span class="member-status status-accepted">
+                <span class="member-status status-accepted-member">
                     Accepted
                 </span>
 
@@ -832,8 +1002,6 @@ session_start();
                     Remove
                 </button>
             </div>
-
-            <!-- Waiting member -->
 
             <div class="member-item">
                 <div>
