@@ -11,12 +11,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.teambox_sk1"
+        applicationId = "com.example.teambox"
         minSdk = 32
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.1.0-dev"
-
+        versionCode = 7
+        versionName = "LCDEP1.1.0_51d63a7_4e606db_189107107"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
