@@ -3,7 +3,7 @@
 
     <!--strings for MainActivity below-->
     <string name="AppName">TeamBox</string>
-    <string name="welStaText">Welcome to use TeamBox!</string>
+    <string name="welStaText">Welcome to TeamBox!</string>
     <string name="registMsg">Are you new?</string>
     <string name="loginMsg">Or, have an account? (Flash Sign-In in here)</string>
     <string name="regist">Sign Up</string>
