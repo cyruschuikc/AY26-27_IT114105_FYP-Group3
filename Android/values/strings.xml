@@ -15,6 +15,9 @@
     <string name="field_tag_4">Enter Here：</string>
     <string name="getVC">Get OTC</string>
     <string name="login">Login</string>
+    <string name="change">Change PWD</string>
+    <string name="forget">Forget PWD</string>
+
 
     <!--strings for StuHomeActivity below-->
     <string name="stuHome">TeamBox｜STUDENT</string>
