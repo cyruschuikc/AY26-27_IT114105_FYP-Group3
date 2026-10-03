@@ -14,8 +14,8 @@ android {
         applicationId = "com.example.teambox"
         minSdk = 32
         targetSdk = 36
-        versionCode = 9
-        versionName = "LCDEP1.1.0_0ed3689.4e606db.216107107_32369"
+        versionCode = 10
+        versionName = "LCDEP1.2.0_.4e606db.216107107_323610"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
