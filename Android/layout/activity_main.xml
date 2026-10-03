@@ -181,16 +181,6 @@
                 android:text="@string/login"
                 android:textColor="@color/black" />
 
-            <TextView
-                android:id="@+id/verTag"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:text="@string/ver"
-                android:textAlignment="center"
-                android:textColor="@color/black"
-                android:textSize="8dp" />
-
         </LinearLayout>
     </ScrollView>
 
