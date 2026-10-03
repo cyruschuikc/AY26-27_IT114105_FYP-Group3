@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TeamBox_sk1</string>
+    <string name="app_name">TeamBox</string>
 
     <!--strings for MainActivity below-->
     <string name="AppName">TeamBox</string>
