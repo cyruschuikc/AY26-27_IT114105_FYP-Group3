@@ -15,7 +15,7 @@ android {
         minSdk = 32
         targetSdk = 36
         versionCode = 9
-        versionName = "LCDEP1.1.0_.4e606db.216107107_32369"
+        versionName = "LCDEP1.1.0_0ed3689.4e606db.216107107_32369"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
