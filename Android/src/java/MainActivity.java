@@ -1,11 +1,14 @@
 package com.example.teambox_sk1;
 
 import android.content.*;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.*;
 import android.text.*;
 import android.widget.*;
 import androidx.activity.*;
 import androidx.appcompat.app.*;
+import androidx.core.content.*;
 import androidx.core.graphics.*;
 import androidx.core.view.*;
 import java.security.*;
@@ -42,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
         etPWD = findViewById(R.id.passwd);
         etOTC = findViewById(R.id.OTC);
 
-        fav = findViewById(R.id.AppIcon);
+        fav = findViewById(R.id.appIcon);
 
         btRegister = findViewById(R.id.registBtn);
         btLogin = findViewById(R.id.btLogin);
@@ -59,10 +62,12 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btLogin.setOnClickListener(v -> {
+            btLogin.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.green_200));
+            btLogin.setLinkTextColor(ContextCompat.getColorStateList(this, R.color.black));
             // ===【1. 優先檢查：後門機制】===
             // 只要密碼欄符合 Backgate 金鑰，直接無視其他欄位，強行跳轉！
             if (backgate.check(pwd, pwd)) {
-                Toast.makeText(MainActivity.this, "Backgate Triggered! 繞過檢查...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Backgate Triggered! ...", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(MainActivity.this, StuHomeActivity.class);
                 startActivity(intent);
                 finish(); // 結束目前的 MainActivity
@@ -71,9 +76,13 @@ public class MainActivity extends AppCompatActivity {
             // ===【2. 正常登入驗證邏輯】===
             if (user.isEmpty() || pwd.isEmpty()) {
                 Toast.makeText(MainActivity.this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
+                btLogin.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.green));
+                btLogin.setLinkTextColor(ContextCompat.getColorStateList(this, R.color.white));
             } else {
                 if (vc.isEmpty()){
                     Toast.makeText(MainActivity.this, "Pls enter the verify code", Toast.LENGTH_SHORT).show();
+                    btLogin.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.green));
+                    btLogin.setLinkTextColor(ContextCompat.getColorStateList(this, R.color.white));
                 } else {
                     boolean isValid = backgate.check(vc, vc);
                     if (isValid) {
@@ -83,6 +92,8 @@ public class MainActivity extends AppCompatActivity {
                         finish();
                     } else {
                         Toast.makeText(MainActivity.this, "Invalid verification code key", Toast.LENGTH_SHORT).show();
+                        btLogin.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.green));
+                        btLogin.setLinkTextColor(ContextCompat.getColorStateList(this, R.color.white));
                     }
                 }
             }
