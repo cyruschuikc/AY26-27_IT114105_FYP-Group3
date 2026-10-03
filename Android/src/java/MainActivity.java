@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
         tvField2 = findViewById(R.id.field_tag_2);
         tvField3 = findViewById(R.id.field_tag_3);
         tvField4 = findViewById(R.id.field_tag_4);
-        tvVer = findViewById(R.id.verTag);
 
         etUser = findViewById(R.id.uname);
         etPWD = findViewById(R.id.passwd);
