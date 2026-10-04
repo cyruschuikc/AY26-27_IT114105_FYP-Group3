@@ -6,7 +6,6 @@ import java.util.*;
 public class BGObjAdapter implements Backgate {
     private List<String> keyStorage = new ArrayList<>();
 
-    // 保留原本的檔案路徑讀取
     @Override
     public void loadKeysFromFile(String filePath) {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
@@ -23,13 +22,10 @@ public class BGObjAdapter implements Backgate {
     }
 
     @Override
-    public String[] open() { return new String[0]; }
-
-    @Override
-    public String[] setWindow(String[] args) { return new String[0]; }
-
-    @Override
-    public String[] getWindow(String[] window) { return window; }
+    public String[] praseArgs() {
+        // 修正這裡的轉型，避免發生 ClassCastException
+        return keyStorage.toArray(new String[0]);
+    }
 
     @Override
     public String addKey(String key) {
