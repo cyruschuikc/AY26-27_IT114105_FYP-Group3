@@ -3,8 +3,11 @@ package com.example.teambox_sk1;
 import android.content.*;
 import android.os.*;
 import android.text.*;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.*;
 import androidx.activity.*;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.*;
 import androidx.core.graphics.*;
 import androidx.core.view.*;
@@ -37,7 +40,6 @@ public class MainActivity extends AppCompatActivity {
         tvField2 = findViewById(R.id.field_tag_2);
         tvField3 = findViewById(R.id.field_tag_3);
         tvField4 = findViewById(R.id.field_tag_4);
-        tvVer = findViewById(R.id.verTag);
 
         etUser = findViewById(R.id.uname);
         etPWD = findViewById(R.id.passwd);
@@ -143,5 +145,32 @@ public class MainActivity extends AppCompatActivity {
             codeBuilder.append(characters.charAt(index));
         }
         return codeBuilder.toString();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main_activity, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+
+        if (id == R.id.action_settings) {
+            Toast.makeText(this, "Ops! Setting option is release yet", Toast.LENGTH_LONG).show();
+            return true;
+        } else if (id == R.id.action_privacy) {
+            Toast.makeText(this, "The Privacy Note would be release soon", Toast.LENGTH_LONG).show();
+            return true;
+        } else if (id == R.id.action_help) {
+            Toast.makeText(this, "Ops! The helper is support yet in present version", Toast.LENGTH_LONG).show();
+            return true;
+        } else if (id == R.id.action_info){
+            Toast.makeText(this, "App Information Note will be release soon", Toast.LENGTH_LONG).show();
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 }
