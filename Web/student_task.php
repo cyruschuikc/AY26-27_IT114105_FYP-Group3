@@ -1,3 +1,13 @@
+<?php
+session_start();
+
+// if (!isset($_SESSION['studentID'])) {
+//     header('Location: student_login.php');
+//     exit;
+// }
+
+$currentUser = "Student A";
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -131,22 +141,37 @@
             line-height: 1.6;
         }
 
-        /* Leader Badge */
+        .role-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
 
-        .leader-badge {
+        .role-badge {
             display: inline-block;
             padding: 6px 12px;
-            margin-bottom: 8px;
-
-            background: black;
-            color: white;
             border-radius: 18px;
-
             font-size: 12px;
             font-weight: bold;
         }
 
-        /* Create Task Button */
+        .badge-leader {
+            background: black;
+            color: white;
+        }
+
+        .badge-teacher {
+            background: #e5f0ff;
+            color: #245889;
+        }
+
+        .badge-groupmate {
+            background: #d9f5df;
+            color: #176b2c;
+        }
+
+        /* Buttons */
 
         .create-task-btn {
             min-width: 160px;
@@ -172,7 +197,7 @@
             transform: scale(0.98);
         }
 
-        /* Task Summary Cards */
+        /* Summary Cards */
 
         .summary-grid {
             display: grid;
@@ -190,9 +215,7 @@
             border-radius: 15px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
 
-            transition:
-                    transform 0.3s,
-                    box-shadow 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .summary-card:hover {
@@ -216,6 +239,47 @@
             margin-top: 7px;
             color: #777;
             font-size: 13px;
+        }
+
+        /* Log My Contribution */
+
+        .log-contribution-section {
+            padding: 28px;
+            margin-bottom: 25px;
+
+            background: white;
+            border-radius: 15px;
+            border-left: 6px solid #245889;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .log-contribution-section h2 {
+            padding-bottom: 15px;
+            margin-bottom: 22px;
+
+            border-bottom: 2px solid #eeeeee;
+            font-size: 23px;
+        }
+
+        .log-contribution-section .section-subtitle {
+            margin-top: -10px;
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .voluntary-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            margin-left: 8px;
+
+            background: #e5f0ff;
+            color: #245889;
+            border-radius: 15px;
+
+            font-size: 11px;
+            font-weight: bold;
         }
 
         /* Create Task Section */
@@ -413,9 +477,7 @@
             border-left: 5px solid black;
             border-radius: 12px;
 
-            transition:
-                    transform 0.3s,
-                    box-shadow 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .task-card:hover {
@@ -492,8 +554,6 @@
             font-weight: bold;
         }
 
-        /* Priority Labels */
-
         .priority {
             display: inline-block;
             padding: 5px 9px;
@@ -516,6 +576,68 @@
         .priority-low {
             background: #e5f0ff;
             color: #245889;
+        }
+
+        /* My Progress Selector */
+
+        .my-progress {
+            margin-top: 18px;
+            padding: 16px;
+
+            background: white;
+            border: 2px dashed #cccccc;
+            border-radius: 10px;
+        }
+
+        .my-progress h4 {
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .progress-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .progress-btn {
+            min-width: 120px;
+            height: 40px;
+            padding: 0 14px;
+
+            background: white;
+            color: #555;
+            border: 2px solid #cccccc;
+            border-radius: 8px;
+
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .progress-btn:hover {
+            border-color: black;
+            color: black;
+        }
+
+        .progress-btn.active-pending {
+            background: #eeeeee;
+            color: #333;
+            border-color: #999999;
+        }
+
+        .progress-btn.active-progress {
+            background: #fff1c2;
+            color: #765900;
+            border-color: #e0c060;
+        }
+
+        .progress-btn.active-completed {
+            background: #d9f5df;
+            color: #176b2c;
+            border-color: #8bc79a;
         }
 
         /* Task Actions */
@@ -546,7 +668,7 @@
             text-decoration: none;
         }
 
-        /* Team Progress Bar */
+        /* Team Progress */
 
         .team-progress-section {
             padding: 28px;
@@ -604,8 +726,6 @@
             font-size: 14px;
         }
 
-        /* Information Note */
-
         .task-note {
             padding: 18px;
             margin-top: 22px;
@@ -619,7 +739,7 @@
             line-height: 1.6;
         }
 
-        /* Responsive Design */
+        /* Responsive */
 
         @media (max-width: 1000px) {
             .summary-grid {
@@ -722,6 +842,14 @@
             .submit-btn {
                 width: 100%;
             }
+
+            .progress-options {
+                flex-direction: column;
+            }
+
+            .progress-btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -749,8 +877,6 @@
         <a href="my_team.php" class="nav-link">
             My Team
         </a>
-
-
 
         <a href="student_task.php" class="nav-link active">
             Tasks
@@ -791,13 +917,17 @@
     <section class="page-heading">
 
         <div>
-            <span class="leader-badge">Team Leader</span>
+            <div class="role-badges">
+                <span class="role-badge badge-leader">Team Leader</span>
+                <span class="role-badge badge-teacher">Teacher</span>
+                <span class="role-badge badge-groupmate">Groupmate</span>
+            </div>
 
             <h1>My Tasks</h1>
 
             <p>
-                Create and assign tasks to your team members. Only the
-                elected team leader can add or edit tasks.
+                Create tasks, assign them to team members, update your
+                own progress, and log voluntary contributions.
             </p>
         </div>
 
@@ -841,6 +971,96 @@
 
     </section>
 
+    <!-- =========================
+         Log My Contribution
+    ========================= -->
+
+    <section class="log-contribution-section">
+
+        <h2>
+            Log My Contribution
+            <span class="voluntary-badge">Voluntary</span>
+        </h2>
+
+        <p class="section-subtitle">
+            Did something useful for the team? Record it here. No deadline
+            needed. Your entry will be counted towards your contribution score.
+        </p>
+
+        <form action="#" method="post">
+
+            <div class="form-group">
+                <label for="contributionTitle">
+                    What did you do?
+                </label>
+
+                <input
+                        type="text"
+                        id="contributionTitle"
+                        name="contributionTitle"
+                        placeholder="e.g. Fixed login bug, wrote meeting minutes, helped teammate with UI"
+                        required
+                >
+            </div>
+
+            <div class="form-row">
+
+                <div class="form-group">
+                    <label for="contributionType">Type</label>
+
+                    <select id="contributionType" name="contributionType" required>
+                        <option value="">-- Select Type --</option>
+                        <option value="Development">Development</option>
+                        <option value="Documentation">Documentation</option>
+                        <option value="Design">Design</option>
+                        <option value="Testing">Testing</option>
+                        <option value="Discussion">Discussion</option>
+                        <option value="Helping Teammate">Helping Teammate</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="contributionDate">Date</label>
+
+                    <input
+                            type="date"
+                            id="contributionDate"
+                            name="contributionDate"
+                            required
+                    >
+                </div>
+
+            </div>
+
+            <div class="form-group">
+                <label for="contributionNotes">
+                    Notes (optional)
+                </label>
+
+                <textarea
+                        id="contributionNotes"
+                        name="contributionNotes"
+                        placeholder="Any extra details you want to add"
+                ></textarea>
+            </div>
+
+            <div class="form-actions">
+
+                <button type="reset" class="cancel-btn">
+                    Clear
+                </button>
+
+                <button type="submit" class="submit-btn">
+                    Log Contribution
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
     <!-- Create Task -->
 
     <section class="create-task-section" id="createTaskSection">
@@ -879,7 +1099,8 @@
 
                     <select id="assignedTo" name="assignedTo" required>
                         <option value="">-- Select Member --</option>
-                        <option value="A">Student A (You)</option>
+                        <option value="self">Myself (<?php echo htmlspecialchars($currentUser); ?>)</option>
+                        <option value="A">Student A</option>
                         <option value="B">Student B</option>
                         <option value="C">Student C</option>
                         <option value="D">Student D</option>
@@ -1001,7 +1222,7 @@
                     </div>
 
                     <div class="detail-box">
-                        <h4>Assigned By</h4>
+                        <h4>Created By</h4>
                         <p>Student A (Leader)</p>
                     </div>
 
@@ -1017,6 +1238,28 @@
 
                 </div>
 
+                <div class="my-progress">
+
+                    <h4>Mark My Progress (Student A)</h4>
+
+                    <form action="#" method="post" class="progress-options">
+
+                        <button type="submit" name="myProgress" value="pending" class="progress-btn">
+                            Not Started
+                        </button>
+
+                        <button type="submit" name="myProgress" value="in_progress" class="progress-btn active-progress">
+                            Working On It
+                        </button>
+
+                        <button type="submit" name="myProgress" value="completed" class="progress-btn">
+                            I Completed It
+                        </button>
+
+                    </form>
+
+                </div>
+
                 <div class="task-actions">
 
                     <a href="#" class="action-link">
@@ -1025,10 +1268,6 @@
 
                     <a href="#" class="action-link">
                         Edit Task
-                    </a>
-
-                    <a href="#" class="action-link">
-                        Confirm Complete
                     </a>
 
                 </div>
@@ -1063,8 +1302,8 @@
                     </div>
 
                     <div class="detail-box">
-                        <h4>Assigned By</h4>
-                        <p>Student A (Leader)</p>
+                        <h4>Created By</h4>
+                        <p>Student B (Groupmate)</p>
                     </div>
 
                     <div class="detail-box">
@@ -1079,6 +1318,28 @@
 
                 </div>
 
+                <div class="my-progress">
+
+                    <h4>Mark My Progress (Student A)</h4>
+
+                    <form action="#" method="post" class="progress-options">
+
+                        <button type="submit" name="myProgress" value="pending" class="progress-btn">
+                            Not Started
+                        </button>
+
+                        <button type="submit" name="myProgress" value="in_progress" class="progress-btn active-progress">
+                            Working On It
+                        </button>
+
+                        <button type="submit" name="myProgress" value="completed" class="progress-btn">
+                            I Completed It
+                        </button>
+
+                    </form>
+
+                </div>
+
                 <div class="task-actions">
 
                     <a href="#" class="action-link">
@@ -1087,10 +1348,6 @@
 
                     <a href="#" class="action-link">
                         Edit Task
-                    </a>
-
-                    <a href="#" class="action-link">
-                        Confirm Complete
                     </a>
 
                 </div>
@@ -1125,8 +1382,8 @@
                     </div>
 
                     <div class="detail-box">
-                        <h4>Assigned By</h4>
-                        <p>Student A (Leader)</p>
+                        <h4>Created By</h4>
+                        <p>Mr. Tan (Teacher)</p>
                     </div>
 
                     <div class="detail-box">
@@ -1141,6 +1398,28 @@
 
                 </div>
 
+                <div class="my-progress">
+
+                    <h4>Mark My Progress (Student A)</h4>
+
+                    <form action="#" method="post" class="progress-options">
+
+                        <button type="submit" name="myProgress" value="pending" class="progress-btn active-pending">
+                            Not Started
+                        </button>
+
+                        <button type="submit" name="myProgress" value="in_progress" class="progress-btn">
+                            Working On It
+                        </button>
+
+                        <button type="submit" name="myProgress" value="completed" class="progress-btn">
+                            I Completed It
+                        </button>
+
+                    </form>
+
+                </div>
+
                 <div class="task-actions">
 
                     <a href="#" class="action-link">
@@ -1149,10 +1428,6 @@
 
                     <a href="#" class="action-link">
                         Edit Task
-                    </a>
-
-                    <a href="#" class="action-link">
-                        Start Task
                     </a>
 
                 </div>
@@ -1183,11 +1458,11 @@
 
                     <div class="detail-box">
                         <h4>Assigned To</h4>
-                        <p>Student B</p>
+                        <p>Student A</p>
                     </div>
 
                     <div class="detail-box">
-                        <h4>Assigned By</h4>
+                        <h4>Created By</h4>
                         <p>Student A (Leader)</p>
                     </div>
 
@@ -1200,6 +1475,28 @@
                         <h4>Priority</h4>
                         <span class="priority priority-high">High</span>
                     </div>
+
+                </div>
+
+                <div class="my-progress">
+
+                    <h4>Mark My Progress (Student A)</h4>
+
+                    <form action="#" method="post" class="progress-options">
+
+                        <button type="submit" name="myProgress" value="pending" class="progress-btn">
+                            Not Started
+                        </button>
+
+                        <button type="submit" name="myProgress" value="in_progress" class="progress-btn">
+                            Working On It
+                        </button>
+
+                        <button type="submit" name="myProgress" value="completed" class="progress-btn active-completed">
+                            I Completed It
+                        </button>
+
+                    </form>
 
                 </div>
 
@@ -1244,9 +1541,11 @@
     </section>
 
     <div class="task-note">
-        Only the elected team leader can create and assign tasks.
-        Members can mark their own tasks as complete, and the progress
-        bar refreshes in real time.
+        Teachers, team leaders and groupmates can all create and assign
+        tasks. Each member can mark their own task progress using the
+        buttons above. You can also log voluntary contributions that are
+        not tied to a task — those will still count towards your
+        contribution score.
     </div>
 
 </main>
