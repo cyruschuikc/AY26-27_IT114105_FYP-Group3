@@ -14,8 +14,8 @@ android {
         applicationId = "com.example.teambox"
         minSdk = 32
         targetSdk = 36
-        versionCode = 13
-        versionName = "LCDEP1.4.1_fc8125d.4e606db.252107107_323613"
+        versionCode = 14
+        versionName = "LCDEP1.4.2_.4e606db.258107107_323614"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -39,6 +39,7 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.constraintlayout)
     implementation(libs.material)
+    implementation(libs.recyclerview)
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)
