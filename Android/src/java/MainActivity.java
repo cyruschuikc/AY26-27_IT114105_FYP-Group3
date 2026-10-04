@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
 
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_menu) {
             Toast.makeText(this, "Ops! Setting option is release yet", Toast.LENGTH_LONG).show();
             return true;
         } else if (id == R.id.action_privacy) {
