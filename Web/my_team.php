@@ -12,11 +12,11 @@ session_start();
     <meta charset="UTF-8">
 
     <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
     >
 
-    <title>My Team | TeamBox</title>
+    <title>My Team &amp; Project | TeamBox</title>
 
     <style>
         * {
@@ -32,9 +32,7 @@ session_start();
             color: #222;
         }
 
-        /* =========================
-           Top Navigation Bar
-        ========================= */
+        /* Top Navigation Bar */
 
         .navbar {
             width: 100%;
@@ -69,8 +67,6 @@ session_start();
             font-weight: bold;
         }
 
-        /* Navigation text links */
-
         .function-menu {
             width: 100%;
 
@@ -95,18 +91,12 @@ session_start();
             color: #bbbbbb;
         }
 
-        .nav-link:active {
-            color: #ffffff;
-        }
-
-        /* Current page */
         .nav-link.active {
             color: white;
             font-weight: bold;
             border-bottom: 2px solid white;
         }
 
-        /* Log out */
         .logout-link {
             color: #ff8888;
         }
@@ -115,9 +105,7 @@ session_start();
             color: #ff4444;
         }
 
-        /* =========================
-           Main Content
-        ========================= */
+        /* Main Content */
 
         .main-content {
             width: 90%;
@@ -145,9 +133,7 @@ session_start();
             line-height: 1.6;
         }
 
-        /* =========================
-           Team Overview
-        ========================= */
+        /* Team Overview */
 
         .team-overview {
             padding: 30px;
@@ -218,9 +204,64 @@ session_start();
             font-weight: bold;
         }
 
-        /* =========================
-           Team Progress
-        ========================= */
+        /* Project Section */
+
+        .project-section {
+            padding: 30px;
+            margin-bottom: 25px;
+
+            background: white;
+            border-radius: 15px;
+            border-left: 6px solid black;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-section h2 {
+            padding-bottom: 15px;
+            margin-bottom: 22px;
+
+            border-bottom: 2px solid #eeeeee;
+            font-size: 23px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .info-box {
+            padding: 20px;
+
+            background: #fafafa;
+            border: 1px solid #eeeeee;
+            border-radius: 12px;
+        }
+
+        .info-box h3 {
+            color: #555;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            font-size: 17px;
+            font-weight: bold;
+        }
+
+        .project-description {
+            padding-top: 20px;
+            border-top: 2px solid #eeeeee;
+
+            color: #666;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        /* Team Progress */
 
         .team-progress {
             padding-top: 22px;
@@ -267,9 +308,7 @@ session_start();
             font-size: 14px;
         }
 
-        /* =========================
-           Content Boxes
-        ========================= */
+        /* Content Boxes */
 
         .information-grid {
             display: grid;
@@ -294,9 +333,7 @@ session_start();
             font-size: 23px;
         }
 
-        /* =========================
-           Team Members
-        ========================= */
+        /* Team Members */
 
         .member-list {
             display: grid;
@@ -375,9 +412,7 @@ session_start();
             color: white;
         }
 
-        /* =========================
-           Team Details
-        ========================= */
+        /* Team Details */
 
         .detail-item {
             margin-bottom: 20px;
@@ -399,9 +434,7 @@ session_start();
             line-height: 1.5;
         }
 
-        /* =========================
-           Tasks
-        ========================= */
+        /* Tasks */
 
         .task-list {
             display: flex;
@@ -461,9 +494,7 @@ session_start();
             color: #555;
         }
 
-        /* =========================
-           Team Activity
-        ========================= */
+        /* Team Activity */
 
         .activity-item {
             padding: 15px 0;
@@ -498,12 +529,14 @@ session_start();
             line-height: 1.5;
         }
 
-        /* =========================
-           Responsive Design
-        ========================= */
+        /* Responsive Design */
 
         @media (max-width: 1000px) {
             .team-info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .info-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
 
@@ -545,6 +578,7 @@ session_start();
             }
 
             .team-info-grid,
+            .info-grid,
             .member-list {
                 grid-template-columns: 1fr;
             }
@@ -568,16 +602,14 @@ session_start();
         <span>TeamBox</span>
     </div>
 
-    <!-- Navigation text links -->
-
     <div class="function-menu">
 
         <a href="student_index.php" class="nav-link">
             Dashboard
         </a>
-        <a href="student_create_group.php" class="nav-link">Create Group</a>
-        <a href="my_project.php" class="nav-link">
-            My Project
+
+        <a href="student_create_group.php" class="nav-link">
+            Create Group
         </a>
 
         <a href="my_team.php" class="nav-link active">
@@ -595,9 +627,11 @@ session_start();
         <a href="student_chat.php" class="nav-link">
             Group Chat
         </a>
+
         <a href="student_contribution.php" class="nav-link">
             Contribution
         </a>
+
         <a href="student_notifications.php" class="nav-link">
             Notifications
         </a>
@@ -618,16 +652,21 @@ session_start();
 
 <main class="main-content">
 
+    <!-- Page Heading -->
+
     <section class="page-heading">
 
-        <h1>My Team</h1>
+        <h1>My Team &amp; Project</h1>
 
         <p>
-            View your team information, members, current progress,
-            assigned tasks and recent team activities.
+            View your team information, project details, members, current
+            progress, assigned tasks and recent team activities — all in
+            one page.
         </p>
 
     </section>
+
+    <!-- Team Overview -->
 
     <section class="team-overview">
 
@@ -692,6 +731,57 @@ session_start();
         </div>
 
     </section>
+
+    <!-- Project Details -->
+
+    <section class="project-section">
+
+        <h2>Project Details</h2>
+
+        <div class="info-grid">
+
+            <div class="info-box">
+                <h3>Project ID</h3>
+                <p>PRJ-2026-001</p>
+            </div>
+
+            <div class="info-box">
+                <h3>Course</h3>
+                <p>Software Engineering Project</p>
+            </div>
+
+            <div class="info-box">
+                <h3>Supervisor</h3>
+                <p>Dr. Tan</p>
+            </div>
+
+            <div class="info-box">
+                <h3>Start Date</h3>
+                <p>01 September 2026</p>
+            </div>
+
+            <div class="info-box">
+                <h3>Deadline</h3>
+                <p>30 November 2026</p>
+            </div>
+
+            <div class="info-box">
+                <h3>Members</h3>
+                <p>4 Students</p>
+            </div>
+
+        </div>
+
+        <p class="project-description">
+            The TeamBox project is currently at 50% completion.
+            The requirement analysis and project proposal have been
+            finished. The next phase focuses on system interface
+            design, database structure, and core feature development.
+        </p>
+
+    </section>
+
+    <!-- Members + Team Details -->
 
     <section class="information-grid">
 
@@ -777,6 +867,8 @@ session_start();
         </div>
 
     </section>
+
+    <!-- Tasks + Activity -->
 
     <section class="information-grid">
 

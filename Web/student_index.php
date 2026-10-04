@@ -426,9 +426,6 @@ session_start();
             Dashboard
         </a>
         <a href="student_create_group.php" class="nav-link">Create Group</a>
-        <a href="my_project.php" class="nav-link">
-            My Project
-        </a>
 
         <a href="my_team.php" class="nav-link">
             My Team

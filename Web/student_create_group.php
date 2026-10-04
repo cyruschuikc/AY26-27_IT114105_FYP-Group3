@@ -682,9 +682,6 @@ session_start();
             Create Group
         </a>
 
-        <a href="my_project.php" class="nav-link">
-            My Project
-        </a>
 
         <a href="my_team.php" class="nav-link">
             My Team
