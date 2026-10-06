@@ -1,27 +1,145 @@
 <?php
 $active = 'review';
 
+// ===== session + 数据库 =====
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once __DIR__ . '/db.php';
+/** @var mysqli $conn */
+
+// 没登录 → 回登录页
+if (!isset($_SESSION['userID'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$userID = (int) $_SESSION['userID'];
+
+// 拿当前老师的 Teachers.id
+$teacherId = 0;
+$stmt = mysqli_prepare($conn, "SELECT id FROM `Teachers` WHERE user_id = ? LIMIT 1");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$row = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
+if ($row) { $teacherId = (int)$row['id']; }
+
 $fileId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 
-// ===== 假数据 =====
-$file = array(
-    'id'          => $fileId,
-    'name'        => 'Proposal_v2.docx',
-    'size'        => '2.4 MB',
-    'type'        => 'DOCX',
-    'uploaded_at' => '2026-10-04 10:42',
-    'status'      => 'Unviewed',
-    'project'     => 'TeamBox',
-    'category'    => 'Software Engineering',
-    'team'        => 'Team 01',
-    'uploader'    => array(
-        'name'           => 'CHAN Ho Yin',
-        'student_number' => '260222111',
-        'class'          => 'SE-2B',
-        'role'           => 'Leader',
-    ),
-    'note'        => 'Second revision after supervisor feedback on the scope section.',
-);
+
+// =========================================================
+// 1. 处理提交（POST）
+// =========================================================
+if (isset($_POST['submitReview'])) {
+
+    $newStatus  = isset($_POST['reviewStatus']) ? trim($_POST['reviewStatus']) : '';
+    $reviewNote = isset($_POST['reviewNote'])   ? trim($_POST['reviewNote'])   : '';
+
+    if ($newStatus === 'Accepted' || $newStatus === 'Rejected') {
+
+        $stmt = mysqli_prepare($conn, "
+            UPDATE `Files`
+            SET status = ?,
+                reviewed_by = ?,
+                reviewed_at = NOW(),
+                review_note = ?
+            WHERE id = ?
+        ");
+        mysqli_stmt_bind_param($stmt, "sisi", $newStatus, $teacherId, $reviewNote, $fileId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+
+        // 记一条 Activity
+        $stmt = mysqli_prepare($conn, "
+            INSERT INTO `Activities` (project_id, group_id, actor_id, action, detail)
+            SELECT project_id, group_id, ?, 'reviewed',
+                   CONCAT('marked file ', file_name, ' as ', ?)
+            FROM `Files`
+            WHERE id = ?
+        ");
+        $actionWord = ($newStatus === 'Accepted') ? 'accepted' : 'rejected';
+        mysqli_stmt_bind_param($stmt, "iss", $userID, $actionWord, $fileId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+
+    header('Location: teacher_review.php');
+    exit;
+}
+
+
+// =========================================================
+// 2. 读文件信息
+// =========================================================
+$file = null;
+
+$sql = "
+    SELECT
+        f.id,
+        f.file_name,
+        f.file_size,
+        f.file_type,
+        f.status,
+        f.uploaded_at,
+        f.review_note,
+        f.reviewed_at,
+        p.name  AS project_name,
+        p.category AS project_category,
+        g.id    AS group_id,
+        g.name  AS team_name,
+        s.id    AS uploader_id,
+        s.student_number,
+        s.major,
+        s.grade_level,
+        u.username AS uploader_name,
+        gm.role AS team_role,
+        tu.username AS reviewer_name
+    FROM `Files` f
+    LEFT JOIN `Projects`  p ON p.id = f.project_id
+    LEFT JOIN `Groups`    g ON g.id = f.group_id
+    LEFT JOIN `Students`  s ON s.id = f.uploader_id
+    LEFT JOIN `Users`     u ON u.id = s.user_id
+    LEFT JOIN `Group_Members` gm ON gm.group_id = g.id AND gm.student_id = s.id
+    LEFT JOIN `Teachers`  t ON t.id = f.reviewed_by
+    LEFT JOIN `Users`    tu ON tu.id = t.user_id
+    WHERE f.id = ?
+    LIMIT 1
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $fileId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$file = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
+
+if (!$file) {
+    header('Location: teacher_review.php');
+    exit;
+}
+
+
+// =========================================================
+// 3. 辅助函数
+// =========================================================
+if (!function_exists('formatClass')) {
+    function formatClass($major, $gradeLevel) {
+        $majorShort = 'SE';
+        if (stripos($major, 'Cloud') !== false)         $majorShort = 'CC';
+        elseif (stripos($major, 'Information') !== false) $majorShort = 'IT';
+        elseif (stripos($major, 'Software') !== false)    $majorShort = 'SE';
+
+        if ($gradeLevel >= 12) {
+            $year = $gradeLevel - 12 + 1;
+        } else {
+            $year = $gradeLevel;
+        }
+
+        return $majorShort . '-' . $year . 'B';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -37,19 +155,7 @@ $file = array(
             display: none !important;
         }
 
-        /* Back link */
-        .back {
-            display: inline-block;
-            font-size: 13px;
-            color: #8b8f98;
-            text-decoration: none;
-            margin-bottom: 22px;
-            cursor: pointer;
-        }
-
-        .back:hover { color: #2c2f36; }
-
-        /* Page head */
+        /* Page head（file_view.php 专属） */
         .page-head {
             display: flex;
             justify-content: space-between;
@@ -80,228 +186,13 @@ $file = array(
             flex-shrink: 0;
             align-items: center;
         }
-
-        /* Two-column layout */
-        .two-col {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 24px;
-            margin-bottom: 30px;
-        }
-
-        /* Info card */
-        .info-card {
-            border: 1px solid #e6e8eb;
-            border-radius: 10px;
-            overflow: hidden;
-            background: #fff;
-        }
-
-        .info-card-head {
-            background: #175196;
-            color: #fff;
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            padding: 12px 18px;
-        }
-
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            table-layout: fixed;
-        }
-
-        .info-table tr {
-            border-bottom: 1px solid #e6e8eb;
-        }
-
-        .info-table tr:last-child {
-            border-bottom: none;
-        }
-
-        .info-table td {
-            padding: 11px 16px;
-            vertical-align: top;
-            word-break: break-word;
-            white-space: normal;
-        }
-
-        .info-table td:first-child {
-            width: 42%;
-            background: #eef0f3;
-            color: #4b4f57;
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .info-table td:last-child {
-            color: #2c2f36;
-            font-weight: 500;
-        }
-
-        /* Note */
-        .note-box {
-            padding: 16px 18px;
-            background: #f7f8fa;
-            border-left: 4px solid #c9ccd1;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #2c2f36;
-            line-height: 1.6;
-            margin-bottom: 30px;
-        }
-
-        /* Review form */
-        .review-form {
-            padding: 26px 28px;
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-left: 4px solid #175196;
-            border-radius: 10px;
-        }
-
-        /* Top row: title + status dropdown */
-        .review-form-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-            margin-bottom: 22px;
-        }
-
-        .review-form-header .form-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #2c2f36;
-        }
-
-        .status-inline {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .status-inline label {
-            font-size: 13px;
-            color: #6b6f78;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
-        .status-inline select {
-            width: 200px;
-            padding: 9px 12px;
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-radius: 6px;
-            font-size: 14px;
-            color: #2c2f36;
-            font-family: inherit;
-            outline: none;
-        }
-
-        .status-inline select:focus {
-            border-color: #175196;
-        }
-
-        /* Comment */
-        .comment-block {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 22px;
-        }
-
-        .comment-block label {
-            font-size: 13px;
-            color: #6b6f78;
-            font-weight: 500;
-        }
-
-        .comment-block textarea {
-            width: 100%;
-            min-height: 160px;
-            padding: 12px 14px;
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-radius: 6px;
-            font-size: 14px;
-            color: #2c2f36;
-            font-family: inherit;
-            line-height: 1.5;
-            resize: vertical;
-            outline: none;
-        }
-
-        .comment-block textarea:focus {
-            border-color: #175196;
-        }
-
-        /* Actions */
-        .review-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        /* Modal */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal-overlay.open {
-            display: flex;
-        }
-
-        .modal {
-            background: #fff;
-            border-radius: 12px;
-            padding: 26px 28px;
-            max-width: 460px;
-            width: 100%;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-        }
-
-        .modal h3 {
-            font-size: 17px;
-            font-weight: 600;
-            color: #2c2f36;
-            margin-bottom: 12px;
-        }
-
-        .modal p {
-            font-size: 14px;
-            color: #6b6f78;
-            line-height: 1.6;
-            margin-bottom: 22px;
-        }
-
-        .modal p .confirm-status {
-            font-weight: 600;
-            color: #175196;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
     </style>
 </head>
 <body>
 
 <?php include 'teacher_nav.php'; ?>
 
-<!-- 静态检查识别用：status / open 示例（不显示） -->
+<!-- 静态检查识别用 -->
 <span class="status-pill unviewed" hidden></span>
 <span class="status-pill accepted" hidden></span>
 <span class="status-pill rejected" hidden></span>
@@ -315,11 +206,11 @@ $file = array(
         <!-- Page head -->
         <div class="page-head">
             <div class="title-block">
-                <h1><?php echo htmlspecialchars($file['name']); ?></h1>
+                <h1><?php echo htmlspecialchars($file['file_name']); ?></h1>
                 <div class="meta">
-                    Uploaded on <?php echo htmlspecialchars($file['uploaded_at']); ?>
-                    · <?php echo htmlspecialchars($file['size']); ?>
-                    · <?php echo htmlspecialchars($file['type']); ?>
+                    Uploaded on <?php echo date('Y-m-d H:i', strtotime($file['uploaded_at'])); ?>
+                    · <?php echo htmlspecialchars($file['file_size']); ?>
+                    · <?php echo htmlspecialchars($file['file_type']); ?>
                 </div>
             </div>
 
@@ -339,23 +230,29 @@ $file = array(
                 <table class="info-table">
                     <tr>
                         <td>Name</td>
-                        <td><?php echo htmlspecialchars($file['uploader']['name']); ?></td>
+                        <td><?php echo htmlspecialchars($file['uploader_name']); ?></td>
                     </tr>
                     <tr>
                         <td>Student ID</td>
-                        <td><?php echo htmlspecialchars($file['uploader']['student_number']); ?></td>
+                        <td><?php echo htmlspecialchars($file['student_number']); ?></td>
                     </tr>
                     <tr>
                         <td>Class</td>
-                        <td><?php echo htmlspecialchars($file['uploader']['class']); ?></td>
+                        <td><?php echo htmlspecialchars(formatClass($file['major'], $file['grade_level'])); ?></td>
                     </tr>
                     <tr>
                         <td>Team</td>
-                        <td><?php echo htmlspecialchars($file['team']); ?></td>
+                        <td><?php echo htmlspecialchars($file['team_name']); ?></td>
                     </tr>
                     <tr>
                         <td>Role</td>
-                        <td><?php echo htmlspecialchars($file['uploader']['role']); ?></td>
+                        <td>
+                            <?php if ($file['team_role'] === 'leader'): ?>
+                                <span class="pill">Leader</span>
+                            <?php else: ?>
+                                <span class="muted">Member</span>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                 </table>
             </div>
@@ -366,39 +263,39 @@ $file = array(
                 <table class="info-table">
                     <tr>
                         <td>File Name</td>
-                        <td><?php echo htmlspecialchars($file['name']); ?></td>
+                        <td><?php echo htmlspecialchars($file['file_name']); ?></td>
                     </tr>
                     <tr>
                         <td>Project</td>
-                        <td><?php echo htmlspecialchars($file['project']); ?></td>
+                        <td><?php echo htmlspecialchars($file['project_name']); ?></td>
                     </tr>
                     <tr>
                         <td>Category</td>
-                        <td><?php echo htmlspecialchars($file['category']); ?></td>
+                        <td><?php echo htmlspecialchars($file['project_category']); ?></td>
                     </tr>
                     <tr>
                         <td>Uploaded On</td>
-                        <td><?php echo htmlspecialchars($file['uploaded_at']); ?></td>
+                        <td><?php echo date('Y-m-d H:i', strtotime($file['uploaded_at'])); ?></td>
                     </tr>
                     <tr>
                         <td>File Size</td>
-                        <td><?php echo htmlspecialchars($file['size']); ?></td>
+                        <td><?php echo htmlspecialchars($file['file_size']); ?></td>
                     </tr>
                 </table>
             </div>
 
         </div>
 
-        <!-- Uploader Note -->
-        <?php if (!empty($file['note'])): ?>
-            <h2>Uploader Note</h2>
+        <!-- Previous Review Note（如果有） -->
+        <?php if (!empty($file['review_note'])): ?>
+            <h2>Previous Review Note</h2>
             <div class="note-box">
-                <?php echo htmlspecialchars($file['note']); ?>
+                <?php echo htmlspecialchars($file['review_note']); ?>
             </div>
         <?php endif; ?>
 
         <!-- Review Decision -->
-        <form class="review-form" id="reviewForm" onsubmit="return false;">
+        <form class="review-form" id="reviewForm" method="post" action="file_view.php?id=<?php echo (int)$file['id']; ?>">
 
             <div class="review-form-header">
                 <span class="form-title">Review Decision</span>
@@ -416,10 +313,10 @@ $file = array(
             <div class="comment-block">
                 <label for="reviewNote">Comment for the student (optional)</label>
                 <textarea
-                    id="reviewNote"
-                    name="reviewNote"
-                    placeholder="Explain why the file is accepted or rejected..."
-                ></textarea>
+                        id="reviewNote"
+                        name="reviewNote"
+                        placeholder="Explain why the file is accepted or rejected..."
+                ><?php echo htmlspecialchars($file['review_note']); ?></textarea>
             </div>
 
             <div class="review-actions">
@@ -427,6 +324,7 @@ $file = array(
                 <button type="button" class="btn-primary" id="openConfirm">Submit</button>
             </div>
 
+            <input type="hidden" name="submitReview" value="1">
         </form>
 
     </div>
@@ -456,6 +354,7 @@ $file = array(
         const confirmBtn   = document.getElementById('confirmSubmit');
         const statusSelect = document.getElementById('reviewStatus');
         const statusText   = document.getElementById('confirmStatusText');
+        const form         = document.getElementById('reviewForm');
 
         openBtn.addEventListener('click', function () {
             const val = statusSelect.value;
@@ -473,7 +372,7 @@ $file = array(
         });
 
         confirmBtn.addEventListener('click', function () {
-            window.location.href = 'teacher_review.php';
+            form.submit();
         });
 
         modal.addEventListener('click', function (e) {

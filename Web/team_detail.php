@@ -1,85 +1,308 @@
 <?php
 $active = 'teams';
 
+// ===== session + 数据库 =====
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once __DIR__ . '/db.php';
+/** @var mysqli $conn */
+
 $teamId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 
-// ===== 假数据 =====
-$team = array(
-        'team_name'          => 'Team 01',
-        'project_name'       => 'TeamBox',
-        'project_category'   => 'Software Engineering',
-        'project_supervisor' => 'Esther Yuen',
-        'period_start'       => '2026-09-01',
-        'period_end'         => '2027-04-30',
-        'status'             => 'Executing',
-        'formed_at'          => '2026-09-15',
-        'roster_locked_at'   => '2026-09-20',
-        'leader_elected_at'  => '2026-09-21',
-        'last_activity_at'   => '2026-09-29 10:42:00',
-);
 
-$members = array(
-        array('name'=>'CHAN Ho Yin',     'student_number'=>'260222111', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Leader · Full-stack',   'is_leader'=>1, 'tasks_done'=>'2 / 3'),
-        array('name'=>'CHUI Ka Chun',    'student_number'=>'260222112', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Android Developer',     'is_leader'=>0, 'tasks_done'=>'1 / 2'),
-        array('name'=>'LAI Ka-Yu Savio', 'student_number'=>'260222113', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Backend Developer',     'is_leader'=>0, 'tasks_done'=>'1 / 2'),
-        array('name'=>'MIAO Tung',       'student_number'=>'260222114', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Frontend Developer',    'is_leader'=>0, 'tasks_done'=>'0 / 2'),
-);
+// =========================================================
+// 1. Team + Project 信息
+// =========================================================
+$team = null;
 
-function formatClass($major, $gradeLevel) {
-    if ($gradeLevel >= 12) {
-        $year = $gradeLevel - 10;
-    } else {
-        $year = $gradeLevel;
-    }
-    return $major . '-' . $year . 'B';
+$sql = "
+    SELECT
+        g.id,
+        g.name            AS team_name,
+        g.status,
+        g.max_members,
+        g.formed_at,
+        g.leader_id,
+        p.id              AS project_id,
+        p.name            AS project_name,
+        p.category        AS project_category,
+        p.period_start,
+        p.period_end,
+        tu.username       AS project_supervisor
+    FROM `Groups` g
+    LEFT JOIN `Projects` p ON p.id = g.project_id
+    LEFT JOIN `Teachers` t ON t.id = p.supervisor_id
+    LEFT JOIN `Users`    tu ON tu.id = t.user_id
+    WHERE g.id = ?
+    LIMIT 1
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teamId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$team = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
+
+if (!$team) {
+    // 找不到 team → 回列表
+    header('Location: teacher_teams.php');
+    exit;
 }
 
+
+// =========================================================
+// 2. Members
+// =========================================================
+$members = array();
+
+$sql = "
+    SELECT
+        s.id            AS student_id,
+        s.student_number,
+        s.major,
+        s.grade_level,
+        u.username      AS name,
+        gm.role,
+        (SELECT COUNT(*) FROM `Tasks` t
+            WHERE t.assigned_to = s.id
+              AND t.status = 'Completed') AS done_tasks,
+        (SELECT COUNT(*) FROM `Tasks` t2
+            WHERE t2.assigned_to = s.id) AS total_tasks
+    FROM `Group_Members` gm
+    INNER JOIN `Students` s ON s.id = gm.student_id
+    INNER JOIN `Users`    u ON u.id = s.user_id
+    WHERE gm.group_id = ?
+    ORDER BY gm.role DESC, s.id
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teamId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $members[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 3. Progress
+// =========================================================
+
+// Overall：完成任务 / 总任务
+$doneTasks = 0;
+$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Tasks` WHERE group_id = " . $teamId . " AND status = 'Completed'");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $doneTasks = (int)$rc['c']; mysqli_free_result($rs); }
+
+$totalTasks = 0;
+$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Tasks` WHERE group_id = " . $teamId);
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $totalTasks = (int)$rc['c']; mysqli_free_result($rs); }
+
+$overallPercent = $totalTasks > 0 ? (int)round($doneTasks / $totalTasks * 100) : 0;
+
+// Roster Locked：有 leader 就认为锁了
+$rosterLocked = !empty($team['leader_id']) ? $team['formed_at'] : null;
+
+// Leader Elected：从 Activities 里找 'elected' 记录
+$leaderElectedAt = null;
+$stmt = mysqli_prepare($conn, "
+    SELECT created_at FROM `Activities`
+    WHERE group_id = ? AND action = 'elected'
+    ORDER BY created_at DESC LIMIT 1
+");
+mysqli_stmt_bind_param($stmt, "i", $teamId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$row = mysqli_fetch_assoc($rs);
+if ($row) { $leaderElectedAt = $row['created_at']; }
+mysqli_stmt_close($stmt);
+
+// Last Activity
+$lastActivity = null;
+$stmt = mysqli_prepare($conn, "
+    SELECT MAX(created_at) AS last_at FROM `Activities` WHERE group_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teamId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$row = mysqli_fetch_assoc($rs);
+if ($row && !empty($row['last_at'])) { $lastActivity = $row['last_at']; }
+mysqli_stmt_close($stmt);
+
+// 组装 progress 数组
 $progress = array(
-        array('label'=>'Overall',         'value'=>'<span class="progress"><span class="bar"><span style="width: 60%"></span></span>60%</span>', 'raw'=>true),
-        array('label'=>'Tasks Completed', 'value'=>'3 / 5'),
-        array('label'=>'Team Formed',     'value'=>date('d M Y', strtotime($team['formed_at']))),
-        array('label'=>'Roster Locked',   'value'=>date('d M Y', strtotime($team['roster_locked_at']))),
-        array('label'=>'Leader Elected',  'value'=>date('d M Y', strtotime($team['leader_elected_at']))),
-        array('label'=>'Last Activity',   'value'=>date('H:i', strtotime($team['last_activity_at'])) . ' today'),
+        array('label'=>'Overall',         'value'=>'<span class="progress"><span class="bar"><span style="width: ' . $overallPercent . '%"></span></span>' . $overallPercent . '%</span>', 'raw'=>true),
+        array('label'=>'Tasks Completed', 'value'=>$doneTasks . ' / ' . $totalTasks),
+        array('label'=>'Team Formed',     'value'=>$team['formed_at'] ? date('d M Y', strtotime($team['formed_at'])) : '—'),
+        array('label'=>'Roster Locked',   'value'=>$rosterLocked ? date('d M Y', strtotime($rosterLocked)) : '—'),
+        array('label'=>'Leader Elected',  'value'=>$leaderElectedAt ? date('d M Y', strtotime($leaderElectedAt)) : '—'),
+        array('label'=>'Last Activity',   'value'=>$lastActivity ? date('H:i', strtotime($lastActivity)) . ' today' : '—'),
 );
 
-$division = array(
-        array('CHAN Ho Yin',     'Proposal, Architecture, Web UI'),
-        array('CHUI Ka Chun',    'Android App, Push Notification'),
-        array('LAI Ka-Yu Savio', 'Database, REST API'),
-        array('MIAO Tung',       'Web Frontend, File Module'),
-        array('Shared',          'Testing, Documentation'),
-);
 
-$tasks = array(
-        array('name'=>'Complete Project Proposal', 'owner'=>'CHAN Ho Yin · CHUI Ka Chun', 'status'=>'Completed',   'due'=>'30 Sep 2026'),
-        array('name'=>'Requirement Analysis',      'owner'=>'LAI Ka-Yu Savio',            'status'=>'Completed',   'due'=>'05 Oct 2026'),
-        array('name'=>'Create System Interface',   'owner'=>'MIAO Tung',                  'status'=>'In Progress', 'due'=>'10 Oct 2026'),
-        array('name'=>'Database Schema Design',    'owner'=>'LAI Ka-Yu Savio',            'status'=>'Pending',     'due'=>'15 Oct 2026'),
-        array('name'=>'Android Prototype',         'owner'=>'CHUI Ka Chun',               'status'=>'Pending',     'due'=>'25 Oct 2026'),
-);
+// =========================================================
+// 4. Tasks
+// =========================================================
+$tasks = array();
 
-$files = array(
-        array('name'=>'Proposal_v2.docx',         'owner'=>'CHAN Ho Yin',     'meta'=>'2.4 MB · 10:42 today'),
-        array('name'=>'Requirement_Analysis.pdf', 'owner'=>'LAI Ka-Yu Savio', 'meta'=>'1.8 MB · Yesterday'),
-        array('name'=>'UI_Wireframe.fig',         'owner'=>'MIAO Tung',       'meta'=>'5.1 MB · 2 days ago'),
-);
+$sql = "
+    SELECT
+        t.title,
+        t.status,
+        t.due_date,
+        t.assigned_to,
+        au.username AS owner_name
+    FROM `Tasks` t
+    LEFT JOIN `Students` s ON s.id = t.assigned_to
+    LEFT JOIN `Users`    au ON au.id = s.user_id
+    WHERE t.group_id = ?
+    ORDER BY
+        CASE t.status
+            WHEN 'In Progress' THEN 1
+            WHEN 'Pending'     THEN 2
+            WHEN 'Completed'   THEN 3
+            ELSE 4
+        END,
+        t.due_date
+";
 
-// ★ 改动：把原来的 $contributions（含百分比 / 分数）换成客观数量，不评分、不排名
-$memberActivity = array(
-        array('name'=>'CHAN Ho Yin',     'tasks'=>2, 'files'=>3, 'comments'=>14),
-        array('name'=>'CHUI Ka Chun',    'tasks'=>1, 'files'=>1, 'comments'=> 8),
-        array('name'=>'LAI Ka-Yu Savio', 'tasks'=>1, 'files'=>2, 'comments'=>11),
-        array('name'=>'MIAO Tung',       'tasks'=>0, 'files'=>1, 'comments'=> 6),
-);
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teamId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $tasks[] = $row;
+}
+mysqli_stmt_close($stmt);
 
-$activities = array(
-        array('CHAN Ho Yin uploaded Proposal_v2.docx',                '10:42'),
-        array('LAI Ka-Yu Savio marked Requirement Analysis complete', '09:20'),
-        array('MIAO Tung commented on UI_Wireframe',                  'Yesterday'),
-        array('Team roster locked',                                   '20 Sep'),
-        array('CHAN Ho Yin elected as team leader',                   '21 Sep'),
-);
+
+// =========================================================
+// 5. Files
+// =========================================================
+$files = array();
+
+$sql = "
+    SELECT
+        f.id,
+        f.file_name,
+        f.file_size,
+        f.uploaded_at,
+        u.username AS owner_name
+    FROM `Files` f
+    LEFT JOIN `Students` s ON s.id = f.uploader_id
+    LEFT JOIN `Users`    u ON u.id = s.user_id
+    WHERE f.group_id = ?
+    ORDER BY f.uploaded_at DESC
+    LIMIT 10
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teamId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $files[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 6. Member Activity（客观数量，不评分）
+// =========================================================
+$memberActivity = array();
+
+$sql = "
+    SELECT
+        s.id            AS student_id,
+        u.username      AS name,
+        (SELECT COUNT(*) FROM `Tasks` t
+            WHERE t.assigned_to = s.id
+              AND t.status = 'Completed') AS tasks,
+        (SELECT COUNT(*) FROM `Files` f
+            WHERE f.uploader_id = s.id) AS files,
+        (SELECT COUNT(*) FROM `Messages` m
+            WHERE m.sender_id = s.id) AS messages
+    FROM `Group_Members` gm
+    INNER JOIN `Students` s ON s.id = gm.student_id
+    INNER JOIN `Users`    u ON u.id = s.user_id
+    WHERE gm.group_id = ?
+    ORDER BY s.id
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teamId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $memberActivity[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 7. Recent Activity
+// =========================================================
+$activities = array();
+
+$sql = "
+    SELECT
+        a.detail,
+        a.action,
+        a.created_at,
+        u.username AS actor_name
+    FROM `Activities` a
+    LEFT JOIN `Users` u ON u.id = a.actor_id
+    WHERE a.group_id = ?
+    ORDER BY a.created_at DESC
+    LIMIT 10
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teamId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $activities[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 8. 辅助函数
+// =========================================================
+if (!function_exists('formatClass')) {
+    function formatClass($major, $gradeLevel) {
+        $majorShort = 'SE';
+        if (stripos($major, 'Cloud') !== false)       $majorShort = 'CC';
+        elseif (stripos($major, 'Information') !== false) $majorShort = 'IT';
+        elseif (stripos($major, 'Software') !== false)    $majorShort = 'SE';
+
+        if ($gradeLevel >= 12) {
+            $year = $gradeLevel - 12 + 1;
+        } else {
+            $year = $gradeLevel;
+        }
+
+        return $majorShort . '-' . $year . 'B';
+    }
+}
+
+if (!function_exists('timeAgo')) {
+    function timeAgo($datetime) {
+        if (empty($datetime)) return '—';
+        $ts = strtotime($datetime);
+        $diff = time() - $ts;
+
+        if ($diff < 60)         return 'just now';
+        if ($diff < 3600)       return floor($diff / 60) . 'm ago';
+        if ($diff < 86400)      return floor($diff / 3600) . 'h ago';
+        if ($diff < 86400 * 2)  return 'Yesterday';
+        if ($diff < 86400 * 7)  return floor($diff / 86400) . 'd ago';
+        return date('d M Y', $ts);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -90,9 +313,6 @@ $activities = array(
     <link rel="stylesheet" href="teacher.css">
 
     <style>
-        /* =========================================================
-           页面头部
-        ========================================================= */
         .page-head {
             display: flex;
             justify-content: space-between;
@@ -123,9 +343,6 @@ $activities = array(
 
         .back:hover { color: #2c2f36; }
 
-        /* =========================================================
-           两列布局
-        ========================================================= */
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -141,14 +358,11 @@ $activities = array(
             color: #fff;
             font-size: 12px;
             font-weight: 500;
-            letter-spacing: 0.3em;
+            letter-spacing: 0.03em;
         }
 
         .progress-table td:last-child { color: #2c2f36; }
 
-        /* =========================================================
-           Task rows
-        ========================================================= */
         .task-row {
             display: flex;
             justify-content: space-between;
@@ -179,9 +393,6 @@ $activities = array(
             margin-top: 3px;
         }
 
-        /* =========================================================
-           File list
-        ========================================================= */
         .file-list {
             list-style: none;
             font-size: 14px;
@@ -197,9 +408,6 @@ $activities = array(
 
         .file-list li:last-child { border-bottom: none; }
 
-        /* =========================================================
-           Activity list
-        ========================================================= */
         .activity-list {
             list-style: none;
             font-size: 14px;
@@ -214,37 +422,22 @@ $activities = array(
 
         .activity-list li:last-child { border-bottom: none; }
 
-        /* =========================================================
-           Member Activity（替换原来的 Contribution）
-        ========================================================= */
-        .activity-table td {
-            white-space: normal;
-        }
-
-        .activity-table td:first-child {
-            color: #2c2f36;
-        }
-
+        .activity-table td { white-space: normal; }
+        .activity-table td:first-child { color: #2c2f36; }
         .activity-table td:not(:first-child) {
             text-align: right;
             color: #2c2f36;
             font-weight: 500;
         }
-
-        .activity-table th:not(:first-child) {
-            text-align: right;
-        }
+        .activity-table th:not(:first-child) { text-align: right; }
 
         .leader-mark {
             font-size: 11px;
             color: #6b6f78;
             margin-left: 6px;
-            letter-spacing: 0.3em;
+            letter-spacing: 0.03em;
         }
 
-        /* =========================================================
-           响应式
-        ========================================================= */
         @media (max-width: 800px) {
             .info-grid { grid-template-columns: 1fr; gap: 0; }
         }
@@ -308,18 +501,33 @@ $activities = array(
                     <th>Role</th>
                     <th>Tasks Done</th>
                 </tr>
+
+                <?php if (count($members) === 0): ?>
+                    <tr>
+                        <td colspan="5" class="muted" style="text-align: center; padding: 30px;">
+                            No members yet.
+                        </td>
+                    </tr>
+                <?php endif; ?>
+
                 <?php foreach ($members as $m): ?>
                     <tr>
                         <td>
                             <?php echo htmlspecialchars($m['name']); ?>
-                            <?php if (!empty($m['is_leader'])): ?>
+                            <?php if ($m['role'] === 'leader'): ?>
                                 <span class="leader-mark">LEADER</span>
                             <?php endif; ?>
                         </td>
                         <td><?php echo htmlspecialchars($m['student_number']); ?></td>
                         <td><?php echo htmlspecialchars(formatClass($m['major'], $m['grade_level'])); ?></td>
-                        <td><?php echo htmlspecialchars($m['team_role']); ?></td>
-                        <td><?php echo htmlspecialchars($m['tasks_done']); ?></td>
+                        <td>
+                            <?php if ($m['role'] === 'leader'): ?>
+                                <span class="pill">Leader</span>
+                            <?php else: ?>
+                                <span class="muted">Member</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?php echo (int)$m['done_tasks']; ?> / <?php echo (int)$m['total_tasks']; ?></td>
                     </tr>
                 <?php endforeach; ?>
             </table>
@@ -348,15 +556,29 @@ $activities = array(
             </div>
 
             <div>
-                <h2>Division of Work</h2>
+                <h2>Team Details</h2>
                 <div class="card">
                     <table class="progress-table">
-                        <?php foreach ($division as $d): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($d[0]); ?></td>
-                                <td><?php echo htmlspecialchars($d[1]); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <tr>
+                            <td>Team ID</td>
+                            <td>#<?php echo (int)$team['id']; ?></td>
+                        </tr>
+                        <tr>
+                            <td>Max Members</td>
+                            <td><?php echo (int)$team['max_members']; ?></td>
+                        </tr>
+                        <tr>
+                            <td>Current Members</td>
+                            <td><?php echo count($members); ?></td>
+                        </tr>
+                        <tr>
+                            <td>Formed</td>
+                            <td><?php echo $team['formed_at'] ? date('d M Y', strtotime($team['formed_at'])) : '—'; ?></td>
+                        </tr>
+                        <tr>
+                            <td>Last Activity</td>
+                            <td><?php echo timeAgo($lastActivity); ?></td>
+                        </tr>
                     </table>
                 </div>
             </div>
@@ -365,15 +587,25 @@ $activities = array(
         <!-- Tasks -->
         <h2>Tasks</h2>
         <div class="card">
+            <?php if (count($tasks) === 0): ?>
+                <div class="muted" style="text-align: center; padding: 30px;">
+                    No tasks assigned yet.
+                </div>
+            <?php endif; ?>
+
             <?php foreach ($tasks as $t): ?>
                 <div class="task-row">
                     <div>
-                        <div class="task-name"><?php echo htmlspecialchars($t['name']); ?></div>
-                        <div class="task-owner"><?php echo htmlspecialchars($t['owner']); ?></div>
+                        <div class="task-name"><?php echo htmlspecialchars($t['title']); ?></div>
+                        <div class="task-owner">
+                            <?php echo htmlspecialchars($t['owner_name'] ?: '—'); ?>
+                        </div>
                     </div>
                     <div class="task-right">
                         <div><?php echo htmlspecialchars($t['status']); ?></div>
-                        <div class="task-due"><?php echo htmlspecialchars($t['due']); ?></div>
+                        <div class="task-due">
+                            <?php echo $t['due_date'] ? date('d M Y', strtotime($t['due_date'])) : '—'; ?>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -383,19 +615,28 @@ $activities = array(
         <h2>Files</h2>
         <div class="card">
             <ul class="file-list">
+                <?php if (count($files) === 0): ?>
+                    <li class="muted">No files uploaded yet.</li>
+                <?php endif; ?>
+
                 <?php foreach ($files as $f): ?>
                     <li>
                         <span>
-                            <?php echo htmlspecialchars($f['name']); ?>
-                            <span class="muted">· <?php echo htmlspecialchars($f['owner']); ?></span>
+                            <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">
+                                <?php echo htmlspecialchars($f['file_name']); ?>
+                            </a>
+                            <span class="muted">· <?php echo htmlspecialchars($f['owner_name']); ?></span>
                         </span>
-                        <span class="muted"><?php echo htmlspecialchars($f['meta']); ?></span>
+                        <span class="muted">
+                            <?php echo htmlspecialchars($f['file_size']); ?> ·
+                            <?php echo timeAgo($f['uploaded_at']); ?>
+                        </span>
                     </li>
                 <?php endforeach; ?>
             </ul>
         </div>
 
-        <!-- ★ Member Activity（替换原来的 Contribution） -->
+        <!-- Member Activity -->
         <h2>Member Activity</h2>
         <p class="muted" style="margin-bottom: 12px;">
             Objective activity counts only — no scores, no ranking.
@@ -406,14 +647,23 @@ $activities = array(
                     <th>Member</th>
                     <th>Tasks Completed</th>
                     <th>Files Uploaded</th>
-                    <th>Comments</th>
+                    <th>Messages</th>
                 </tr>
+
+                <?php if (count($memberActivity) === 0): ?>
+                    <tr>
+                        <td colspan="4" class="muted" style="text-align: center; padding: 30px;">
+                            No activity yet.
+                        </td>
+                    </tr>
+                <?php endif; ?>
+
                 <?php foreach ($memberActivity as $a): ?>
                     <tr>
                         <td><?php echo htmlspecialchars($a['name']); ?></td>
                         <td><?php echo (int)$a['tasks']; ?></td>
                         <td><?php echo (int)$a['files']; ?></td>
-                        <td><?php echo (int)$a['comments']; ?></td>
+                        <td><?php echo (int)$a['messages']; ?></td>
                     </tr>
                 <?php endforeach; ?>
             </table>
@@ -423,10 +673,19 @@ $activities = array(
         <h2>Activity</h2>
         <div class="card">
             <ul class="activity-list">
+                <?php if (count($activities) === 0): ?>
+                    <li class="muted">No activity yet.</li>
+                <?php endif; ?>
+
                 <?php foreach ($activities as $a): ?>
                     <li>
-                        <span><?php echo htmlspecialchars($a[0]); ?></span>
-                        <span class="muted"><?php echo htmlspecialchars($a[1]); ?></span>
+                        <span>
+                            <?php if (!empty($a['actor_name'])): ?>
+                                <strong><?php echo htmlspecialchars($a['actor_name']); ?></strong>
+                            <?php endif; ?>
+                            <?php echo htmlspecialchars($a['detail']); ?>
+                        </span>
+                        <span class="muted"><?php echo timeAgo($a['created_at']); ?></span>
                     </li>
                 <?php endforeach; ?>
             </ul>

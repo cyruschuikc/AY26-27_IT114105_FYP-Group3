@@ -1,93 +1,213 @@
 <?php
 $active = 'review';
 
-// ===== 假数据 =====
-$summary = array(
-    'pending_files'   => 8,
-    'approved_files'  => 24,
-    'rejected_files'  => 3,
-    'group_requests'  => 5,
-);
+// ===== session + 数据库 =====
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once __DIR__ . '/db.php';
+/** @var mysqli $conn */
 
-$allFiles = array(
-    array('id'=> 1, 'name'=>'Proposal_v2.docx',                'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'2026-10-04', 'size'=>'2.4 MB', 'status'=>'Unviewed'),
-    array('id'=> 2, 'name'=>'Requirement_Analysis.pdf',        'team'=>'Team 01', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'2026-10-03', 'size'=>'1.8 MB', 'status'=>'Accepted'),
-    array('id'=> 3, 'name'=>'UI_Wireframe.fig',                'team'=>'Team 02', 'uploaded_by'=>'MIAO Tung',       'date'=>'2026-10-02', 'size'=>'5.1 MB', 'status'=>'Unviewed'),
-    array('id'=> 4, 'name'=>'Database_Schema.sql',             'team'=>'Team 02', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'2026-10-01', 'size'=>'120 KB', 'status'=>'Accepted'),
-    array('id'=> 5, 'name'=>'API_Spec.pdf',                    'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'2026-09-30', 'size'=>'890 KB', 'status'=>'Rejected'),
-    array('id'=> 6, 'name'=>'Meeting_Minutes_2026-09-28.docx', 'team'=>'Team 03', 'uploaded_by'=>'WONG Mei Ling',   'date'=>'2026-09-28', 'size'=>'240 KB', 'status'=>'Accepted'),
-    array('id'=> 7, 'name'=>'Budget_Plan.xlsx',                'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',    'date'=>'2026-09-26', 'size'=>'310 KB', 'status'=>'Rejected'),
-    array('id'=> 8, 'name'=>'Sprint_Plan_Oct.xlsx',            'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'2026-09-25', 'size'=>'180 KB', 'status'=>'Accepted'),
-    array('id'=> 9, 'name'=>'Research_Notes.pdf',              'team'=>'Team 03', 'uploaded_by'=>'NG Wing Yan',     'date'=>'2026-09-22', 'size'=>'1.1 MB', 'status'=>'Unviewed'),
-    array('id'=>10, 'name'=>'System_Architecture_Diagram.png', 'team'=>'Team 01', 'uploaded_by'=>'MIAO Tung',       'date'=>'2026-09-20', 'size'=>'980 KB', 'status'=>'Accepted'),
-    array('id'=>11, 'name'=>'Testing_Plan_v1.docx',            'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',    'date'=>'2026-09-18', 'size'=>'420 KB', 'status'=>'Rejected'),
-    array('id'=>12, 'name'=>'Client_Requirements.pdf',         'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'2026-09-15', 'size'=>'2.0 MB', 'status'=>'Accepted'),
-);
 
-// 未查看的文件
-$unviewedFiles = array_values(array_filter($allFiles, function ($f) {
-    return $f['status'] === 'Unviewed';
-}));
+// =========================================================
+// 1. 汇总数字
+// =========================================================
 
-// 分组申请
-$groupRequests = array(
-    array(
-        'id'         => 12,
-        'group_name' => 'Team A',
-        'project'    => 'TeamBox',
-        'submitted_by'=>'CHAN Ho Yin',
-        'submitted_at'=>'2 hours ago',
-        'members'    => array(
-            array('name'=>'CHAN Ho Yin',     'class'=>'SE-2B', 'student_number'=>'260222111', 'is_leader'=>1),
-            array('name'=>'CHUI Ka Chun',    'class'=>'SE-2B', 'student_number'=>'260222112', 'is_leader'=>0),
-            array('name'=>'MIAO Tung',       'class'=>'SE-2B', 'student_number'=>'260222114', 'is_leader'=>0),
-            array('name'=>'LAI Ka-Yu Savio', 'class'=>'SE-2B', 'student_number'=>'260222113', 'is_leader'=>0),
-        ),
-    ),
-    array(
-        'id'         => 13,
-        'group_name' => 'Team B',
-        'project'    => 'Smart Attendance',
-        'submitted_by'=>'WONG Mei Ling',
-        'submitted_at'=>'Yesterday',
-        'members'    => array(
-            array('name'=>'WONG Mei Ling', 'class'=>'SE-2A', 'student_number'=>'260222115', 'is_leader'=>1),
-            array('name'=>'LEE Chun Kit',  'class'=>'SE-2A', 'student_number'=>'260222116', 'is_leader'=>0),
-            array('name'=>'NG Wing Yan',   'class'=>'SE-2A', 'student_number'=>'260222117', 'is_leader'=>0),
-        ),
-    ),
-);
+// Pending Files
+$pendingFiles = 0;
+$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files` WHERE status = 'Unviewed'");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $pendingFiles = (int)$rc['c']; mysqli_free_result($rs); }
 
-// ===== 筛选 =====
+// Approved Files
+$approvedFiles = 0;
+$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files` WHERE status = 'Accepted'");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $approvedFiles = (int)$rc['c']; mysqli_free_result($rs); }
+
+// Rejected Files
+$rejectedFiles = 0;
+$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files` WHERE status = 'Rejected'");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $rejectedFiles = (int)$rc['c']; mysqli_free_result($rs); }
+
+// Group Requests
+$groupRequestCount = 0;
+$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Group_Requests` WHERE status = 'Pending'");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $groupRequestCount = (int)$rc['c']; mysqli_free_result($rs); }
+
+
+// =========================================================
+// 2. Tab 1 — All Files（带筛选）
+// =========================================================
 $filterFrom   = isset($_GET['from'])   ? trim($_GET['from'])   : '';
 $filterTo     = isset($_GET['to'])     ? trim($_GET['to'])     : '';
 $filterStatus = isset($_GET['status']) ? trim($_GET['status']) : 'all';
 $filterSearch = isset($_GET['q'])      ? trim($_GET['q'])      : '';
 
-$filteredFiles = array_filter($allFiles, function ($f) use ($filterFrom, $filterTo, $filterStatus, $filterSearch) {
-    if ($filterStatus !== 'all' && strtolower($f['status']) !== strtolower($filterStatus)) {
-        return false;
-    }
-    if ($filterFrom !== '' && $f['date'] < $filterFrom) {
-        return false;
-    }
-    if ($filterTo !== '' && $f['date'] > $filterTo) {
-        return false;
-    }
-    if ($filterSearch !== '') {
-        $hay = strtolower($f['name'] . ' ' . $f['team'] . ' ' . $f['uploaded_by']);
-        if (strpos($hay, strtolower($filterSearch)) === false) {
-            return false;
-        }
-    }
-    return true;
-});
+$where  = array();
+$params = array();
+$types  = '';
 
-$totalFiles    = count($allFiles);
-$filteredCount = count($filteredFiles);
-$rangeText     = 'All dates';
+if ($filterStatus !== 'all' && $filterStatus !== '') {
+    $where[]  = "f.status = ?";
+    $params[] = $filterStatus;
+    $types   .= 's';
+}
+
+if ($filterFrom !== '') {
+    $where[]  = "DATE(f.uploaded_at) >= ?";
+    $params[] = $filterFrom;
+    $types   .= 's';
+}
+
+if ($filterTo !== '') {
+    $where[]  = "DATE(f.uploaded_at) <= ?";
+    $params[] = $filterTo;
+    $types   .= 's';
+}
+
+if ($filterSearch !== '') {
+    $where[]  = "(f.file_name LIKE ? OR g.name LIKE ? OR u.username LIKE ?)";
+    $params[] = '%' . $filterSearch . '%';
+    $params[] = '%' . $filterSearch . '%';
+    $params[] = '%' . $filterSearch . '%';
+    $types   .= 'sss';
+}
+
+$whereSql = count($where) > 0 ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+$allFiles = array();
+
+$sql = "
+    SELECT
+        f.id,
+        f.file_name,
+        f.file_size,
+        f.file_type,
+        f.status,
+        f.uploaded_at,
+        g.id     AS group_id,
+        g.name   AS team_name,
+        p.name   AS project_name,
+        s.id     AS uploader_id,
+        s.student_number,
+        u.username AS uploader_name
+    FROM `Files` f
+    LEFT JOIN `Groups`   g ON g.id = f.group_id
+    LEFT JOIN `Projects` p ON p.id = f.project_id
+    LEFT JOIN `Students` s ON s.id = f.uploader_id
+    LEFT JOIN `Users`    u ON u.id = s.user_id
+    $whereSql
+    ORDER BY f.uploaded_at DESC
+";
+
+if (count($params) > 0) {
+    $stmt = mysqli_prepare($conn, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+        mysqli_stmt_execute($stmt);
+        $rs = mysqli_stmt_get_result($stmt);
+        while ($row = mysqli_fetch_assoc($rs)) { $allFiles[] = $row; }
+        mysqli_stmt_close($stmt);
+    }
+} else {
+    $rs = mysqli_query($conn, $sql);
+    if ($rs) {
+        while ($row = mysqli_fetch_assoc($rs)) { $allFiles[] = $row; }
+        mysqli_free_result($rs);
+    }
+}
+
+$totalFiles = 0;
+$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files`");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $totalFiles = (int)$rc['c']; mysqli_free_result($rs); }
+
+$filteredCount = count($allFiles);
+
+$rangeText = 'All dates';
 if ($filterFrom !== '' || $filterTo !== '') {
     $rangeText = ($filterFrom !== '' ? $filterFrom : '…') . ' – ' . ($filterTo !== '' ? $filterTo : '…');
+}
+
+
+// =========================================================
+// 3. Tab 2 — Unviewed Files
+// =========================================================
+$unviewedFiles = array();
+
+$sql = "
+    SELECT
+        f.id,
+        f.file_name,
+        f.file_size,
+        f.file_type,
+        f.uploaded_at,
+        g.name     AS team_name,
+        u.username AS uploader_name
+    FROM `Files` f
+    LEFT JOIN `Groups`   g ON g.id = f.group_id
+    LEFT JOIN `Students` s ON s.id = f.uploader_id
+    LEFT JOIN `Users`    u ON u.id = s.user_id
+    WHERE f.status = 'Unviewed'
+    ORDER BY f.uploaded_at DESC
+";
+
+$rs = mysqli_query($conn, $sql);
+if ($rs) {
+    while ($row = mysqli_fetch_assoc($rs)) { $unviewedFiles[] = $row; }
+    mysqli_free_result($rs);
+}
+
+
+// =========================================================
+// 4. Tab 3 — Group Requests
+// =========================================================
+$groupRequests = array();
+
+$sql = "
+    SELECT
+        r.id,
+        r.group_name,
+        r.status,
+        r.submitted_at,
+        p.name AS project_name,
+        u.username AS submitted_by_name
+    FROM `Group_Requests` r
+    LEFT JOIN `Projects` p ON p.id = r.project_id
+    LEFT JOIN `Students` s ON s.id = r.submitted_by
+    LEFT JOIN `Users`    u ON u.id = s.user_id
+    WHERE r.status = 'Pending'
+    ORDER BY r.submitted_at DESC
+";
+
+$rs = mysqli_query($conn, $sql);
+if ($rs) {
+    while ($row = mysqli_fetch_assoc($rs)) {
+
+        // 拿成员
+        $members = array();
+        $stmt = mysqli_prepare($conn, "
+            SELECT
+                s.id AS student_id,
+                s.student_number,
+                u.username AS name,
+                rm.is_leader
+            FROM `Request_Members` rm
+            INNER JOIN `Students` s ON s.id = rm.student_id
+            INNER JOIN `Users`    u ON u.id = s.user_id
+            WHERE rm.request_id = ?
+            ORDER BY rm.is_leader DESC, s.id
+        ");
+        mysqli_stmt_bind_param($stmt, "i", $row['id']);
+        mysqli_stmt_execute($stmt);
+        $rsM = mysqli_stmt_get_result($stmt);
+        while ($m = mysqli_fetch_assoc($rsM)) {
+            $members[] = $m;
+        }
+        mysqli_stmt_close($stmt);
+
+        $row['members'] = $members;
+        $groupRequests[] = $row;
+    }
+    mysqli_free_result($rs);
 }
 ?>
 <!DOCTYPE html>
@@ -99,7 +219,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
     <link rel="stylesheet" href="teacher.css">
 
     <style>
-        /* Tabs */
+        /* ===== Tabs ===== */
         .tabs {
             display: flex;
             flex-wrap: wrap;
@@ -148,7 +268,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
 
-        /* Filter bar */
+        /* ===== Filter bar ===== */
         .filter-bar {
             display: flex;
             flex-wrap: wrap;
@@ -171,7 +291,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
             font-size: 12px;
             color: #6b6f78;
             font-weight: 500;
-            letter-spacing: 0.03em;   /* ★ 改：0.3px → 0.03em */
+            letter-spacing: 0.03em;
         }
 
         .filter-field input,
@@ -218,7 +338,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
 
         .btn-secondary:hover { background: #f2f7fd; }
 
-        /* Result info */
+        /* ===== Result info ===== */
         .result-info {
             font-size: 13px;
             color: #6b6f78;
@@ -231,7 +351,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
 
         .result-info .range-text { color: #8b8f98; }
 
-        /* File table */
+        /* ===== File table ===== */
         .file-table { table-layout: auto; }
 
         .file-table th,
@@ -262,9 +382,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
             white-space: nowrap;
         }
 
-        /* =========================================================
-           Status pill（固定显示）
-        ========================================================= */
+        /* ===== Status pill ===== */
         .status-pill {
             display: inline-block;
             padding: 4px 12px;
@@ -292,7 +410,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
             border: 1px solid #e6a0a0;
         }
 
-        /* Group Request card */
+        /* ===== Group Request card ===== */
         .request-card {
             border: 1px solid #e6e8eb;
             border-left: 4px solid #175196;
@@ -360,7 +478,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
             gap: 10px;
         }
 
-        /* Responsive */
+        /* ===== Responsive ===== */
         @media (max-width: 900px) {
             .filter-bar { flex-direction: column; align-items: stretch; }
             .filter-field.search input,
@@ -382,9 +500,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
 
 <?php include 'teacher_nav.php'; ?>
 
-<!-- ============================================================
-     静态检查识别用：status-pill 示例（不显示）
-     ============================================================ -->
+<!-- 静态检查识别用：status-pill 示例（不显示） -->
 <span class="status-pill unviewed" hidden></span>
 <span class="status-pill accepted" hidden></span>
 <span class="status-pill rejected" hidden></span>
@@ -399,19 +515,19 @@ if ($filterFrom !== '' || $filterTo !== '') {
         <div class="summary-grid">
             <div class="summary-item">
                 <div class="label">Pending Files</div>
-                <div class="value"><?php echo $summary['pending_files']; ?></div>
+                <div class="value"><?php echo $pendingFiles; ?></div>
             </div>
             <div class="summary-item">
                 <div class="label">Approved Files</div>
-                <div class="value"><?php echo $summary['approved_files']; ?></div>
+                <div class="value"><?php echo $approvedFiles; ?></div>
             </div>
             <div class="summary-item">
                 <div class="label">Rejected Files</div>
-                <div class="value"><?php echo $summary['rejected_files']; ?></div>
+                <div class="value"><?php echo $rejectedFiles; ?></div>
             </div>
             <div class="summary-item">
                 <div class="label">Group Requests</div>
-                <div class="value"><?php echo $summary['group_requests']; ?></div>
+                <div class="value"><?php echo $groupRequestCount; ?></div>
             </div>
         </div>
 
@@ -461,9 +577,9 @@ if ($filterFrom !== '' || $filterTo !== '') {
                     <label for="status">Status</label>
                     <select id="status" name="status">
                         <option value="all"      <?php echo $filterStatus==='all'?'selected':''; ?>>All Status</option>
-                        <option value="unviewed" <?php echo $filterStatus==='unviewed'?'selected':''; ?>>Unviewed</option>
-                        <option value="accepted" <?php echo $filterStatus==='accepted'?'selected':''; ?>>Accepted</option>
-                        <option value="rejected" <?php echo $filterStatus==='rejected'?'selected':''; ?>>Rejected</option>
+                        <option value="Unviewed" <?php echo $filterStatus==='Unviewed'?'selected':''; ?>>Unviewed</option>
+                        <option value="Accepted" <?php echo $filterStatus==='Accepted'?'selected':''; ?>>Accepted</option>
+                        <option value="Rejected" <?php echo $filterStatus==='Rejected'?'selected':''; ?>>Rejected</option>
                     </select>
                 </div>
 
@@ -504,20 +620,20 @@ if ($filterFrom !== '' || $filterTo !== '') {
                         </tr>
                     <?php endif; ?>
 
-                    <?php foreach ($filteredFiles as $f): ?>
+                    <?php foreach ($allFiles as $f): ?>
                         <?php $statusLower = strtolower($f['status']); ?>
                         <tr>
                             <td class="file-name-cell">
                                 <a href="file_view.php?id=<?php echo (int)$f['id']; ?>"
                                    class="file-name-link"
-                                   title="<?php echo htmlspecialchars($f['name']); ?>">
-                                    <?php echo htmlspecialchars($f['name']); ?>
+                                   title="<?php echo htmlspecialchars($f['file_name']); ?>">
+                                    <?php echo htmlspecialchars($f['file_name']); ?>
                                 </a>
                             </td>
-                            <td><?php echo htmlspecialchars($f['team']); ?></td>
-                            <td><?php echo htmlspecialchars($f['uploaded_by']); ?></td>
-                            <td class="muted"><?php echo htmlspecialchars($f['date']); ?></td>
-                            <td class="muted"><?php echo htmlspecialchars($f['size']); ?></td>
+                            <td><?php echo htmlspecialchars($f['team_name']); ?></td>
+                            <td><?php echo htmlspecialchars($f['uploader_name']); ?></td>
+                            <td class="muted"><?php echo date('Y-m-d', strtotime($f['uploaded_at'])); ?></td>
+                            <td class="muted"><?php echo htmlspecialchars($f['file_size']); ?></td>
                             <td>
                                 <span class="status-pill <?php echo $statusLower; ?>">
                                     <?php echo htmlspecialchars($f['status']); ?>
@@ -530,7 +646,6 @@ if ($filterFrom !== '' || $filterTo !== '') {
                             </td>
                         </tr>
                     <?php endforeach; ?>
-
                 </table>
             </div>
 
@@ -571,20 +686,19 @@ if ($filterFrom !== '' || $filterTo !== '') {
                             <td class="file-name-cell">
                                 <a href="file_view.php?id=<?php echo (int)$f['id']; ?>"
                                    class="file-name-link"
-                                   title="<?php echo htmlspecialchars($f['name']); ?>">
-                                    <?php echo htmlspecialchars($f['name']); ?>
+                                   title="<?php echo htmlspecialchars($f['file_name']); ?>">
+                                    <?php echo htmlspecialchars($f['file_name']); ?>
                                 </a>
                             </td>
-                            <td><?php echo htmlspecialchars($f['team']); ?></td>
-                            <td><?php echo htmlspecialchars($f['uploaded_by']); ?></td>
-                            <td class="muted"><?php echo htmlspecialchars($f['date']); ?></td>
-                            <td class="muted"><?php echo htmlspecialchars($f['size']); ?></td>
+                            <td><?php echo htmlspecialchars($f['team_name']); ?></td>
+                            <td><?php echo htmlspecialchars($f['uploader_name']); ?></td>
+                            <td class="muted"><?php echo date('Y-m-d', strtotime($f['uploaded_at'])); ?></td>
+                            <td class="muted"><?php echo htmlspecialchars($f['file_size']); ?></td>
                             <td>
                                 <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">Review</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
-
                 </table>
             </div>
 
@@ -601,6 +715,14 @@ if ($filterFrom !== '' || $filterTo !== '') {
                 after the teacher accepts the request.
             </p>
 
+            <?php if (count($groupRequests) === 0): ?>
+                <div class="card">
+                    <div class="muted" style="text-align: center; padding: 30px;">
+                        No pending group requests.
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <?php foreach ($groupRequests as $req): ?>
                 <div class="request-card">
 
@@ -610,13 +732,13 @@ if ($filterFrom !== '' || $filterTo !== '') {
                                 <?php echo htmlspecialchars($req['group_name']); ?>
                                 ·
                                 <span class="muted" style="font-weight: normal;">
-                                    <?php echo htmlspecialchars($req['project']); ?>
+                                    <?php echo htmlspecialchars($req['project_name']); ?>
                                 </span>
                             </h3>
                             <div class="request-meta">
-                                Request #<?php echo $req['id']; ?> ·
-                                Submitted by <?php echo htmlspecialchars($req['submitted_by']); ?> ·
-                                <?php echo htmlspecialchars($req['submitted_at']); ?>
+                                Request #<?php echo (int)$req['id']; ?> ·
+                                Submitted by <?php echo htmlspecialchars($req['submitted_by_name']); ?> ·
+                                <?php echo date('Y-m-d H:i', strtotime($req['submitted_at'])); ?>
                             </div>
                         </div>
                         <span class="pill">Pending Review</span>
@@ -626,17 +748,15 @@ if ($filterFrom !== '' || $filterTo !== '') {
                         <table>
                             <tr>
                                 <th>Name</th>
-                                <th>Class</th>
                                 <th>Student ID</th>
                                 <th>Role</th>
                             </tr>
                             <?php foreach ($req['members'] as $m): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($m['name']); ?></td>
-                                    <td><?php echo htmlspecialchars($m['class']); ?></td>
                                     <td><?php echo htmlspecialchars($m['student_number']); ?></td>
                                     <td>
-                                        <?php if ($m['is_leader']): ?>
+                                        <?php if ((int)$m['is_leader'] === 1): ?>
                                             <span class="pill">Leader</span>
                                         <?php else: ?>
                                             <span class="muted">Member</span>

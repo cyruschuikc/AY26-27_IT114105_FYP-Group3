@@ -1,4 +1,148 @@
-<?php $active = 'files'; ?>
+<?php
+$active = 'files';
+
+// ===== session + 数据库 =====
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once __DIR__ . '/db.php';
+/** @var mysqli $conn */
+
+
+// =========================================================
+// 1. 汇总数字
+// =========================================================
+
+// Total Files
+$totalFiles = 0;
+$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files`");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $totalFiles = (int)$rc['c']; mysqli_free_result($rs); }
+
+// This Week（过去 7 天）
+$thisWeek = 0;
+$rs = mysqli_query($conn, "
+    SELECT COUNT(*) AS c FROM `Files`
+    WHERE uploaded_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $thisWeek = (int)$rc['c']; mysqli_free_result($rs); }
+
+// Teams Active（有文件的小组数）
+$teamsActive = 0;
+$rs = mysqli_query($conn, "
+    SELECT COUNT(DISTINCT group_id) AS c FROM `Files`
+");
+if ($rs) { $rc = mysqli_fetch_assoc($rs); $teamsActive = (int)$rc['c']; mysqli_free_result($rs); }
+
+// Storage Used（把 file_size 加起来 — 我们的 file_size 是字符串 "2.4 MB"，需要解析）
+$storageUsedBytes = 0;
+$rs = mysqli_query($conn, "SELECT file_size FROM `Files`");
+if ($rs) {
+    while ($row = mysqli_fetch_assoc($rs)) {
+        $storageUsedBytes += parseSizeToBytes($row['file_size']);
+    }
+    mysqli_free_result($rs);
+}
+$storageUsed = formatBytes($storageUsedBytes);
+
+
+// =========================================================
+// 2. Recent Uploads（最近 10 条）
+// =========================================================
+$recentUploads = array();
+
+$sql = "
+    SELECT
+        f.id,
+        f.file_name,
+        f.file_size,
+        f.uploaded_at,
+        g.name     AS team_name,
+        u.username AS uploader_name
+    FROM `Files` f
+    LEFT JOIN `Groups`   g ON g.id = f.group_id
+    LEFT JOIN `Students` s ON s.id = f.uploader_id
+    LEFT JOIN `Users`    u ON u.id = s.user_id
+    ORDER BY f.uploaded_at DESC
+    LIMIT 10
+";
+
+$rs = mysqli_query($conn, $sql);
+if ($rs) {
+    while ($row = mysqli_fetch_assoc($rs)) { $recentUploads[] = $row; }
+    mysqli_free_result($rs);
+}
+
+
+// =========================================================
+// 3. Filter by Team（每个 team 的文件数 + 最近上传时间）
+// =========================================================
+$teamFiles = array();
+
+$sql = "
+    SELECT
+        g.id           AS group_id,
+        g.name         AS team_name,
+        COUNT(f.id)    AS file_count,
+        MAX(f.uploaded_at) AS last_upload
+    FROM `Groups` g
+    LEFT JOIN `Files` f ON f.group_id = g.id
+    GROUP BY g.id, g.name
+    HAVING file_count > 0
+    ORDER BY file_count DESC, g.id
+";
+
+$rs = mysqli_query($conn, $sql);
+if ($rs) {
+    while ($row = mysqli_fetch_assoc($rs)) { $teamFiles[] = $row; }
+    mysqli_free_result($rs);
+}
+
+
+// =========================================================
+// 4. 辅助函数
+// =========================================================
+if (!function_exists('timeAgo')) {
+    function timeAgo($datetime) {
+        if (empty($datetime)) return '—';
+        $ts = strtotime($datetime);
+        $diff = time() - $ts;
+
+        if ($diff < 60)         return 'just now';
+        if ($diff < 3600)       return floor($diff / 60) . 'm ago';
+        if ($diff < 86400)      return floor($diff / 3600) . 'h ago';
+        if ($diff < 86400 * 2)  return 'Yesterday';
+        if ($diff < 86400 * 7)  return floor($diff / 86400) . 'd ago';
+        return date('d M Y', $ts);
+    }
+}
+
+if (!function_exists('parseSizeToBytes')) {
+    function parseSizeToBytes($size) {
+        if (empty($size)) return 0;
+        if (is_numeric($size)) return (int)$size;
+
+        // 解析 "2.4 MB" / "120 KB" / "980 B" 等
+        $size = strtoupper(trim($size));
+        $num  = (float)$size;
+
+        if (strpos($size, 'GB') !== false) return (int)($num * 1024 * 1024 * 1024);
+        if (strpos($size, 'MB') !== false) return (int)($num * 1024 * 1024);
+        if (strpos($size, 'KB') !== false) return (int)($num * 1024);
+        if (strpos($size, 'B')  !== false) return (int)$num;
+
+        return (int)$num;
+    }
+}
+
+if (!function_exists('formatBytes')) {
+    function formatBytes($bytes) {
+        if ($bytes < 1024)               return $bytes . ' B';
+        if ($bytes < 1024 * 1024)        return round($bytes / 1024, 1) . ' KB';
+        if ($bytes < 1024 * 1024 * 1024) return round($bytes / 1024 / 1024, 1) . ' MB';
+        return round($bytes / 1024 / 1024 / 1024, 2) . ' GB';
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,25 +161,27 @@
         <h1>Files</h1>
         <p class="subtitle">All project files uploaded by your teams</p>
 
+        <!-- Summary -->
         <div class="summary-grid">
             <div class="summary-item">
                 <div class="label">Total Files</div>
-                <div class="value">48</div>
+                <div class="value"><?php echo $totalFiles; ?></div>
             </div>
             <div class="summary-item">
                 <div class="label">This Week</div>
-                <div class="value">12</div>
+                <div class="value"><?php echo $thisWeek; ?></div>
             </div>
             <div class="summary-item">
                 <div class="label">Teams Active</div>
-                <div class="value">3</div>
+                <div class="value"><?php echo $teamsActive; ?></div>
             </div>
             <div class="summary-item">
                 <div class="label">Storage Used</div>
-                <div class="value">2.4 GB</div>
+                <div class="value"><?php echo htmlspecialchars($storageUsed); ?></div>
             </div>
         </div>
 
+        <!-- Recent Uploads -->
         <h2>Recent Uploads</h2>
         <div class="card">
             <table>
@@ -47,41 +193,39 @@
                     <th>Date</th>
                     <th></th>
                 </tr>
-                <tr>
-                    <td>Proposal_v2.docx</td>
-                    <td>Team 01</td>
-                    <td>CHAN Ho Yin</td>
-                    <td>2.4 MB</td>
-                    <td>Today 10:42</td>
-                    <td><a href="#" class="link">Download</a></td>
-                </tr>
-                <tr>
-                    <td>Requirement_Analysis.pdf</td>
-                    <td>Team 01</td>
-                    <td>LAI Ka-Yu Savio</td>
-                    <td>1.8 MB</td>
-                    <td>Yesterday</td>
-                    <td><a href="#" class="link">Download</a></td>
-                </tr>
-                <tr>
-                    <td>UI_Wireframe.fig</td>
-                    <td>Team 01</td>
-                    <td>MIAO Tung</td>
-                    <td>5.1 MB</td>
-                    <td>2 days ago</td>
-                    <td><a href="#" class="link">Download</a></td>
-                </tr>
-                <tr>
-                    <td>Database_Schema.sql</td>
-                    <td>Team 02</td>
-                    <td>LAI Ka-Yu Savio</td>
-                    <td>120 KB</td>
-                    <td>3 days ago</td>
-                    <td><a href="#" class="link">Download</a></td>
-                </tr>
+
+                <?php if (count($recentUploads) === 0): ?>
+                    <tr>
+                        <td colspan="6" class="muted" style="text-align: center; padding: 30px;">
+                            No files uploaded yet.
+                        </td>
+                    </tr>
+                <?php endif; ?>
+
+                <?php foreach ($recentUploads as $f): ?>
+                    <tr>
+                        <td>
+                            <a href="file_view.php?id=<?php echo (int)$f['id']; ?>"
+                               class="file-name-link"
+                               title="<?php echo htmlspecialchars($f['file_name']); ?>">
+                                <?php echo htmlspecialchars($f['file_name']); ?>
+                            </a>
+                        </td>
+                        <td><?php echo htmlspecialchars($f['team_name']); ?></td>
+                        <td><?php echo htmlspecialchars($f['uploader_name']); ?></td>
+                        <td class="muted"><?php echo htmlspecialchars($f['file_size']); ?></td>
+                        <td class="muted"><?php echo timeAgo($f['uploaded_at']); ?></td>
+                        <td>
+                            <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">View</a>
+                            &nbsp;·&nbsp;
+                            <a href="#" class="link">Download</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
             </table>
         </div>
 
+        <!-- Filter by Team -->
         <h2>Filter by Team</h2>
         <div class="card">
             <table>
@@ -91,24 +235,26 @@
                     <th>Last Upload</th>
                     <th></th>
                 </tr>
-                <tr>
-                    <td>Team 01</td>
-                    <td>8</td>
-                    <td>Today 10:42</td>
-                    <td><a href="#" class="link">Open</a></td>
-                </tr>
-                <tr>
-                    <td>Team 02</td>
-                    <td>5</td>
-                    <td>Yesterday</td>
-                    <td><a href="#" class="link">Open</a></td>
-                </tr>
-                <tr>
-                    <td>Team 03</td>
-                    <td>2</td>
-                    <td>5 days ago</td>
-                    <td><a href="#" class="link">Open</a></td>
-                </tr>
+
+                <?php if (count($teamFiles) === 0): ?>
+                    <tr>
+                        <td colspan="4" class="muted" style="text-align: center; padding: 30px;">
+                            No team has uploaded any files yet.
+                        </td>
+                    </tr>
+                <?php endif; ?>
+
+                <?php foreach ($teamFiles as $t): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($t['team_name']); ?></td>
+                        <td><?php echo (int)$t['file_count']; ?></td>
+                        <td class="muted"><?php echo timeAgo($t['last_upload']); ?></td>
+                        <td>
+                            <a href="teacher_review.php?q=<?php echo urlencode($t['team_name']); ?>"
+                               class="link">Open</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
             </table>
         </div>
 

@@ -1,101 +1,267 @@
 <?php
 $active = 'projects';
 
+// ===== session + 数据库 =====
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once __DIR__ . '/db.php';
+/** @var mysqli $conn */
+
 $projectId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 
-// ===== 假数据 =====
-$project = array(
-    'id'          => $projectId,
-    'name'        => 'TeamBox',
-    'category'    => 'Software Engineering',
-    'supervisor'  => 'Esther Yuen',
-    'period_start'=> '2026-09-01',
-    'period_end'  => '2027-04-30',
-    'status'      => 'Executing',
-    'description' => 'A cross-platform collaboration and management system for student project teams, featuring task tracking, file sharing, group chat and contribution analysis.',
-    'progress'    => 60,
-);
 
-$teams = array(
-    array('id'=>1, 'name'=>'Team 01', 'leader'=>'CHAN Ho Yin',     'members'=>'4 / 4', 'progress'=>'3 / 5', 'status'=>'Executing'),
-    array('id'=>2, 'name'=>'Team 02', 'leader'=>'LAI Ka-Yu Savio', 'members'=>'4 / 4', 'progress'=>'1 / 5', 'status'=>'Voting'),
-);
+// =========================================================
+// 1. Project 基本信息
+// =========================================================
+$project = null;
 
-$milestones = array(
-    array('name'=>'Requirement Analysis',    'start'=>'2026-09-01', 'end'=>'2026-10-05', 'status'=>'Completed',   'progress'=>100),
-    array('name'=>'System Design',           'start'=>'2026-10-06', 'end'=>'2026-10-20', 'status'=>'Completed',   'progress'=>100),
-    array('name'=>'Core Development',        'start'=>'2026-10-21', 'end'=>'2027-01-15', 'status'=>'In Progress', 'progress'=>55),
-    array('name'=>'Testing & Documentation', 'start'=>'2027-01-16', 'end'=>'2027-03-20', 'status'=>'Pending',     'progress'=>0),
-    array('name'=>'Final Presentation',      'start'=>'2027-03-21', 'end'=>'2027-04-30', 'status'=>'Pending',     'progress'=>0),
-);
+$sql = "
+    SELECT
+        p.id,
+        p.name,
+        p.category,
+        p.status,
+        p.progress,
+        p.period_start,
+        p.period_end,
+        p.description,
+        u.username AS supervisor_name
+    FROM `Projects` p
+    LEFT JOIN `Teachers` t ON t.id = p.supervisor_id
+    LEFT JOIN `Users`    u ON u.id = t.user_id
+    WHERE p.id = ?
+    LIMIT 1
+";
 
-$tasks = array(
-    array('name'=>'Complete Project Proposal', 'team'=>'Team 01', 'owner'=>'CHAN Ho Yin · CHUI Ka Chun', 'status'=>'Completed',   'due'=>'30 Sep 2026'),
-    array('name'=>'Requirement Analysis',      'team'=>'Team 01', 'owner'=>'LAI Ka-Yu Savio',            'status'=>'Completed',   'due'=>'05 Oct 2026'),
-    array('name'=>'Create System Interface',   'team'=>'Team 01', 'owner'=>'MIAO Tung',                  'status'=>'In Progress', 'due'=>'10 Oct 2026'),
-    array('name'=>'Database Schema Design',    'team'=>'Team 02', 'owner'=>'LAI Ka-Yu Savio',            'status'=>'Pending',     'due'=>'15 Oct 2026'),
-    array('name'=>'Android Prototype',         'team'=>'Team 02', 'owner'=>'CHUI Ka Chun',               'status'=>'Pending',     'due'=>'25 Oct 2026'),
-);
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $projectId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$project = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
 
-$fileGroups = array(
-    array(
-        'team'       => 'Team 01',
-        'team_id'    => 1,
-        'file_count' => 12,
-        'total_size' => '24.8 MB',
-        'last_upload'=> 'Proposal_v2.docx · 10:42 today',
-        'items'      => array(
-            array('name'=>'Proposal_v2.docx',         'owner'=>'CHAN Ho Yin',     'meta'=>'2.4 MB · 10:42 today'),
-            array('name'=>'Requirement_Analysis.pdf', 'owner'=>'LAI Ka-Yu Savio', 'meta'=>'1.8 MB · Yesterday'),
-            array('name'=>'UI_Wireframe.fig',         'owner'=>'MIAO Tung',       'meta'=>'5.1 MB · 2 days ago'),
-        ),
-    ),
-    array(
-        'team'       => 'Team 02',
-        'team_id'    => 2,
-        'file_count' => 5,
-        'total_size' => '8.2 MB',
-        'last_upload'=> 'Database_Schema.sql · 3 days ago',
-        'items'      => array(
-            array('name'=>'Database_Schema.sql', 'owner'=>'LAI Ka-Yu Savio', 'meta'=>'120 KB · 3 days ago'),
-            array('name'=>'API_Spec.pdf',        'owner'=>'CHUI Ka Chun',    'meta'=>'890 KB · 4 days ago'),
-        ),
-    ),
-);
+if (!$project) {
+    header('Location: teacher_projects.php');
+    exit;
+}
 
-$activities = array(
-    array('Team 01 uploaded Proposal_v2.docx',                     '10:42'),
-    array('LAI Ka-Yu Savio marked Requirement Analysis complete',  '09:20'),
-    array('MIAO Tung commented on UI_Wireframe',                   'Yesterday'),
-    array('Project progress updated to 60%',                       '2 days ago'),
-);
+$project['supervisor'] = $project['supervisor_name'];
 
-// ===== 甘特图计算 =====
+
+// =========================================================
+// 2. Teams
+// =========================================================
+$teams = array();
+
+$sql = "
+    SELECT
+        g.id,
+        g.name,
+        g.status,
+        g.max_members,
+        u.username AS leader_name,
+        (SELECT COUNT(*) FROM `Group_Members` gm WHERE gm.group_id = g.id) AS member_count,
+        (SELECT COUNT(*) FROM `Tasks` t
+            WHERE t.group_id = g.id AND t.status = 'Completed') AS done_tasks,
+        (SELECT COUNT(*) FROM `Tasks` t2
+            WHERE t2.group_id = g.id) AS total_tasks
+    FROM `Groups` g
+    LEFT JOIN `Students` s ON s.id = g.leader_id
+    LEFT JOIN `Users`    u ON u.id = s.user_id
+    WHERE g.project_id = ?
+    ORDER BY g.id
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $projectId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $teams[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 3. Milestones
+// =========================================================
+$milestones = array();
+
+$sql = "
+    SELECT
+        id,
+        name,
+        start_date,
+        end_date,
+        status,
+        progress
+    FROM `Milestones`
+    WHERE project_id = ?
+    ORDER BY start_date
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $projectId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $milestones[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 4. Tasks
+// =========================================================
+$tasks = array();
+
+$sql = "
+    SELECT
+        t.title,
+        t.status,
+        t.due_date,
+        g.name     AS team_name,
+        u.username AS owner_name
+    FROM `Tasks` t
+    LEFT JOIN `Groups`   g ON g.id = t.group_id
+    LEFT JOIN `Students` s ON s.id = t.assigned_to
+    LEFT JOIN `Users`    u ON u.id = s.user_id
+    WHERE t.project_id = ?
+    ORDER BY
+        CASE t.status
+            WHEN 'In Progress' THEN 1
+            WHEN 'Pending'     THEN 2
+            WHEN 'Completed'   THEN 3
+            ELSE 4
+        END,
+        t.due_date
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $projectId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $tasks[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 5. Files by Team
+// =========================================================
+$fileGroups = array();
+
+foreach ($teams as $t) {
+
+    $fileCount = 0;
+    $stmt = mysqli_prepare($conn, "SELECT COUNT(*) AS c FROM `Files` WHERE group_id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $t['id']);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rc = mysqli_fetch_assoc($rs);
+    $fileCount = (int)$rc['c'];
+    mysqli_stmt_close($stmt);
+
+    if ($fileCount === 0) {
+        continue;
+    }
+
+    $items = array();
+    $stmt = mysqli_prepare($conn, "
+        SELECT
+            f.file_name,
+            f.file_size,
+            f.uploaded_at,
+            u.username AS owner_name
+        FROM `Files` f
+        LEFT JOIN `Students` s ON s.id = f.uploader_id
+        LEFT JOIN `Users`    u ON u.id = s.user_id
+        WHERE f.group_id = ?
+        ORDER BY f.uploaded_at DESC
+        LIMIT 3
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $t['id']);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    while ($row = mysqli_fetch_assoc($rs)) {
+        $items[] = $row;
+    }
+    mysqli_stmt_close($stmt);
+
+    $lastUpload = '—';
+    if (count($items) > 0) {
+        $lastUpload = $items[0]['file_name'] . ' · ' . timeAgo($items[0]['uploaded_at']);
+    }
+
+    $fileGroups[] = array(
+            'team'        => $t['name'],
+            'team_id'     => $t['id'],
+            'file_count'  => $fileCount,
+            'total_size'  => '—',
+            'last_upload' => $lastUpload,
+            'items'       => $items,
+    );
+}
+
+
+// =========================================================
+// 6. Activities
+// =========================================================
+$activities = array();
+
+$sql = "
+    SELECT
+        a.detail,
+        a.created_at,
+        u.username AS actor_name
+    FROM `Activities` a
+    LEFT JOIN `Users` u ON u.id = a.actor_id
+    WHERE a.project_id = ?
+    ORDER BY a.created_at DESC
+    LIMIT 10
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $projectId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $activities[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 7. 甘特图计算
+// =========================================================
 $projStart = strtotime($project['period_start']);
 $projEnd   = strtotime($project['period_end']);
 $projSpan  = $projEnd - $projStart;
 if ($projSpan <= 0) { $projSpan = 1; }
 
 foreach ($milestones as &$m) {
-    $ms = strtotime($m['start']);
-    $me = strtotime($m['end']);
+    $ms = strtotime($m['start_date']);
+    $me = strtotime($m['end_date']);
     $m['offset'] = (($ms - $projStart) / $projSpan) * 100;
     $m['width']  = (($me - $ms) / $projSpan) * 100;
     if ($m['width'] < 2) { $m['width'] = 2; }
 
     $today = strtotime(date('Y-m-d'));
     $m['is_late'] = ($today > $me && $m['status'] !== 'Completed');
+
+    $m['start'] = $m['start_date'];
+    $m['end']   = $m['end_date'];
 }
 unset($m);
 
-// ===== today 红线 =====
 $todayTs      = strtotime(date('Y-m-d'));
 $todayPercent = (($todayTs - $projStart) / $projSpan) * 100;
 if ($todayPercent < 0)   { $todayPercent = 0; }
 if ($todayPercent > 100) { $todayPercent = 100; }
 $todayInRange = ($todayTs >= $projStart && $todayTs <= $projEnd);
 
-// ===== 顶部月份刻度 =====
 $monthTicks = array();
 $cursor = strtotime(date('Y-m-01', $projStart));
 $lastMonth = date('Y-m', $projEnd);
@@ -105,18 +271,47 @@ while (date('Y-m', $cursor) <= $lastMonth) {
     $percent    = (($monthStart - $projStart) / $projSpan) * 100;
 
     $monthTicks[] = array(
-        'label'   => date('M', $cursor),
-        'year'    => date('Y', $cursor),
-        'percent' => $percent,
+            'label'   => date('M', $cursor),
+            'year'    => date('Y', $cursor),
+            'percent' => $percent,
     );
 
     $cursor = strtotime('+1 month', $cursor);
 }
 
-// ===== 延期计数 =====
 $lateCount = 0;
 foreach ($milestones as $m) {
     if (!empty($m['is_late'])) { $lateCount++; }
+}
+
+
+// =========================================================
+// 8. 完成 / 总任务
+// =========================================================
+$doneTasks  = 0;
+$totalTasks = 0;
+foreach ($tasks as $t) {
+    $totalTasks++;
+    if ($t['status'] === 'Completed') { $doneTasks++; }
+}
+
+
+// =========================================================
+// 9. 辅助函数
+// =========================================================
+if (!function_exists('timeAgo')) {
+    function timeAgo($datetime) {
+        if (empty($datetime)) return '—';
+        $ts = strtotime($datetime);
+        $diff = time() - $ts;
+
+        if ($diff < 60)         return 'just now';
+        if ($diff < 3600)       return floor($diff / 60) . 'm ago';
+        if ($diff < 86400)      return floor($diff / 3600) . 'h ago';
+        if ($diff < 86400 * 2)  return 'Yesterday';
+        if ($diff < 86400 * 7)  return floor($diff / 86400) . 'd ago';
+        return date('d M Y', $ts);
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -128,9 +323,6 @@ foreach ($milestones as $m) {
     <link rel="stylesheet" href="teacher.css">
 
     <style>
-        /* =========================================================
-           页面头部
-        ========================================================= */
         .page-head {
             display: flex;
             justify-content: space-between;
@@ -161,9 +353,6 @@ foreach ($milestones as $m) {
 
         .back:hover { color: #2c2f36; }
 
-        /* =========================================================
-           两列布局
-        ========================================================= */
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -179,14 +368,11 @@ foreach ($milestones as $m) {
             color: #fff;
             font-size: 12px;
             font-weight: 500;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.03em;
         }
 
         .progress-table td:last-child { color: #2c2f36; }
 
-        /* =========================================================
-           Task rows
-        ========================================================= */
         .task-row {
             display: flex;
             justify-content: space-between;
@@ -217,9 +403,6 @@ foreach ($milestones as $m) {
             margin-top: 3px;
         }
 
-        /* =========================================================
-           Activity list
-        ========================================================= */
         .activity-list {
             list-style: none;
             font-size: 14px;
@@ -234,9 +417,6 @@ foreach ($milestones as $m) {
 
         .activity-list li:last-child { border-bottom: none; }
 
-        /* =========================================================
-           File groups
-        ========================================================= */
         .file-groups {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -271,9 +451,7 @@ foreach ($milestones as $m) {
             color: #8b8f98;
         }
 
-        .file-group-body {
-            padding: 4px 0;
-        }
+        .file-group-body { padding: 4px 0; }
 
         .file-group-body ul {
             list-style: none;
@@ -289,7 +467,6 @@ foreach ($milestones as $m) {
         }
 
         .file-group-body ul li:last-child { border-bottom: none; }
-
         .file-group-body ul li span:first-child { color: #2c2f36; }
 
         .file-group-foot {
@@ -303,12 +480,7 @@ foreach ($milestones as $m) {
             gap: 12px;
         }
 
-        /* =========================================================
-           Gantt
-        ========================================================= */
-        .gantt-wrap {
-            padding: 24px;
-        }
+        .gantt-wrap { padding: 24px; }
 
         .gantt-header {
             display: flex;
@@ -351,7 +523,7 @@ foreach ($milestones as $m) {
             font-size: 11px;
             font-weight: 600;
             color: #6b6f78;
-            letter-spacing: 0.4px;
+            letter-spacing: 0.04em;
             white-space: nowrap;
         }
 
@@ -490,9 +662,6 @@ foreach ($milestones as $m) {
         .gantt-legend .dot.late    { background: #d32f2f; }
         .gantt-legend .dot.today   { background: #d32f2f; border-radius: 50%; }
 
-        /* =========================================================
-           Review Center CTA（替换掉原来的 Contribution CTA）
-        ========================================================= */
         .review-cta {
             padding: 26px 28px;
             background: #fff;
@@ -526,24 +695,15 @@ foreach ($milestones as $m) {
             flex-shrink: 0;
         }
 
-        /* =========================================================
-           响应式
-        ========================================================= */
         @media (max-width: 900px) {
             .file-groups { grid-template-columns: 1fr; }
-
             .gantt-header { padding-left: 0; }
             .gantt-months { display: none; }
             .gantt-month-line { display: none; }
             .gantt-today-line { display: none; }
-
             .gantt-row { flex-direction: column; align-items: stretch; }
             .gantt-label { width: 100%; padding: 0 0 6px 0; }
-
-            .review-cta {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+            .review-cta { flex-direction: column; align-items: flex-start; }
         }
 
         @media (max-width: 800px) {
@@ -606,7 +766,7 @@ foreach ($milestones as $m) {
             <?php echo htmlspecialchars($project['description']); ?>
         </p>
 
-        <!-- Review Center 入口（替换原来的 Contribution CTA） -->
+        <!-- Review Center CTA -->
         <div class="review-cta">
             <div>
                 <h3>Review Center</h3>
@@ -633,12 +793,29 @@ foreach ($milestones as $m) {
                     <th>Status</th>
                     <th></th>
                 </tr>
+
+                <?php if (count($teams) === 0): ?>
+                    <tr>
+                        <td colspan="6" class="muted" style="text-align: center; padding: 30px;">
+                            No teams in this project yet.
+                        </td>
+                    </tr>
+                <?php endif; ?>
+
                 <?php foreach ($teams as $t): ?>
                     <tr>
                         <td><?php echo htmlspecialchars($t['name']); ?></td>
-                        <td><?php echo htmlspecialchars($t['leader']); ?></td>
-                        <td><?php echo htmlspecialchars($t['members']); ?></td>
-                        <td><?php echo htmlspecialchars($t['progress']); ?></td>
+                        <td><?php echo htmlspecialchars($t['leader_name'] ?: '—'); ?></td>
+                        <td>
+                            <?php echo (int)$t['member_count']; ?> / <?php echo (int)$t['max_members']; ?>
+                        </td>
+                        <td>
+                            <?php
+                            $done  = (int)$t['done_tasks'];
+                            $total = (int)$t['total_tasks'];
+                            echo $total > 0 ? ($done . ' / ' . $total) : '—';
+                            ?>
+                        </td>
                         <td><span class="pill"><?php echo htmlspecialchars($t['status']); ?></span></td>
                         <td><a href="team_detail.php?id=<?php echo (int)$t['id']; ?>" class="link">View</a></td>
                     </tr>
@@ -657,9 +834,9 @@ foreach ($milestones as $m) {
                             <td>
                                 <span class="progress">
                                     <span class="bar">
-                                        <span style="width: <?php echo $project['progress']; ?>%"></span>
+                                        <span style="width: <?php echo (int)$project['progress']; ?>%"></span>
                                     </span>
-                                    <?php echo $project['progress']; ?>%
+                                    <?php echo (int)$project['progress']; ?>%
                                 </span>
                             </td>
                         </tr>
@@ -669,7 +846,7 @@ foreach ($milestones as $m) {
                         </tr>
                         <tr>
                             <td>Tasks Completed</td>
-                            <td>3 / 5</td>
+                            <td><?php echo $doneTasks; ?> / <?php echo $totalTasks; ?></td>
                         </tr>
                         <tr>
                             <td>Milestones Late</td>
@@ -697,6 +874,14 @@ foreach ($milestones as $m) {
                 <h2>Milestones</h2>
                 <div class="card">
                     <table class="progress-table">
+                        <?php if (count($milestones) === 0): ?>
+                            <tr>
+                                <td colspan="2" class="muted" style="text-align: center;">
+                                    No milestones.
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+
                         <?php foreach ($milestones as $m): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($m['name']); ?></td>
@@ -776,8 +961,8 @@ foreach ($milestones as $m) {
                                 <div class="gantt-bar <?php echo $cls; ?>"
                                      style="left: <?php echo round($m['offset'], 2); ?>%;
                                              width: <?php echo round($m['width'], 2); ?>%;"
-                                     title="<?php echo htmlspecialchars($m['name']); ?> · <?php echo $m['progress']; ?>%">
-                                    <?php echo $m['progress']; ?>%
+                                     title="<?php echo htmlspecialchars($m['name']); ?> · <?php echo (int)$m['progress']; ?>%">
+                                    <?php echo (int)$m['progress']; ?>%
                                 </div>
                             </div>
                         </div>
@@ -799,18 +984,26 @@ foreach ($milestones as $m) {
         <!-- Tasks -->
         <h2>Tasks</h2>
         <div class="card">
+            <?php if (count($tasks) === 0): ?>
+                <div class="muted" style="text-align: center; padding: 30px;">
+                    No tasks yet.
+                </div>
+            <?php endif; ?>
+
             <?php foreach ($tasks as $t): ?>
                 <div class="task-row">
                     <div>
-                        <div class="task-name"><?php echo htmlspecialchars($t['name']); ?></div>
+                        <div class="task-name"><?php echo htmlspecialchars($t['title']); ?></div>
                         <div class="task-owner">
-                            <?php echo htmlspecialchars($t['team']); ?> ·
-                            <?php echo htmlspecialchars($t['owner']); ?>
+                            <?php echo htmlspecialchars($t['team_name'] ?: '—'); ?> ·
+                            <?php echo htmlspecialchars($t['owner_name'] ?: '—'); ?>
                         </div>
                     </div>
                     <div class="task-right">
                         <div><?php echo htmlspecialchars($t['status']); ?></div>
-                        <div class="task-due"><?php echo htmlspecialchars($t['due']); ?></div>
+                        <div class="task-due">
+                            <?php echo $t['due_date'] ? date('d M Y', strtotime($t['due_date'])) : '—'; ?>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -818,6 +1011,15 @@ foreach ($milestones as $m) {
 
         <!-- Files by Team -->
         <h2>Files by Team</h2>
+
+        <?php if (count($fileGroups) === 0): ?>
+            <div class="card">
+                <div class="muted" style="text-align: center; padding: 30px;">
+                    No files uploaded yet.
+                </div>
+            </div>
+        <?php endif; ?>
+
         <div class="file-groups">
             <?php foreach ($fileGroups as $g): ?>
                 <div class="file-group">
@@ -825,8 +1027,7 @@ foreach ($milestones as $m) {
                     <div class="file-group-head">
                         <h3><?php echo htmlspecialchars($g['team']); ?></h3>
                         <span class="file-group-meta">
-                            <?php echo $g['file_count']; ?> files ·
-                            <?php echo htmlspecialchars($g['total_size']); ?>
+                            <?php echo (int)$g['file_count']; ?> files
                         </span>
                     </div>
 
@@ -834,10 +1035,11 @@ foreach ($milestones as $m) {
                         <ul>
                             <?php foreach ($g['items'] as $f): ?>
                                 <li>
-                                    <span><?php echo htmlspecialchars($f['name']); ?></span>
+                                    <span><?php echo htmlspecialchars($f['file_name']); ?></span>
                                     <span class="muted">
-                                        <?php echo htmlspecialchars($f['owner']); ?> ·
-                                        <?php echo htmlspecialchars($f['meta']); ?>
+                                        <?php echo htmlspecialchars($f['owner_name']); ?> ·
+                                        <?php echo htmlspecialchars($f['file_size']); ?> ·
+                                        <?php echo timeAgo($f['uploaded_at']); ?>
                                     </span>
                                 </li>
                             <?php endforeach; ?>
@@ -846,7 +1048,7 @@ foreach ($milestones as $m) {
 
                     <div class="file-group-foot">
                         <span>Last: <?php echo htmlspecialchars($g['last_upload']); ?></span>
-                        <a href="teacher_files.php?team=<?php echo (int)$g['team_id']; ?>" class="link">View all</a>
+                        <a href="teacher_files.php" class="link">View all</a>
                     </div>
 
                 </div>
@@ -857,10 +1059,19 @@ foreach ($milestones as $m) {
         <h2 style="margin-top: 30px;">Activity</h2>
         <div class="card">
             <ul class="activity-list">
+                <?php if (count($activities) === 0): ?>
+                    <li class="muted">No activity yet.</li>
+                <?php endif; ?>
+
                 <?php foreach ($activities as $a): ?>
                     <li>
-                        <span><?php echo htmlspecialchars($a[0]); ?></span>
-                        <span class="muted"><?php echo htmlspecialchars($a[1]); ?></span>
+                        <span>
+                            <?php if (!empty($a['actor_name'])): ?>
+                                <strong><?php echo htmlspecialchars($a['actor_name']); ?></strong>
+                            <?php endif; ?>
+                            <?php echo htmlspecialchars($a['detail']); ?>
+                        </span>
+                        <span class="muted"><?php echo timeAgo($a['created_at']); ?></span>
                     </li>
                 <?php endforeach; ?>
             </ul>
