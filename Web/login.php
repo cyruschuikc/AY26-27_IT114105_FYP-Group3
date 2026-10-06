@@ -18,6 +18,8 @@ if (isset($_POST['userId'])) {
 
     require_once 'db.php';
 
+    /** @var mysqli $conn */
+
     $userId   = trim($_POST['userId']);
     $password = $_POST['password'];
 
