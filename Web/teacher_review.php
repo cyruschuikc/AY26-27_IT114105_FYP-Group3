@@ -10,20 +10,27 @@ $summary = array(
     'group_requests'   => 5,
 );
 
-// 待查看 / 已查看的文件
-$files = array(
-    array('id'=>1, 'name'=>'Proposal_v2.docx',         'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'10:42 today', 'size'=>'2.4 MB', 'status'=>'Unviewed'),
-    array('id'=>2, 'name'=>'Requirement_Analysis.pdf', 'team'=>'Team 01', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'Yesterday',   'size'=>'1.8 MB', 'status'=>'Accepted'),
-    array('id'=>3, 'name'=>'UI_Wireframe.fig',         'team'=>'Team 02', 'uploaded_by'=>'MIAO Tung',       'date'=>'2 days ago',  'size'=>'5.1 MB', 'status'=>'Unviewed'),
-    array('id'=>4, 'name'=>'Database_Schema.sql',      'team'=>'Team 02', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'3 days ago',  'size'=>'120 KB', 'status'=>'Accepted'),
-    array('id'=>5, 'name'=>'API_Spec.pdf',             'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'4 days ago',  'size'=>'890 KB', 'status'=>'Rejected'),
+// 全部历史文件（含 Unviewed / Accepted / Rejected）
+$allFiles = array(
+    array('id'=> 1, 'name'=>'Proposal_v2.docx',                'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'2026-10-04', 'size'=>'2.4 MB', 'status'=>'Unviewed', 'preview'=>'#'),
+    array('id'=> 2, 'name'=>'Requirement_Analysis.pdf',        'team'=>'Team 01', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'2026-10-03', 'size'=>'1.8 MB', 'status'=>'Accepted', 'preview'=>'#'),
+    array('id'=> 3, 'name'=>'UI_Wireframe.fig',                'team'=>'Team 02', 'uploaded_by'=>'MIAO Tung',       'date'=>'2026-10-02', 'size'=>'5.1 MB', 'status'=>'Unviewed', 'preview'=>'#'),
+    array('id'=> 4, 'name'=>'Database_Schema.sql',             'team'=>'Team 02', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'2026-10-01', 'size'=>'120 KB', 'status'=>'Accepted', 'preview'=>'#'),
+    array('id'=> 5, 'name'=>'API_Spec.pdf',                    'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'2026-09-30', 'size'=>'890 KB', 'status'=>'Rejected', 'preview'=>'#'),
+    array('id'=> 6, 'name'=>'Meeting_Minutes_2026-09-28.docx', 'team'=>'Team 03', 'uploaded_by'=>'WONG Mei Ling',   'date'=>'2026-09-28', 'size'=>'240 KB', 'status'=>'Accepted', 'preview'=>'#'),
+    array('id'=> 7, 'name'=>'Budget_Plan.xlsx',                'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',    'date'=>'2026-09-26', 'size'=>'310 KB', 'status'=>'Rejected', 'preview'=>'#'),
+    array('id'=> 8, 'name'=>'Sprint_Plan_Oct.xlsx',            'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'2026-09-25', 'size'=>'180 KB', 'status'=>'Accepted', 'preview'=>'#'),
+    array('id'=> 9, 'name'=>'Research_Notes.pdf',              'team'=>'Team 03', 'uploaded_by'=>'NG Wing Yan',     'date'=>'2026-09-22', 'size'=>'1.1 MB', 'status'=>'Unviewed', 'preview'=>'#'),
+    array('id'=>10, 'name'=>'System_Architecture_Diagram.png', 'team'=>'Team 01', 'uploaded_by'=>'MIAO Tung',       'date'=>'2026-09-20', 'size'=>'980 KB', 'status'=>'Accepted', 'preview'=>'#'),
+    array('id'=>11, 'name'=>'Testing_Plan_v1.docx',            'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',    'date'=>'2026-09-18', 'size'=>'420 KB', 'status'=>'Rejected', 'preview'=>'#'),
+    array('id'=>12, 'name'=>'Client_Requirements.pdf',         'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'2026-09-15', 'size'=>'2.0 MB', 'status'=>'Accepted', 'preview'=>'#'),
 );
 
 // 打回的文件
 $rejectedFiles = array(
-    array('id'=>5, 'name'=>'API_Spec.pdf',        'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',   'rejected_on'=>'3 days ago', 'reason'=>'Missing authentication section.',        'resubmitted'=>false),
-    array('id'=>6, 'name'=>'Meeting_Minutes.docx','team'=>'Team 03', 'uploaded_by'=>'WONG Mei Ling',  'rejected_on'=>'5 days ago', 'reason'=>'Wrong template — please use the FYP one.', 'resubmitted'=>true),
-    array('id'=>7, 'name'=>'Budget_Plan.xlsx',    'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',   'rejected_on'=>'1 week ago', 'reason'=>'Numbers do not match the proposal.',       'resubmitted'=>false),
+    array('id'=>5, 'name'=>'API_Spec.pdf',         'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',  'rejected_on'=>'3 days ago', 'reason'=>'Missing authentication section.',          'resubmitted'=>false),
+    array('id'=>6, 'name'=>'Meeting_Minutes.docx', 'team'=>'Team 03', 'uploaded_by'=>'WONG Mei Ling', 'rejected_on'=>'5 days ago', 'reason'=>'Wrong template — please use the FYP one.', 'resubmitted'=>true),
+    array('id'=>7, 'name'=>'Budget_Plan.xlsx',     'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',  'rejected_on'=>'1 week ago', 'reason'=>'Numbers do not match the proposal.',       'resubmitted'=>false),
 );
 
 // 分组申请
@@ -54,6 +61,38 @@ $groupRequests = array(
         ),
     ),
 );
+
+// ===== 筛选（纯 PHP） =====
+$filterFrom   = isset($_GET['from'])   ? trim($_GET['from'])   : '';
+$filterTo     = isset($_GET['to'])     ? trim($_GET['to'])     : '';
+$filterStatus = isset($_GET['status']) ? trim($_GET['status']) : 'all';
+$filterSearch = isset($_GET['q'])      ? trim($_GET['q'])      : '';
+
+$filteredFiles = array_filter($allFiles, function ($f) use ($filterFrom, $filterTo, $filterStatus, $filterSearch) {
+    if ($filterStatus !== 'all' && strtolower($f['status']) !== strtolower($filterStatus)) {
+        return false;
+    }
+    if ($filterFrom !== '' && $f['date'] < $filterFrom) {
+        return false;
+    }
+    if ($filterTo !== '' && $f['date'] > $filterTo) {
+        return false;
+    }
+    if ($filterSearch !== '') {
+        $hay = strtolower($f['name'] . ' ' . $f['team'] . ' ' . $f['uploaded_by']);
+        if (strpos($hay, strtolower($filterSearch)) === false) {
+            return false;
+        }
+    }
+    return true;
+});
+
+$totalFiles    = count($allFiles);
+$filteredCount = count($filteredFiles);
+$rangeText     = 'All dates';
+if ($filterFrom !== '' || $filterTo !== '') {
+    $rangeText = ($filterFrom !== '' ? $filterFrom : '…') . ' – ' . ($filterTo !== '' ? $filterTo : '…');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -73,7 +112,6 @@ $groupRequests = array(
             gap: 8px;
             margin-bottom: 22px;
             border-bottom: 1px solid #e6e8eb;
-            padding-bottom: 0;
         }
 
         .tab {
@@ -113,8 +151,135 @@ $groupRequests = array(
             color: #fff;
         }
 
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
         /* =========================================================
-           Status Select (select list)
+           Filter bar
+        ========================================================= */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 14px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+            background: #fff;
+            border: 1px solid #e6e8eb;
+            border-radius: 10px;
+        }
+
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-field label {
+            font-size: 12px;
+            color: #6b6f78;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .filter-field input,
+        .filter-field select {
+            height: 36px;
+            padding: 0 10px;
+            background: #fff;
+            border: 1px solid #e6e8eb;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2c2f36;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .filter-field input:focus,
+        .filter-field select:focus {
+            border-color: #175196;
+        }
+
+        .filter-field.search input { width: 240px; }
+        .filter-field.date input   { width: 160px; }
+        .filter-field.status select{ width: 160px; }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .btn-secondary {
+            background: #fff;
+            color: #175196;
+            border: 1px solid #175196;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+            display: inline-block;
+            height: 36px;
+            line-height: 18px;
+        }
+
+        .btn-secondary:hover { background: #f2f7fd; }
+
+        /* =========================================================
+           Result info
+        ========================================================= */
+        .result-info {
+            font-size: 13px;
+            color: #6b6f78;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .result-info .range-text { color: #8b8f98; }
+
+        /* =========================================================
+           File table
+        ========================================================= */
+        .file-table {
+            table-layout: auto;
+        }
+
+        .file-table th,
+        .file-table td {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .file-name-cell { max-width: 320px; }
+
+        .file-name-link {
+            color: #175196;
+            font-weight: 500;
+            text-decoration: none;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+        }
+
+        .file-name-link:hover { text-decoration: underline; }
+
+        .row-actions {
+            display: flex;
+            gap: 12px;
+            white-space: nowrap;
+        }
+
+        /* =========================================================
+           Status select — data-status
         ========================================================= */
         .status-select {
             height: 32px;
@@ -123,37 +288,33 @@ $groupRequests = array(
             font-weight: 600;
             border-radius: 6px;
             border: 1px solid #e6e8eb;
-            background: #fff;
             color: #2c2f36;
             cursor: pointer;
             outline: none;
             appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3e%3cpath fill='%236b6f78' d='M6 8L2 4h8z'/%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 8px center;
-            background-size: 10px;
+            background: #fff url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3e%3cpath fill='%236b6f78' d='M6 8L2 4h8z'/%3e%3c/svg%3e") no-repeat right 8px center / 10px;
         }
 
-        .status-select.unviewed {
+        .status-select[data-status="unviewed"] {
             border-color: #e6e8eb;
             color: #6b6f78;
             background-color: #f7f8fa;
         }
 
-        .status-select.accepted {
+        .status-select[data-status="accepted"] {
             border-color: #8bc79a;
             color: #176b2c;
             background-color: #eaf7ee;
         }
 
-        .status-select.rejected {
+        .status-select[data-status="rejected"] {
             border-color: #e6a0a0;
             color: #a21b1b;
             background-color: #fdeeee;
         }
 
         /* =========================================================
-           Rejected reason
+           Rejected files
         ========================================================= */
         .reject-reason {
             font-size: 13px;
@@ -173,7 +334,7 @@ $groupRequests = array(
         }
 
         /* =========================================================
-           Group Request Card
+           Group Request card
         ========================================================= */
         .request-card {
             border: 1px solid #e6e8eb;
@@ -206,9 +367,7 @@ $groupRequests = array(
             color: #8b8f98;
         }
 
-        .request-body {
-            padding: 6px 0;
-        }
+        .request-body { padding: 6px 0; }
 
         .request-body table {
             width: 100%;
@@ -233,9 +392,7 @@ $groupRequests = array(
             white-space: normal;
         }
 
-        .request-body table tr:last-child td {
-            border-bottom: none;
-        }
+        .request-body table tr:last-child td { border-bottom: none; }
 
         .request-foot {
             padding: 16px 22px;
@@ -247,65 +404,37 @@ $groupRequests = array(
         }
 
         /* =========================================================
-           Status banner (student_group_request.php 也会用)
+           sr-only
         ========================================================= */
-        .status-banner {
-            padding: 14px 18px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 24px;
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
-        .status-banner.status-draft {
-            background: #f7f8fa;
-            color: #6b6f78;
-            border-left: 4px solid #c9ccd1;
+        /* =========================================================
+           响应式
+        ========================================================= */
+        @media (max-width: 900px) {
+            .filter-bar { flex-direction: column; align-items: stretch; }
+            .filter-field.search input,
+            .filter-field.date input,
+            .filter-field.status select { width: 100%; }
+            .filter-actions { margin-left: 0; }
+            .filter-actions .btn-primary,
+            .filter-actions .btn-secondary { flex: 1; text-align: center; }
         }
-
-        .status-banner.status-submitted {
-            background: #fff8e8;
-            color: #765900;
-            border-left: 4px solid #e0a030;
-        }
-
-        .status-banner.status-accepted {
-            background: #eaf7ee;
-            color: #176b2c;
-            border-left: 4px solid #2e9d4d;
-        }
-
-        .status-banner.status-rejected {
-            background: #fdeeee;
-            color: #a21b1b;
-            border-left: 4px solid #d32f2f;
-        }
-
-        /* Submit area (student_group_request.php) */
-        .submit-area {
-            padding: 22px;
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .submit-area .muted {
-            max-width: 620px;
-            line-height: 1.5;
-        }
-
-        /* Tab panels: 简单切换 */
-        .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
 
         @media (max-width: 700px) {
             .request-head { flex-direction: column; gap: 10px; }
             .request-foot { flex-direction: column; }
+            .row-actions { flex-direction: column; gap: 4px; }
         }
     </style>
 </head>
@@ -341,47 +470,119 @@ $groupRequests = array(
 
         <!-- Tabs -->
         <div class="tabs">
-            <a href="#files" class="tab active" data-tab="files">
+            <a href="#" class="tab active" data-tab="files">
                 Files
-                <span class="tab-count"><?php echo count($files); ?></span>
+                <span class="tab-count"><?php echo $totalFiles; ?></span>
             </a>
-            <a href="#rejected" class="tab" data-tab="rejected">
+            <a href="#" class="tab" data-tab="rejected">
                 Rejected Files
                 <span class="tab-count"><?php echo count($rejectedFiles); ?></span>
             </a>
-            <a href="#requests" class="tab" data-tab="requests">
+            <a href="#" class="tab" data-tab="requests">
                 Group Requests
                 <span class="tab-count"><?php echo count($groupRequests); ?></span>
             </a>
         </div>
 
         <!-- =========================================================
-             TAB 1 — FILES
+             TAB 1 — ALL FILES
         ========================================================= -->
         <div class="tab-panel active" id="panel-files">
 
-            <h2>Pending &amp; Reviewed Files</h2>
+            <form method="get" action="teacher_review.php" class="filter-bar">
+
+                <div class="filter-field search">
+                    <label for="q">Search</label>
+                    <input
+                        type="search"
+                        id="q"
+                        name="q"
+                        placeholder="File, team or uploader"
+                        value="<?php echo htmlspecialchars($filterSearch); ?>"
+                    >
+                </div>
+
+                <div class="filter-field date">
+                    <label for="from">From date</label>
+                    <input
+                        type="date"
+                        id="from"
+                        name="from"
+                        value="<?php echo htmlspecialchars($filterFrom); ?>"
+                    >
+                </div>
+
+                <div class="filter-field date">
+                    <label for="to">To date</label>
+                    <input
+                        type="date"
+                        id="to"
+                        name="to"
+                        value="<?php echo htmlspecialchars($filterTo); ?>"
+                    >
+                </div>
+
+                <div class="filter-field status">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <option value="all"      <?php echo $filterStatus==='all'?'selected':''; ?>>All Status</option>
+                        <option value="unviewed" <?php echo $filterStatus==='unviewed'?'selected':''; ?>>Unviewed</option>
+                        <option value="accepted" <?php echo $filterStatus==='accepted'?'selected':''; ?>>Accepted</option>
+                        <option value="rejected" <?php echo $filterStatus==='rejected'?'selected':''; ?>>Rejected</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+                    <button type="submit" class="btn-primary">Filter</button>
+                    <a href="teacher_review.php" class="btn-secondary">Reset</a>
+                </div>
+
+            </form>
+
+            <div class="result-info">
+                <span>
+                    Showing <strong><?php echo $filteredCount; ?></strong>
+                    of <?php echo $totalFiles; ?> files
+                </span>
+                <span class="range-text">
+                    Date range: <?php echo htmlspecialchars($rangeText); ?>
+                </span>
+            </div>
+
             <div class="card">
-                <table>
+                <table class="file-table">
                     <tr>
                         <th>File</th>
                         <th>Team</th>
                         <th>Uploaded By</th>
-                        <th>Date</th>
+                        <th>Uploaded On</th>
                         <th>Size</th>
                         <th>Status</th>
+                        <th>Actions</th>
                     </tr>
-                    <?php foreach ($files as $f): ?>
-                        <?php
-                        $statusLower = strtolower($f['status']);
-                        // 把 Accepted/Rejected 映射到 select 里的小写值
-                        if ($f['status'] === 'Unviewed')      { $selClass = 'unviewed'; $selValue = 'unviewed'; }
-                        elseif ($f['status'] === 'Accepted')  { $selClass = 'accepted'; $selValue = 'accepted'; }
-                        elseif ($f['status'] === 'Rejected')  { $selClass = 'rejected'; $selValue = 'rejected'; }
-                        else                                  { $selClass = 'unviewed'; $selValue = 'unviewed'; }
-                        ?>
+
+                    <?php if ($filteredCount === 0): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($f['name']); ?></td>
+                            <td colspan="7" class="muted" style="text-align: center; padding: 30px;">
+                                No files match your filter.
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+
+                    <?php foreach ($filteredFiles as $f): ?>
+                        <?php $statusLower = strtolower($f['status']); ?>
+                        <tr>
+                            <td class="file-name-cell">
+                                <a
+                                    href="<?php echo htmlspecialchars($f['preview']); ?>"
+                                    class="file-name-link"
+                                    title="<?php echo htmlspecialchars($f['name']); ?>"
+                                    target="_blank"
+                                    rel="noopener"
+                                >
+                                    <?php echo htmlspecialchars($f['name']); ?>
+                                </a>
+                            </td>
                             <td><?php echo htmlspecialchars($f['team']); ?></td>
                             <td><?php echo htmlspecialchars($f['uploaded_by']); ?></td>
                             <td class="muted"><?php echo htmlspecialchars($f['date']); ?></td>
@@ -393,15 +594,26 @@ $groupRequests = array(
                                 <select
                                     id="fileStatus<?php echo $f['id']; ?>"
                                     name="fileStatus<?php echo $f['id']; ?>"
-                                    class="status-select <?php echo $selClass; ?>"
+                                    class="status-select"
+                                    data-status="<?php echo $statusLower; ?>"
                                 >
-                                    <option value="unviewed" <?php echo $selValue==='unviewed'?'selected':''; ?>>Unviewed</option>
-                                    <option value="accepted" <?php echo $selValue==='accepted'?'selected':''; ?>>Accept</option>
-                                    <option value="rejected" <?php echo $selValue==='rejected'?'selected':''; ?>>Reject</option>
+                                    <option value="unviewed" <?php echo $statusLower==='unviewed'?'selected':''; ?>>Unviewed</option>
+                                    <option value="accepted" <?php echo $statusLower==='accepted'?'selected':''; ?>>Accept</option>
+                                    <option value="rejected" <?php echo $statusLower==='rejected'?'selected':''; ?>>Reject</option>
                                 </select>
+                            </td>
+                            <td>
+                                <div class="row-actions">
+                                    <a href="<?php echo htmlspecialchars($f['preview']); ?>"
+                                       class="link"
+                                       target="_blank"
+                                       rel="noopener">View</a>
+                                    <a href="#" class="link">Download</a>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
+
                 </table>
             </div>
 
@@ -523,7 +735,7 @@ $groupRequests = array(
     </div>
 </main>
 
-<!-- 简单 tab 切换（纯前端，不影响后端） -->
+<!-- Tab switching（var → const, href="#"） -->
 <script>
     document.querySelectorAll('.tab').forEach(function (tab) {
         tab.addEventListener('click', function (e) {
@@ -533,11 +745,20 @@ $groupRequests = array(
             document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
 
             tab.classList.add('active');
-            var id = tab.getAttribute('data-tab');
-            var panel = document.getElementById('panel-' + id);
+            const id = tab.getAttribute('data-tab');
+            const panel = document.getElementById('panel-' + id);
             if (panel) { panel.classList.add('active'); }
+
+            history.replaceState(null, '', '#' + id);
         });
     });
+
+    (function () {
+        const hash = window.location.hash.replace('#', '');
+        if (!hash) return;
+        const tabEl = document.querySelector('.tab[data-tab="' + hash + '"]');
+        if (tabEl) { tabEl.click(); }
+    })();
 </script>
 
 </body>
