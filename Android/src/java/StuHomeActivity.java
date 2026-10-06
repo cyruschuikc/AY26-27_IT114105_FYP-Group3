@@ -48,18 +48,18 @@ public class StuHomeActivity extends AppCompatActivity {
         });
 
         ibViewTasks.setOnClickListener(v -> {
-            Toast.makeText(StuHomeActivity.this, "Opening My Tasks...", Toast.LENGTH_SHORT).show();
-            // TODO: Launch Tasks Activity when ready
+            Intent intent = new Intent(StuHomeActivity.this, StuTasksActivity.class);
+            startActivity(intent);
         });
 
         ibViewTeams.setOnClickListener(v -> {
-            Toast.makeText(StuHomeActivity.this, "Opening My Team...", Toast.LENGTH_SHORT).show();
-            // TODO: Launch Team Activity when ready
+            Intent intent = new Intent(StuHomeActivity.this, StuTeamsActivity.class);
+            startActivity(intent);
         });
 
         ibSD.setOnClickListener(v -> {
-            Toast.makeText(StuHomeActivity.this, "Opening Shared Files...", Toast.LENGTH_SHORT).show();
-            // TODO: Launch Files Activity when ready
+            Intent intent = new Intent(StuHomeActivity.this, FilesActivity.class);
+            startActivity(intent);
         });
 
         ibChat.setOnClickListener(v -> {
