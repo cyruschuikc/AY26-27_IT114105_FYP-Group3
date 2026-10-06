@@ -224,7 +224,7 @@ $activities = array(
 <main class="main">
     <div class="content">
 
-        <a href="teacher_index.php" class="back">← Back to Teams</a>
+        <a href="teacher_teams.php" class="back">← Back to Teams</a>
 
         <div class="page-head">
             <div>

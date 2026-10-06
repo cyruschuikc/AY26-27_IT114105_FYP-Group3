@@ -8,13 +8,6 @@ $summary = array(
         'past_due'       => 2,
 );
 
-$teams = array(
-        array('id'=>1, 'name'=>'Team 01', 'leader'=>'CHAN Ho Yin',     'members'=>'4 / 4', 'progress'=>'3 / 5', 'last_activity'=>'2h ago', 'overdue'=>0, 'status'=>'Executing'),
-        array('id'=>2, 'name'=>'Team 02', 'leader'=>'LAI Ka-Yu Savio', 'members'=>'4 / 4', 'progress'=>'1 / 5', 'last_activity'=>'1d ago', 'overdue'=>1, 'status'=>'Voting'),
-        array('id'=>3, 'name'=>'Team 03', 'leader'=>'MIAO Tung',       'members'=>'3 / 4', 'progress'=>'0 / 5', 'last_activity'=>'3d ago', 'overdue'=>2, 'status'=>'Recruiting'),
-        array('id'=>4, 'name'=>'Team 04', 'leader'=>'',                'members'=>'2 / 4', 'progress'=>'',      'last_activity'=>'5d ago', 'overdue'=>0, 'status'=>'Recruiting'),
-);
-
 $activities = array(
         array('Team 01 uploaded Proposal_v2.docx',         '10:42'),
         array('Team 02 started leader voting',             '09:15'),
@@ -72,7 +65,7 @@ $activities = array(
                 <div class="entry-meta">3 active</div>
             </a>
 
-            <a href="teacher_index.php" class="entry-card">
+            <a href="teacher_teams.php" class="entry-card">
                 <div class="entry-icon">TEAM</div>
                 <div class="entry-title">Teams</div>
                 <div class="entry-desc">Manage teams, rosters, leaders and progress.</div>
@@ -114,71 +107,6 @@ $activities = array(
                 <div class="entry-meta">Esther Yuen</div>
             </a>
 
-        </div>
-
-        <!-- Teams -->
-        <h2>Teams</h2>
-
-        <div class="toolbar">
-            <div class="field field-search">
-                <label for="teamSearch">Search team</label>
-                <input type="search" id="teamSearch" name="teamSearch" placeholder="e.g. Team 01 or CHAN Ho Yin">
-            </div>
-
-            <div class="field field-status">
-                <label for="teamStatus">Filter by status</label>
-                <select id="teamStatus" name="teamStatus">
-                    <option value="all">All Status</option>
-                    <option value="executing">Executing</option>
-                    <option value="voting">Voting</option>
-                    <option value="recruiting">Recruiting</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="card">
-            <table>
-                <tr>
-                    <th>Team Name</th>
-                    <th>Leader</th>
-                    <th>Members</th>
-                    <th>Progress</th>
-                    <th>Last Activity</th>
-                    <th>Status</th>
-                    <th>Overdue</th>
-                    <th></th>
-                </tr>
-                <?php foreach ($teams as $t): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($t['name']); ?></td>
-                        <td>
-                            <?php if ($t['leader'] !== ''): ?>
-                                <?php echo htmlspecialchars($t['leader']); ?>
-                            <?php else: ?>
-                                <span class="muted">—</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo htmlspecialchars($t['members']); ?></td>
-                        <td>
-                            <?php if ($t['progress'] !== ''): ?>
-                                <?php echo htmlspecialchars($t['progress']); ?>
-                            <?php else: ?>
-                                <span class="muted">—</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="muted"><?php echo htmlspecialchars($t['last_activity']); ?></td>
-                        <td><span class="pill"><?php echo htmlspecialchars($t['status']); ?></span></td>
-                        <td>
-                            <?php if ($t['overdue'] > 0): ?>
-                                <?php echo $t['overdue']; ?>
-                            <?php else: ?>
-                                <span class="muted">—</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><a href="team_detail.php?id=<?php echo (int)$t['id']; ?>" class="link">View</a></td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
         </div>
 
         <!-- Activity -->

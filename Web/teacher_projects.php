@@ -36,7 +36,7 @@
                     <td>60%</td>
                     <td>30 Apr 2027</td>
                     <td><span class="pill">Executing</span></td>
-                    <td><a href="team_detail.php?id=1" class="link">View</a></td>
+                    <td><a href="project_detail.php?id=1" class="link">View</a></td>
                 </tr>
                 <tr>
                     <td>Smart Attendance</td>
@@ -45,7 +45,7 @@
                     <td>35%</td>
                     <td>30 Apr 2027</td>
                     <td><span class="pill">Executing</span></td>
-                    <td><a href="team_detail.php?id=2" class="link">View</a></td>
+                    <td><a href="project_detail.php?id=2" class="link">View</a></td>
                 </tr>
                 <tr>
                     <td>Campus Map AR</td>
@@ -54,7 +54,7 @@
                     <td>10%</td>
                     <td>30 Apr 2027</td>
                     <td><span class="pill">Recruiting</span></td>
-                    <td><a href="team_detail.php?id=3" class="link">View</a></td>
+                    <td><a href="project_detail.php?id=3" class="link">View</a></td>
                 </tr>
             </table>
         </div>
@@ -74,12 +74,13 @@
                     <td>Team 12</td>
                     <td>A-</td>
                     <td>May 2025</td>
-                    <td><a href="#" class="link">View</a></td>
+                    <td><a href="project_detail.php?id=99" class="link">View</a></td>
                 </tr>
             </table>
         </div>
 
     </div>
 </main>
+
 </body>
 </html>
