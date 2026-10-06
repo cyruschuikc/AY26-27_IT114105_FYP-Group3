@@ -85,9 +85,16 @@ public class StuHomeActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         if (id == R.id.action_notify) {
-            Toast.makeText(this, "Ops! Notification is release yet", Toast.LENGTH_LONG).show();
+            Intent intent = new Intent(StuHomeActivity.this, NotifyActivity.class);
+            startActivity(intent);
             return true;
-        } else if (id == R.id.action_profile) {
+        }
+        else if (id == R.id.action_calendar) {
+            Intent intent = new Intent(StuHomeActivity.this, CalendarActivity.class);
+            startActivity(intent);
+            return true;
+        }
+        else if (id == R.id.action_profile) {
             Intent intent = new Intent(StuHomeActivity.this, StuProfileActivity.class);
             intent.putExtra("USERNAME", username);
             startActivity(intent);
@@ -100,6 +107,26 @@ public class StuHomeActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_projects) {
             Intent intent = new Intent(StuHomeActivity.this, StuProjectsActivity.class);
+            startActivity(intent);
+            return true;
+        }
+        else if (id == R.id.action_tasks) {
+            Intent intent = new Intent(StuHomeActivity.this, StuTasksActivity.class);
+            startActivity(intent);
+            return true;
+        }
+        else if (id == R.id.action_files) {
+            Intent intent = new Intent(StuHomeActivity.this, FilesActivity.class);
+            startActivity(intent);
+            return true;
+        }
+        else if (id == R.id.action_teams) {
+            Intent intent = new Intent(StuHomeActivity.this, StuTeamsActivity.class);
+            startActivity(intent);
+            return true;
+        }
+        else if (id == R.id.action_chat) {
+            Intent intent = new Intent(StuHomeActivity.this, ChatActivity.class);
             startActivity(intent);
             return true;
         }
