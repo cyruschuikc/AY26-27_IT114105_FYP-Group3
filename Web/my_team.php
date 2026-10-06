@@ -640,7 +640,7 @@ session_start();
             Profile
         </a>
 
-        <a href="login.php" class="nav-link logout-link">
+        <a href="logout.php" class="nav-link logout-link">
             Log Out
         </a>
 
