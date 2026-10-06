@@ -59,4 +59,4 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
 <!-- =========================================================
      Log Out —— 页面右上角，跟内容一起滚
      ========================================================= -->
-<a href="login.php" class="logout-btn">Log Out</a>
+<a href="logout.php" class="logout-btn">Log Out</a>
