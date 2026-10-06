@@ -141,7 +141,7 @@ $activities = array(
             color: #fff;
             font-size: 12px;
             font-weight: 500;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.3em;
         }
 
         .progress-table td:last-child { color: #2c2f36; }
@@ -239,7 +239,7 @@ $activities = array(
             font-size: 11px;
             color: #6b6f78;
             margin-left: 6px;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.3em;
         }
 
         /* =========================================================
