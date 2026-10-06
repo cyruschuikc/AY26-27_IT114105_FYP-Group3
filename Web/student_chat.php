@@ -1,10 +1,11 @@
 <?php
 session_start();
 
-// if (!isset($_SESSION['studentID'])) {
-//     header('Location: student_login.php');
-//     exit;
-// }
+ if (!isset($_SESSION['studentID'])) {
+    header('Location: student_login.php');
+     exit;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
