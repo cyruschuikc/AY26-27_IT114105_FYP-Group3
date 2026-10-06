@@ -63,8 +63,8 @@ public class StuHomeActivity extends AppCompatActivity {
         });
 
         ibChat.setOnClickListener(v -> {
-            Toast.makeText(StuHomeActivity.this, "Opening Group Chat...", Toast.LENGTH_SHORT).show();
-            // TODO: Launch Chat Activity when ready
+            Intent intent = new Intent(StuHomeActivity.this, ChatActivity.class);
+            startActivity(intent);
         });
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
