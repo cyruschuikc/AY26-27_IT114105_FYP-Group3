@@ -1,17 +1,12 @@
 package com.example.teambox_sk1.BackGate;
 
+import java.util.List;
+
 public class BGClassAdapter extends BGObjAdapter implements Backgate {
     @Override
     public void loadKeysFromFile(String filePath) {super.loadKeysFromFile(filePath);}
-
     @Override
-    public String[] open() {return super.open();}
-
-    @Override
-    public String[] setWindow(String[] args) {return super.setWindow(args);}
-
-    @Override
-    public String[] getWindow(String[] window) {return super.getWindow(window);}
+    public String[] praseArgs() {return super.praseArgs();}
 
     @Override
     public String addKey(String key) {return super.addKey(key);}

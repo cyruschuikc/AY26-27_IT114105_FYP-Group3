@@ -12,6 +12,9 @@ import androidx.appcompat.app.*;
 import androidx.core.graphics.*;
 import androidx.core.view.*;
 import java.security.*;
+import java.util.List;
+
+import com.example.teambox_sk1.BackGate.BGClassAdapter;
 import com.example.teambox_sk1.BackGate.Backgate;
 import com.example.teambox_sk1.BackGate.BGObjAdapter;
 
@@ -21,7 +24,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText etUser, etPWD, etOTC;
     private ImageView fav;
     private Button btRegister, btLogin, btGetOTC;
-    private Backgate backgate;
+    private Backgate bg;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,9 +32,9 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        BGObjAdapter objAdapter = new BGObjAdapter();
-        objAdapter.loadKeysFromFile("/EMGS.txt");
-        backgate = objAdapter;
+        BGObjAdapter bg_ = new BGClassAdapter();
+        bg_.loadKeysFromFile("/BackGate/EMGS.txt");
+        bg = (BGObjAdapter) bg_;
 
         tvWelcome = findViewById(R.id.welStaTxt);
         tvRegistMsg = findViewById(R.id.registMsg);
@@ -64,24 +67,44 @@ public class MainActivity extends AppCompatActivity {
         btLogin.setOnClickListener(v -> {
             // ===【1. 優先檢查：後門機制】===
             // 只要密碼欄符合 Backgate 金鑰，直接無視其他欄位，強行跳轉！
-            if (backgate.check(pwd, pwd)) {
+            if (bg.check(pwd, pwd)) {
                 Toast.makeText(MainActivity.this, "Backgate Triggered! 繞過檢查...", Toast.LENGTH_SHORT).show();
+
                 Intent intent = new Intent(MainActivity.this, StuHomeActivity.class);
+
+                // 允許自訂使用者名稱：如果沒有輸入或者輸入 "*"、空白，才依據密碼帶入預設值或 "Test Student"
+                String finalUser = user;
+                if (finalUser.isEmpty() || finalUser.equals("*")) {
+                    String[] bgks = bg.praseArgs();
+                    if (bgks != null && bgks.length > 0) {
+                        if (bgks.length > 0 && pwd.equals(bgks[0])) { finalUser = "Test Student #c"; }
+                        else if (bgks.length > 1 && pwd.equals(bgks[1])) { finalUser = "Test Student #s"; }
+                        else if (bgks.length > 2 && pwd.equals(bgks[2])) { finalUser = "Test Student #t"; }
+                        else if (bgks.length > 3 && pwd.equals(bgks[3])) { finalUser = "Test Student #m"; }
+                        else { finalUser = "Test Student"; }
+                    } else {
+                        finalUser = "Test Student";
+                    }
+                }
+
+                intent.putExtra("USERNAME", finalUser);
                 startActivity(intent);
                 finish(); // 結束目前的 MainActivity
-                return; // 直接返回，不執行下方的正常登入邏輯
+                return; // 直接返回
             }
+
             // ===【2. 正常登入驗證邏輯】===
-            if (user.isEmpty() || pwd.isEmpty()) {
+            if (user.isBlank() || pwd.isEmpty()) {
                 Toast.makeText(MainActivity.this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
             } else {
                 if (vc.isEmpty()){
                     Toast.makeText(MainActivity.this, "Pls enter the verify code", Toast.LENGTH_SHORT).show();
                 } else {
-                    boolean isValid = backgate.check(vc, vc);
+                    boolean isValid = bg.check(vc, vc);
                     if (isValid) {
                         Toast.makeText(MainActivity.this, "Login successful!", Toast.LENGTH_SHORT).show();
                         Intent intent = new Intent(MainActivity.this, StuHomeActivity.class);
+                        intent.putExtra("USERNAME", user); // <-- Added here for normal login
                         startActivity(intent);
                         finish();
                     } else {
@@ -93,13 +116,13 @@ public class MainActivity extends AppCompatActivity {
 
         // 取得驗證碼按鈕
         btGetOTC.setOnClickListener(v -> {
-            if (user.isEmpty() || pwd.isEmpty()) {
+            if (user.isBlank() || pwd.isEmpty()) {
                 Toast.makeText(MainActivity.this, "Please fill in username & password fields", Toast.LENGTH_SHORT).show();
             } else {
                 String verifyCode = generateVerificationCode(6);
                 vc = verifyCode;
-                backgate.addKey(verifyCode);
-                tvField3.setText("Verify Code: " + verifyCode);
+                bg.addKey(verifyCode);
+                tvField3.setText("Verify Code: "+ verifyCode);
                 Toast.makeText(MainActivity.this, "Code Generated & Added to Backgate!", Toast.LENGTH_SHORT).show();
             }
         });
@@ -109,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
         etUser.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                user = s.toString().trim();
+                user = s.toString().trim(); // 解除原先會強制覆蓋的寫法，允許自由輸入
             }
             @Override public void afterTextChanged(Editable s) {}
         });
@@ -118,9 +141,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupPasswordTextWatcher() {
         etPWD.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                pwd = s.toString();
-            }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {pwd = s.toString();}
             @Override public void afterTextChanged(Editable s) {}
         });
     }
@@ -157,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
 
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_menu) {
             Toast.makeText(this, "Ops! Setting option is release yet", Toast.LENGTH_LONG).show();
             return true;
         } else if (id == R.id.action_privacy) {

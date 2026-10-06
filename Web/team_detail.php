@@ -1,91 +1,84 @@
 <?php
-// team-detail.php
-// 先不管数据库，全部用假数据
+$active = 'teams';
 
 $teamId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 
-//假数据
+// ===== 假数据 =====
 $team = array(
-    'team_name'          => 'Team 01',
-    'project_name'       => 'TeamBox',
-    'project_category'   => 'Software Engineering',
-    'project_supervisor' => 'Esther Yuen',
-    'period_start'       => '2026-09-01',
-    'period_end'         => '2027-04-30',
-    'status'             => 'Executing',
-    'formed_at'          => '2026-09-15',
-    'roster_locked_at'   => '2026-09-20',
-    'leader_elected_at'  => '2026-09-21',
-    'last_activity_at'   => '2026-09-29 10:42:00',
+        'team_name'          => 'Team 01',
+        'project_name'       => 'TeamBox',
+        'project_category'   => 'Software Engineering',
+        'project_supervisor' => 'Esther Yuen',
+        'period_start'       => '2026-09-01',
+        'period_end'         => '2027-04-30',
+        'status'             => 'Executing',
+        'formed_at'          => '2026-09-15',
+        'roster_locked_at'   => '2026-09-20',
+        'leader_elected_at'  => '2026-09-21',
+        'last_activity_at'   => '2026-09-29 10:42:00',
 );
 
 $members = array(
-    array('name'=>'CHAN Ho Yin',     'student_number'=>'260222111', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Leader · Full-stack',   'is_leader'=>1, 'tasks_done'=>'2 / 3'),
-    array('name'=>'CHUI Ka Chun',    'student_number'=>'260222112', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Android Developer',     'is_leader'=>0, 'tasks_done'=>'1 / 2'),
-    array('name'=>'LAI Ka-Yu Savio', 'student_number'=>'260222113', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Backend Developer',     'is_leader'=>0, 'tasks_done'=>'1 / 2'),
-    array('name'=>'MIAO Tung',       'student_number'=>'260222114', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Frontend Developer',    'is_leader'=>0, 'tasks_done'=>'0 / 2'),
+        array('name'=>'CHAN Ho Yin',     'student_number'=>'260222111', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Leader · Full-stack',   'is_leader'=>1, 'tasks_done'=>'2 / 3'),
+        array('name'=>'CHUI Ka Chun',    'student_number'=>'260222112', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Android Developer',     'is_leader'=>0, 'tasks_done'=>'1 / 2'),
+        array('name'=>'LAI Ka-Yu Savio', 'student_number'=>'260222113', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Backend Developer',     'is_leader'=>0, 'tasks_done'=>'1 / 2'),
+        array('name'=>'MIAO Tung',       'student_number'=>'260222114', 'major'=>'SE', 'grade_level'=>12, 'team_role'=>'Frontend Developer',    'is_leader'=>0, 'tasks_done'=>'0 / 2'),
 );
 
-// ===== grade_level 转班级 =====
 function formatClass($major, $gradeLevel) {
     if ($gradeLevel >= 12) {
-        $year = $gradeLevel - 10; // 12 -> 2
+        $year = $gradeLevel - 10;
     } else {
         $year = $gradeLevel;
     }
     return $major . '-' . $year . 'B';
 }
 
-// ===== Progress =====
 $progress = array(
-    array('label'=>'Overall',         'value'=>'<span class="progress"><span class="bar"><span style="width: 60%"></span></span>60%</span>', 'raw'=>true),
-    array('label'=>'Tasks Completed', 'value'=>'3 / 5'),
-    array('label'=>'Team Formed',     'value'=>date('d M Y', strtotime($team['formed_at']))),
-    array('label'=>'Roster Locked',   'value'=>date('d M Y', strtotime($team['roster_locked_at']))),
-    array('label'=>'Leader Elected',  'value'=>date('d M Y', strtotime($team['leader_elected_at']))),
-    array('label'=>'Last Activity',   'value'=>date('H:i', strtotime($team['last_activity_at'])) . ' today'),
+        array('label'=>'Overall',         'value'=>'<span class="progress"><span class="bar"><span style="width: 60%"></span></span>60%</span>', 'raw'=>true),
+        array('label'=>'Tasks Completed', 'value'=>'3 / 5'),
+        array('label'=>'Team Formed',     'value'=>date('d M Y', strtotime($team['formed_at']))),
+        array('label'=>'Roster Locked',   'value'=>date('d M Y', strtotime($team['roster_locked_at']))),
+        array('label'=>'Leader Elected',  'value'=>date('d M Y', strtotime($team['leader_elected_at']))),
+        array('label'=>'Last Activity',   'value'=>date('H:i', strtotime($team['last_activity_at'])) . ' today'),
 );
 
-// ===== Division of Work =====
 $division = array(
-    array('CHAN Ho Yin',     'Proposal, Architecture, Web UI'),
-    array('CHUI Ka Chun',    'Android App, Push Notification'),
-    array('LAI Ka-Yu Savio', 'Database, REST API'),
-    array('MIAO Tung',       'Web Frontend, File Module'),
-    array('Shared',          'Testing, Documentation'),
+        array('CHAN Ho Yin',     'Proposal, Architecture, Web UI'),
+        array('CHUI Ka Chun',    'Android App, Push Notification'),
+        array('LAI Ka-Yu Savio', 'Database, REST API'),
+        array('MIAO Tung',       'Web Frontend, File Module'),
+        array('Shared',          'Testing, Documentation'),
 );
 
-// ===== Tasks =====
 $tasks = array(
-    array('name'=>'Complete Project Proposal', 'owner'=>'CHAN Ho Yin · CHUI Ka Chun', 'status'=>'Completed',   'due'=>'30 Sep 2026'),
-    array('name'=>'Requirement Analysis',      'owner'=>'LAI Ka-Yu Savio',            'status'=>'Completed',   'due'=>'05 Oct 2026'),
-    array('name'=>'Create System Interface',   'owner'=>'MIAO Tung',                  'status'=>'In Progress', 'due'=>'10 Oct 2026'),
-    array('name'=>'Database Schema Design',    'owner'=>'LAI Ka-Yu Savio',            'status'=>'Pending',     'due'=>'15 Oct 2026'),
-    array('name'=>'Android Prototype',         'owner'=>'CHUI Ka Chun',               'status'=>'Pending',     'due'=>'25 Oct 2026'),
+        array('name'=>'Complete Project Proposal', 'owner'=>'CHAN Ho Yin · CHUI Ka Chun', 'status'=>'Completed',   'due'=>'30 Sep 2026'),
+        array('name'=>'Requirement Analysis',      'owner'=>'LAI Ka-Yu Savio',            'status'=>'Completed',   'due'=>'05 Oct 2026'),
+        array('name'=>'Create System Interface',   'owner'=>'MIAO Tung',                  'status'=>'In Progress', 'due'=>'10 Oct 2026'),
+        array('name'=>'Database Schema Design',    'owner'=>'LAI Ka-Yu Savio',            'status'=>'Pending',     'due'=>'15 Oct 2026'),
+        array('name'=>'Android Prototype',         'owner'=>'CHUI Ka Chun',               'status'=>'Pending',     'due'=>'25 Oct 2026'),
 );
 
-// ===== Files =====
 $files = array(
-    array('name'=>'Proposal_v2.docx',         'owner'=>'CHAN Ho Yin',     'meta'=>'2.4 MB · 10:42 today'),
-    array('name'=>'Requirement_Analysis.pdf', 'owner'=>'LAI Ka-Yu Savio', 'meta'=>'1.8 MB · Yesterday'),
-    array('name'=>'UI_Wireframe.fig',         'owner'=>'MIAO Tung',       'meta'=>'5.1 MB · 2 days ago'),
+        array('name'=>'Proposal_v2.docx',         'owner'=>'CHAN Ho Yin',     'meta'=>'2.4 MB · 10:42 today'),
+        array('name'=>'Requirement_Analysis.pdf', 'owner'=>'LAI Ka-Yu Savio', 'meta'=>'1.8 MB · Yesterday'),
+        array('name'=>'UI_Wireframe.fig',         'owner'=>'MIAO Tung',       'meta'=>'5.1 MB · 2 days ago'),
 );
 
-// ===== Contribution =====
-$contributions = array(
-    array('CHAN Ho Yin',     2, 3, 14, '32%'),
-    array('CHUI Ka Chun',    1, 1,  8, '24%'),
-    array('LAI Ka-Yu Savio', 1, 2, 11, '26%'),
-    array('MIAO Tung',       0, 1,  6, '18%'),
+// ★ 改动：把原来的 $contributions（含百分比 / 分数）换成客观数量，不评分、不排名
+$memberActivity = array(
+        array('name'=>'CHAN Ho Yin',     'tasks'=>2, 'files'=>3, 'comments'=>14),
+        array('name'=>'CHUI Ka Chun',    'tasks'=>1, 'files'=>1, 'comments'=> 8),
+        array('name'=>'LAI Ka-Yu Savio', 'tasks'=>1, 'files'=>2, 'comments'=>11),
+        array('name'=>'MIAO Tung',       'tasks'=>0, 'files'=>1, 'comments'=> 6),
 );
 
-// ===== Activity =====
 $activities = array(
-    array('CHAN Ho Yin uploaded Proposal_v2.docx',                '10:42'),
-    array('LAI Ka-Yu Savio marked Requirement Analysis complete', '09:20'),
-    array('MIAO Tung commented on UI_Wireframe',                  'Yesterday'),
-    array('Team roster locked',                                   '20 Sep'),
-    array('CHAN Ho Yin elected as team leader',                   '21 Sep'),
+        array('CHAN Ho Yin uploaded Proposal_v2.docx',                '10:42'),
+        array('LAI Ka-Yu Savio marked Requirement Analysis complete', '09:20'),
+        array('MIAO Tung commented on UI_Wireframe',                  'Yesterday'),
+        array('Team roster locked',                                   '20 Sep'),
+        array('CHAN Ho Yin elected as team leader',                   '21 Sep'),
 );
 ?>
 <!DOCTYPE html>
@@ -94,104 +87,18 @@ $activities = array(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($team['team_name']); ?> | TeamBox</title>
+    <link rel="stylesheet" href="teacher.css">
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-        }
-
-        body {
-            min-height: 100vh;
-            background: #f0f1f3;
-            color: #2c2f36;
-        }
-
-        /* Sidebar - fixed */
-        .sidebar {
-            width: 220px;
-            height: 100vh;
-            background: #16181d;
-            color: #fff;
-            padding: 30px 0;
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            top: 0;
-            left: 0;
-            overflow-y: auto;
-            z-index: 10;
-        }
-
-        .sidebar .brand {
-            padding: 0 24px 32px;
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            color: #fff;
-        }
-
-        .sidebar a {
-            display: block;
-            padding: 14px 24px;
-            color: #8b8f98;
-            font-size: 15px;
-            text-decoration: none;
-            cursor: pointer;
-            border-left: 2px solid transparent;
-            transition: color 0.15s;
-        }
-
-        .sidebar a:hover {
-            color: #dfe1e5;
-        }
-
-        .sidebar a.active {
-            color: #fff;
-            font-weight: 500;
-            border-left-color: #fff;
-        }
-
-        .sidebar a.logout {
-            color: #6b6f78;
-            margin-top: auto;
-        }
-
-        .sidebar a.logout:hover {
-            color: #a8acb4;
-        }
-
-        /* Main */
-        .main {
-            margin-left: 220px;
-            padding: 38px 44px;
-            min-height: 100vh;
-        }
-
-        .content {
-            max-width: 1080px;
-            margin: 0 auto;
-        }
-
-        .back {
-            display: inline-block;
-            font-size: 13px;
-            color: #8b8f98;
-            text-decoration: none;
-            margin-bottom: 22px;
-            cursor: pointer;
-        }
-
-        .back:hover {
-            color: #2c2f36;
-        }
-
+        /* =========================================================
+           页面头部
+        ========================================================= */
         .page-head {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 34px;
+            gap: 20px;
         }
 
         .page-head h1 {
@@ -205,81 +112,28 @@ $activities = array(
             color: #8b8f98;
         }
 
-        .pill {
+        .back {
             display: inline-block;
-            font-size: 12px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            background: #f2f3f5;
-            color: #6b6f78;
-            font-weight: 500;
-        }
-
-        h2 {
             font-size: 13px;
-            font-weight: 600;
-            color: #6b6f78;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            margin: 0 0 14px;
+            color: #8b8f98;
+            text-decoration: none;
+            margin-bottom: 22px;
+            cursor: pointer;
         }
 
-        /* Card */
-        .card {
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-radius: 10px;
-            overflow: hidden;
+        .back:hover { color: #2c2f36; }
+
+        /* =========================================================
+           两列布局
+        ========================================================= */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
             margin-bottom: 30px;
         }
 
-        /* Table */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            table-layout: fixed;
-        }
-
-        th {
-            text-align: left;
-            font-weight: 500;
-            font-size: 12px;
-            color: #fff;
-            background: #175196;
-            padding: 12px 16px;
-            letter-spacing: 0.3px;
-        }
-
-        td {
-            padding: 14px 16px;
-            border-bottom: 1px solid #f2f3f5;
-            color: #2c2f36;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        .muted {
-            color: #a8acb4;
-            font-size: 13px;
-        }
-
-        .leader-mark {
-            font-size: 11px;
-            color: #6b6f78;
-            margin-left: 6px;
-            letter-spacing: 0.3px;
-        }
-
-        /* Progress */
-        .progress-table td {
-            white-space: normal;
-        }
+        .progress-table td { white-space: normal; }
 
         .progress-table td:first-child {
             width: 40%;
@@ -290,19 +144,11 @@ $activities = array(
             letter-spacing: 0.3px;
         }
 
-        .progress-table td:last-child {
-            color: #2c2f36;
-        }
+        .progress-table td:last-child { color: #2c2f36; }
 
-        /* Two-column info grid */
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        /* Task list */
+        /* =========================================================
+           Task rows
+        ========================================================= */
         .task-row {
             display: flex;
             justify-content: space-between;
@@ -312,13 +158,9 @@ $activities = array(
             font-size: 14px;
         }
 
-        .task-row:last-child {
-            border-bottom: none;
-        }
+        .task-row:last-child { border-bottom: none; }
 
-        .task-row .task-name {
-            color: #2c2f36;
-        }
+        .task-row .task-name { color: #2c2f36; }
 
         .task-row .task-owner {
             font-size: 13px;
@@ -337,31 +179,9 @@ $activities = array(
             margin-top: 3px;
         }
 
-        /* Progress bar */
-        .progress {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 13px;
-            color: #6b6f78;
-        }
-
-        .progress .bar {
-            width: 120px;
-            height: 6px;
-            background: #eceef1;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .progress .bar span {
-            display: block;
-            height: 100%;
-            background: #175196;
-            border-radius: 6px;
-        }
-
-        /* File list */
+        /* =========================================================
+           File list
+        ========================================================= */
         .file-list {
             list-style: none;
             font-size: 14px;
@@ -372,13 +192,14 @@ $activities = array(
             border-bottom: 1px solid #f2f3f5;
             display: flex;
             justify-content: space-between;
+            gap: 12px;
         }
 
-        .file-list li:last-child {
-            border-bottom: none;
-        }
+        .file-list li:last-child { border-bottom: none; }
 
-        /* Activity list */
+        /* =========================================================
+           Activity list
+        ========================================================= */
         .activity-list {
             list-style: none;
             font-size: 14px;
@@ -391,56 +212,56 @@ $activities = array(
             justify-content: space-between;
         }
 
-        .activity-list li:last-child {
-            border-bottom: none;
+        .activity-list li:last-child { border-bottom: none; }
+
+        /* =========================================================
+           Member Activity（替换原来的 Contribution）
+        ========================================================= */
+        .activity-table td {
+            white-space: normal;
         }
 
-        @media (max-width: 1000px) {
-            .content {
-                max-width: 100%;
-            }
+        .activity-table td:first-child {
+            color: #2c2f36;
         }
 
+        .activity-table td:not(:first-child) {
+            text-align: right;
+            color: #2c2f36;
+            font-weight: 500;
+        }
+
+        .activity-table th:not(:first-child) {
+            text-align: right;
+        }
+
+        .leader-mark {
+            font-size: 11px;
+            color: #6b6f78;
+            margin-left: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        /* =========================================================
+           响应式
+        ========================================================= */
         @media (max-width: 800px) {
             .info-grid { grid-template-columns: 1fr; gap: 0; }
         }
 
         @media (max-width: 700px) {
-            .sidebar {
-                position: static;
-                width: 100%;
-                height: auto;
-                min-height: auto;
-            }
-            .main {
-                margin-left: 0;
-                padding: 25px 22px;
-            }
             .page-head { flex-direction: column; gap: 12px; }
-            table { table-layout: auto; }
-            td { white-space: normal; }
         }
     </style>
 </head>
 <body>
 
-<aside class="sidebar">
-    <div class="brand">TeamBox</div>
-    <a>Dashboard</a>
-    <a>Projects</a>
-    <a class="active">Teams</a>
-    <a>Students</a>
-    <a>Contribution Reports</a>
-    <a>Files</a>
-    <a>Announcements</a>
-    <a>Profile</a>
-    <a href="login.php" class="logout">Log Out</a>
-</aside>
+<?php include 'teacher_nav.php'; ?>
 
 <main class="main">
     <div class="content">
 
-        <a href="teacher_index.php?id=1" class="back">← Back to Teams</a>
+        <a href="teacher_teams.php" class="back">← Back to Teams</a>
 
         <div class="page-head">
             <div>
@@ -450,6 +271,7 @@ $activities = array(
                     <?php echo htmlspecialchars($team['project_category']); ?>
                 </div>
             </div>
+            <span class="pill"><?php echo htmlspecialchars($team['status']); ?></span>
         </div>
 
         <!-- Project -->
@@ -503,7 +325,7 @@ $activities = array(
             </table>
         </div>
 
-        <!-- Progress + division of work -->
+        <!-- Progress + Division -->
         <div class="info-grid">
             <div>
                 <h2>Progress</h2>
@@ -563,34 +385,35 @@ $activities = array(
             <ul class="file-list">
                 <?php foreach ($files as $f): ?>
                     <li>
-                    <span>
-                        <?php echo htmlspecialchars($f['name']); ?>
-                        <span class="muted">· <?php echo htmlspecialchars($f['owner']); ?></span>
-                    </span>
+                        <span>
+                            <?php echo htmlspecialchars($f['name']); ?>
+                            <span class="muted">· <?php echo htmlspecialchars($f['owner']); ?></span>
+                        </span>
                         <span class="muted"><?php echo htmlspecialchars($f['meta']); ?></span>
                     </li>
                 <?php endforeach; ?>
             </ul>
         </div>
 
-        <!-- Contribution summary -->
-        <h2>Contribution</h2>
+        <!-- ★ Member Activity（替换原来的 Contribution） -->
+        <h2>Member Activity</h2>
+        <p class="muted" style="margin-bottom: 12px;">
+            Objective activity counts only — no scores, no ranking.
+        </p>
         <div class="card">
-            <table>
+            <table class="activity-table">
                 <tr>
                     <th>Member</th>
-                    <th>Tasks</th>
-                    <th>Files</th>
+                    <th>Tasks Completed</th>
+                    <th>Files Uploaded</th>
                     <th>Comments</th>
-                    <th>Score</th>
                 </tr>
-                <?php foreach ($contributions as $c): ?>
+                <?php foreach ($memberActivity as $a): ?>
                     <tr>
-                        <td><?php echo htmlspecialchars($c[0]); ?></td>
-                        <td><?php echo htmlspecialchars($c[1]); ?></td>
-                        <td><?php echo htmlspecialchars($c[2]); ?></td>
-                        <td><?php echo htmlspecialchars($c[3]); ?></td>
-                        <td><?php echo htmlspecialchars($c[4]); ?></td>
+                        <td><?php echo htmlspecialchars($a['name']); ?></td>
+                        <td><?php echo (int)$a['tasks']; ?></td>
+                        <td><?php echo (int)$a['files']; ?></td>
+                        <td><?php echo (int)$a['comments']; ?></td>
                     </tr>
                 <?php endforeach; ?>
             </table>

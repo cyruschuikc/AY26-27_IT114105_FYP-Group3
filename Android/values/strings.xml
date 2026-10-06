@@ -21,7 +21,7 @@
 
     <!--strings for StuHomeActivity below-->
     <string name="stuHome">TeamBox｜STUDENT</string>
-    <string name="welStuText">Welcome Back, </string>
+    <string name="welStuText">Welcome Back, _student name_</string>
     <string name="StuName">Student Name</string>
     <string name="stuDashMsg">This is your Dashboard. You can view your projects, assigned tasks, team progress, shared DOCs and recent notifications.</string>
 
