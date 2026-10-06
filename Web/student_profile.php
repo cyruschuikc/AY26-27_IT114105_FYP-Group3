@@ -12,8 +12,8 @@ session_start();
     <meta charset="UTF-8">
 
     <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
     >
 
     <title>Student Profile | TeamBox</title>
@@ -66,8 +66,6 @@ session_start();
             font-size: 30px;
             font-weight: bold;
         }
-
-        /* Navigation text links */
 
         .function-menu {
             width: 100%;
@@ -200,7 +198,7 @@ session_start();
             font-weight: bold;
         }
 
-        /* Edit Profile button (kept as button) */
+        /* Edit Profile button */
 
         .edit-profile-btn {
             min-width: 145px;
@@ -317,7 +315,7 @@ session_start();
             font-size: 15px;
         }
 
-        /* Edit Profile Form */
+        /* Form Elements (for Change Password) */
 
         .form-row {
             display: grid;
@@ -377,7 +375,7 @@ session_start();
             cursor: not-allowed;
         }
 
-        /* Form Buttons (kept as buttons) */
+        /* Form Buttons */
 
         .form-actions {
             display: flex;
@@ -566,8 +564,6 @@ session_start();
         <span>TeamBox</span>
     </div>
 
-    <!-- Navigation text links -->
-
     <div class="function-menu">
 
         <a href="student_index.php" class="nav-link">
@@ -618,7 +614,7 @@ session_start();
         <h1>Student Profile</h1>
 
         <p>
-            View and manage your personal information, academic details,
+            View your personal information, academic details,
             account security and TeamBox activities.
         </p>
 
@@ -645,10 +641,6 @@ session_start();
             </span>
 
         </div>
-
-        <button type="button" class="edit-profile-btn">
-            Edit Profile
-        </button>
 
     </section>
 
@@ -750,98 +742,6 @@ session_start();
 
     </section>
 
-    <!-- Edit Profile -->
-
-    <section class="content-box" style="margin-bottom: 25px;">
-
-        <h2>Edit Profile</h2>
-
-        <form action="student_profile_process.php" method="post">
-
-            <div class="form-row">
-
-                <div class="form-group">
-                    <label for="studentID">Student ID</label>
-
-                    <input
-                        type="text"
-                        id="studentID"
-                        name="studentID"
-                        value="250000001"
-                        class="readonly-input"
-                        readonly
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="fullName">Full Name</label>
-
-                    <input
-                        type="text"
-                        id="fullName"
-                        name="fullName"
-                        value="ABC"
-                        required
-                    >
-                </div>
-
-            </div>
-
-            <div class="form-row">
-
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value="250000001@example.edu.hk"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="programme">Programme</label>
-
-                    <input
-                        type="text"
-                        id="programme"
-                        name="programme"
-                        value="Higher Diploma in Software Engineering"
-                        class="readonly-input"
-                        readonly
-                    >
-                </div>
-
-            </div>
-
-            <div class="form-group">
-                <label for="bio">Short Bio</label>
-
-                <textarea
-                    id="bio"
-                    name="bio"
-                    placeholder="Write a short introduction about yourself"
-                ></textarea>
-            </div>
-
-            <div class="form-actions">
-
-                <button type="reset" class="form-btn">
-                    Reset
-                </button>
-
-                <button type="submit" class="form-btn save-btn">
-                    Save Changes
-                </button>
-
-            </div>
-
-        </form>
-
-    </section>
-
     <!-- Change Password -->
 
     <section class="content-box" style="margin-bottom: 25px;">
@@ -861,11 +761,11 @@ session_start();
                     <label for="currentPassword">Current Password</label>
 
                     <input
-                        type="password"
-                        id="currentPassword"
-                        name="currentPassword"
-                        placeholder="Enter current password"
-                        required
+                            type="password"
+                            id="currentPassword"
+                            name="currentPassword"
+                            placeholder="Enter current password"
+                            required
                     >
                 </div>
 
@@ -873,11 +773,11 @@ session_start();
                     <label for="newPassword">New Password</label>
 
                     <input
-                        type="password"
-                        id="newPassword"
-                        name="newPassword"
-                        placeholder="Enter new password"
-                        required
+                            type="password"
+                            id="newPassword"
+                            name="newPassword"
+                            placeholder="Enter new password"
+                            required
                     >
                 </div>
 
@@ -887,11 +787,11 @@ session_start();
                 <label for="confirmPassword">Confirm New Password</label>
 
                 <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    placeholder="Re-enter new password"
-                    required
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        placeholder="Re-enter new password"
+                        required
                 >
             </div>
 
@@ -943,9 +843,9 @@ session_start();
     </section>
 
     <div class="profile-note">
-        This page currently demonstrates the profile interface only.
-        Saving profile changes, updating passwords and storing account
-        activity will require PHP and database functions.
+        This page currently displays your profile information only.
+        Saving profile changes and updating passwords will require PHP
+        and database functions.
     </div>
 
 </main>
