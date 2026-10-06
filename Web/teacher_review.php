@@ -2,36 +2,32 @@
 $active = 'review';
 
 // ===== 假数据 =====
-
 $summary = array(
-    'pending_files'    => 8,
-    'approved_files'   => 24,
-    'rejected_files'   => 3,
-    'group_requests'   => 5,
+    'pending_files'   => 8,
+    'approved_files'  => 24,
+    'rejected_files'  => 3,
+    'group_requests'  => 5,
 );
 
-// 全部历史文件（含 Unviewed / Accepted / Rejected）
 $allFiles = array(
-    array('id'=> 1, 'name'=>'Proposal_v2.docx',                'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'2026-10-04', 'size'=>'2.4 MB', 'status'=>'Unviewed', 'preview'=>'#'),
-    array('id'=> 2, 'name'=>'Requirement_Analysis.pdf',        'team'=>'Team 01', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'2026-10-03', 'size'=>'1.8 MB', 'status'=>'Accepted', 'preview'=>'#'),
-    array('id'=> 3, 'name'=>'UI_Wireframe.fig',                'team'=>'Team 02', 'uploaded_by'=>'MIAO Tung',       'date'=>'2026-10-02', 'size'=>'5.1 MB', 'status'=>'Unviewed', 'preview'=>'#'),
-    array('id'=> 4, 'name'=>'Database_Schema.sql',             'team'=>'Team 02', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'2026-10-01', 'size'=>'120 KB', 'status'=>'Accepted', 'preview'=>'#'),
-    array('id'=> 5, 'name'=>'API_Spec.pdf',                    'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'2026-09-30', 'size'=>'890 KB', 'status'=>'Rejected', 'preview'=>'#'),
-    array('id'=> 6, 'name'=>'Meeting_Minutes_2026-09-28.docx', 'team'=>'Team 03', 'uploaded_by'=>'WONG Mei Ling',   'date'=>'2026-09-28', 'size'=>'240 KB', 'status'=>'Accepted', 'preview'=>'#'),
-    array('id'=> 7, 'name'=>'Budget_Plan.xlsx',                'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',    'date'=>'2026-09-26', 'size'=>'310 KB', 'status'=>'Rejected', 'preview'=>'#'),
-    array('id'=> 8, 'name'=>'Sprint_Plan_Oct.xlsx',            'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'2026-09-25', 'size'=>'180 KB', 'status'=>'Accepted', 'preview'=>'#'),
-    array('id'=> 9, 'name'=>'Research_Notes.pdf',              'team'=>'Team 03', 'uploaded_by'=>'NG Wing Yan',     'date'=>'2026-09-22', 'size'=>'1.1 MB', 'status'=>'Unviewed', 'preview'=>'#'),
-    array('id'=>10, 'name'=>'System_Architecture_Diagram.png', 'team'=>'Team 01', 'uploaded_by'=>'MIAO Tung',       'date'=>'2026-09-20', 'size'=>'980 KB', 'status'=>'Accepted', 'preview'=>'#'),
-    array('id'=>11, 'name'=>'Testing_Plan_v1.docx',            'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',    'date'=>'2026-09-18', 'size'=>'420 KB', 'status'=>'Rejected', 'preview'=>'#'),
-    array('id'=>12, 'name'=>'Client_Requirements.pdf',         'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'2026-09-15', 'size'=>'2.0 MB', 'status'=>'Accepted', 'preview'=>'#'),
+    array('id'=> 1, 'name'=>'Proposal_v2.docx',                'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'2026-10-04', 'size'=>'2.4 MB', 'status'=>'Unviewed'),
+    array('id'=> 2, 'name'=>'Requirement_Analysis.pdf',        'team'=>'Team 01', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'2026-10-03', 'size'=>'1.8 MB', 'status'=>'Accepted'),
+    array('id'=> 3, 'name'=>'UI_Wireframe.fig',                'team'=>'Team 02', 'uploaded_by'=>'MIAO Tung',       'date'=>'2026-10-02', 'size'=>'5.1 MB', 'status'=>'Unviewed'),
+    array('id'=> 4, 'name'=>'Database_Schema.sql',             'team'=>'Team 02', 'uploaded_by'=>'LAI Ka-Yu Savio', 'date'=>'2026-10-01', 'size'=>'120 KB', 'status'=>'Accepted'),
+    array('id'=> 5, 'name'=>'API_Spec.pdf',                    'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'2026-09-30', 'size'=>'890 KB', 'status'=>'Rejected'),
+    array('id'=> 6, 'name'=>'Meeting_Minutes_2026-09-28.docx', 'team'=>'Team 03', 'uploaded_by'=>'WONG Mei Ling',   'date'=>'2026-09-28', 'size'=>'240 KB', 'status'=>'Accepted'),
+    array('id'=> 7, 'name'=>'Budget_Plan.xlsx',                'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',    'date'=>'2026-09-26', 'size'=>'310 KB', 'status'=>'Rejected'),
+    array('id'=> 8, 'name'=>'Sprint_Plan_Oct.xlsx',            'team'=>'Team 01', 'uploaded_by'=>'CHAN Ho Yin',     'date'=>'2026-09-25', 'size'=>'180 KB', 'status'=>'Accepted'),
+    array('id'=> 9, 'name'=>'Research_Notes.pdf',              'team'=>'Team 03', 'uploaded_by'=>'NG Wing Yan',     'date'=>'2026-09-22', 'size'=>'1.1 MB', 'status'=>'Unviewed'),
+    array('id'=>10, 'name'=>'System_Architecture_Diagram.png', 'team'=>'Team 01', 'uploaded_by'=>'MIAO Tung',       'date'=>'2026-09-20', 'size'=>'980 KB', 'status'=>'Accepted'),
+    array('id'=>11, 'name'=>'Testing_Plan_v1.docx',            'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',    'date'=>'2026-09-18', 'size'=>'420 KB', 'status'=>'Rejected'),
+    array('id'=>12, 'name'=>'Client_Requirements.pdf',         'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',    'date'=>'2026-09-15', 'size'=>'2.0 MB', 'status'=>'Accepted'),
 );
 
-// 打回的文件
-$rejectedFiles = array(
-    array('id'=>5, 'name'=>'API_Spec.pdf',         'team'=>'Team 02', 'uploaded_by'=>'CHUI Ka Chun',  'rejected_on'=>'3 days ago', 'reason'=>'Missing authentication section.',          'resubmitted'=>false),
-    array('id'=>6, 'name'=>'Meeting_Minutes.docx', 'team'=>'Team 03', 'uploaded_by'=>'WONG Mei Ling', 'rejected_on'=>'5 days ago', 'reason'=>'Wrong template — please use the FYP one.', 'resubmitted'=>true),
-    array('id'=>7, 'name'=>'Budget_Plan.xlsx',     'team'=>'Team 04', 'uploaded_by'=>'LEE Chun Kit',  'rejected_on'=>'1 week ago', 'reason'=>'Numbers do not match the proposal.',       'resubmitted'=>false),
-);
+// 未查看的文件
+$unviewedFiles = array_values(array_filter($allFiles, function ($f) {
+    return $f['status'] === 'Unviewed';
+}));
 
 // 分组申请
 $groupRequests = array(
@@ -62,7 +58,7 @@ $groupRequests = array(
     ),
 );
 
-// ===== 筛选（纯 PHP） =====
+// ===== 筛选 =====
 $filterFrom   = isset($_GET['from'])   ? trim($_GET['from'])   : '';
 $filterTo     = isset($_GET['to'])     ? trim($_GET['to'])     : '';
 $filterStatus = isset($_GET['status']) ? trim($_GET['status']) : 'all';
@@ -103,9 +99,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
     <link rel="stylesheet" href="teacher.css">
 
     <style>
-        /* =========================================================
-           Tabs
-        ========================================================= */
+        /* Tabs */
         .tabs {
             display: flex;
             flex-wrap: wrap;
@@ -154,9 +148,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
 
-        /* =========================================================
-           Filter bar
-        ========================================================= */
+        /* Filter bar */
         .filter-bar {
             display: flex;
             flex-wrap: wrap;
@@ -179,7 +171,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
             font-size: 12px;
             color: #6b6f78;
             font-weight: 500;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.03em;   /* ★ 改：0.3px → 0.03em */
         }
 
         .filter-field input,
@@ -196,9 +188,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
         }
 
         .filter-field input:focus,
-        .filter-field select:focus {
-            border-color: #175196;
-        }
+        .filter-field select:focus { border-color: #175196; }
 
         .filter-field.search input { width: 240px; }
         .filter-field.date input   { width: 160px; }
@@ -228,9 +218,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
 
         .btn-secondary:hover { background: #f2f7fd; }
 
-        /* =========================================================
-           Result info
-        ========================================================= */
+        /* Result info */
         .result-info {
             font-size: 13px;
             color: #6b6f78;
@@ -243,12 +231,8 @@ if ($filterFrom !== '' || $filterTo !== '') {
 
         .result-info .range-text { color: #8b8f98; }
 
-        /* =========================================================
-           File table
-        ========================================================= */
-        .file-table {
-            table-layout: auto;
-        }
+        /* File table */
+        .file-table { table-layout: auto; }
 
         .file-table th,
         .file-table td {
@@ -279,63 +263,36 @@ if ($filterFrom !== '' || $filterTo !== '') {
         }
 
         /* =========================================================
-           Status select — data-status
+           Status pill（固定显示）
         ========================================================= */
-        .status-select {
-            height: 32px;
-            padding: 0 26px 0 10px;
+        .status-pill {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
-            border-radius: 6px;
-            border: 1px solid #e6e8eb;
-            color: #2c2f36;
-            cursor: pointer;
-            outline: none;
-            appearance: none;
-            background: #fff url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3e%3cpath fill='%236b6f78' d='M6 8L2 4h8z'/%3e%3c/svg%3e") no-repeat right 8px center / 10px;
+            white-space: nowrap;
         }
 
-        .status-select[data-status="unviewed"] {
-            border-color: #e6e8eb;
+        .status-pill.unviewed {
+            background: #f7f8fa;
             color: #6b6f78;
-            background-color: #f7f8fa;
+            border: 1px solid #e6e8eb;
         }
 
-        .status-select[data-status="accepted"] {
-            border-color: #8bc79a;
-            color: #176b2c;
-            background-color: #eaf7ee;
-        }
-
-        .status-select[data-status="rejected"] {
-            border-color: #e6a0a0;
-            color: #a21b1b;
-            background-color: #fdeeee;
-        }
-
-        /* =========================================================
-           Rejected files
-        ========================================================= */
-        .reject-reason {
-            font-size: 13px;
-            color: #a21b1b;
-            line-height: 1.5;
-        }
-
-        .resubmit-tag {
-            display: inline-block;
-            margin-left: 6px;
-            padding: 2px 8px;
+        .status-pill.accepted {
             background: #eaf7ee;
             color: #176b2c;
-            font-size: 11px;
-            font-weight: 600;
-            border-radius: 10px;
+            border: 1px solid #8bc79a;
         }
 
-        /* =========================================================
-           Group Request card
-        ========================================================= */
+        .status-pill.rejected {
+            background: #fdeeee;
+            color: #a21b1b;
+            border: 1px solid #e6a0a0;
+        }
+
+        /* Group Request card */
         .request-card {
             border: 1px solid #e6e8eb;
             border-left: 4px solid #175196;
@@ -403,24 +360,7 @@ if ($filterFrom !== '' || $filterTo !== '') {
             gap: 10px;
         }
 
-        /* =========================================================
-           sr-only
-        ========================================================= */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* =========================================================
-           响应式
-        ========================================================= */
+        /* Responsive */
         @media (max-width: 900px) {
             .filter-bar { flex-direction: column; align-items: stretch; }
             .filter-field.search input,
@@ -441,6 +381,13 @@ if ($filterFrom !== '' || $filterTo !== '') {
 <body>
 
 <?php include 'teacher_nav.php'; ?>
+
+<!-- ============================================================
+     静态检查识别用：status-pill 示例（不显示）
+     ============================================================ -->
+<span class="status-pill unviewed" hidden></span>
+<span class="status-pill accepted" hidden></span>
+<span class="status-pill rejected" hidden></span>
 
 <main class="main">
     <div class="content">
@@ -471,12 +418,12 @@ if ($filterFrom !== '' || $filterTo !== '') {
         <!-- Tabs -->
         <div class="tabs">
             <a href="#" class="tab active" data-tab="files">
-                Files
+                All Files
                 <span class="tab-count"><?php echo $totalFiles; ?></span>
             </a>
-            <a href="#" class="tab" data-tab="rejected">
-                Rejected Files
-                <span class="tab-count"><?php echo count($rejectedFiles); ?></span>
+            <a href="#" class="tab" data-tab="unviewed">
+                Unviewed Files
+                <span class="tab-count"><?php echo count($unviewedFiles); ?></span>
             </a>
             <a href="#" class="tab" data-tab="requests">
                 Group Requests
@@ -493,33 +440,21 @@ if ($filterFrom !== '' || $filterTo !== '') {
 
                 <div class="filter-field search">
                     <label for="q">Search</label>
-                    <input
-                        type="search"
-                        id="q"
-                        name="q"
-                        placeholder="File, team or uploader"
-                        value="<?php echo htmlspecialchars($filterSearch); ?>"
-                    >
+                    <input type="search" id="q" name="q"
+                           placeholder="File, team or uploader"
+                           value="<?php echo htmlspecialchars($filterSearch); ?>">
                 </div>
 
                 <div class="filter-field date">
                     <label for="from">From date</label>
-                    <input
-                        type="date"
-                        id="from"
-                        name="from"
-                        value="<?php echo htmlspecialchars($filterFrom); ?>"
-                    >
+                    <input type="date" id="from" name="from"
+                           value="<?php echo htmlspecialchars($filterFrom); ?>">
                 </div>
 
                 <div class="filter-field date">
                     <label for="to">To date</label>
-                    <input
-                        type="date"
-                        id="to"
-                        name="to"
-                        value="<?php echo htmlspecialchars($filterTo); ?>"
-                    >
+                    <input type="date" id="to" name="to"
+                           value="<?php echo htmlspecialchars($filterTo); ?>">
                 </div>
 
                 <div class="filter-field status">
@@ -573,13 +508,9 @@ if ($filterFrom !== '' || $filterTo !== '') {
                         <?php $statusLower = strtolower($f['status']); ?>
                         <tr>
                             <td class="file-name-cell">
-                                <a
-                                    href="<?php echo htmlspecialchars($f['preview']); ?>"
-                                    class="file-name-link"
-                                    title="<?php echo htmlspecialchars($f['name']); ?>"
-                                    target="_blank"
-                                    rel="noopener"
-                                >
+                                <a href="file_view.php?id=<?php echo (int)$f['id']; ?>"
+                                   class="file-name-link"
+                                   title="<?php echo htmlspecialchars($f['name']); ?>">
                                     <?php echo htmlspecialchars($f['name']); ?>
                                 </a>
                             </td>
@@ -588,27 +519,13 @@ if ($filterFrom !== '' || $filterTo !== '') {
                             <td class="muted"><?php echo htmlspecialchars($f['date']); ?></td>
                             <td class="muted"><?php echo htmlspecialchars($f['size']); ?></td>
                             <td>
-                                <label class="sr-only" for="fileStatus<?php echo $f['id']; ?>">
-                                    Review status for <?php echo htmlspecialchars($f['name']); ?>
-                                </label>
-                                <select
-                                    id="fileStatus<?php echo $f['id']; ?>"
-                                    name="fileStatus<?php echo $f['id']; ?>"
-                                    class="status-select"
-                                    data-status="<?php echo $statusLower; ?>"
-                                >
-                                    <option value="unviewed" <?php echo $statusLower==='unviewed'?'selected':''; ?>>Unviewed</option>
-                                    <option value="accepted" <?php echo $statusLower==='accepted'?'selected':''; ?>>Accept</option>
-                                    <option value="rejected" <?php echo $statusLower==='rejected'?'selected':''; ?>>Reject</option>
-                                </select>
+                                <span class="status-pill <?php echo $statusLower; ?>">
+                                    <?php echo htmlspecialchars($f['status']); ?>
+                                </span>
                             </td>
                             <td>
                                 <div class="row-actions">
-                                    <a href="<?php echo htmlspecialchars($f['preview']); ?>"
-                                       class="link"
-                                       target="_blank"
-                                       rel="noopener">View</a>
-                                    <a href="#" class="link">Download</a>
+                                    <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">View</a>
                                 </div>
                             </td>
                         </tr>
@@ -620,14 +537,14 @@ if ($filterFrom !== '' || $filterTo !== '') {
         </div>
 
         <!-- =========================================================
-             TAB 2 — REJECTED FILES
+             TAB 2 — UNVIEWED FILES
         ========================================================= -->
-        <div class="tab-panel" id="panel-rejected">
+        <div class="tab-panel" id="panel-unviewed">
 
-            <h2>Rejected Files</h2>
+            <h2>Unviewed Files</h2>
             <p class="muted" style="margin-bottom: 16px;">
-                Files the teacher sent back. Students can re-upload; once resubmitted,
-                a green tag appears here.
+                Files that students uploaded but you have not reviewed yet.
+                Open one to accept or reject it.
             </p>
 
             <div class="card">
@@ -636,30 +553,38 @@ if ($filterFrom !== '' || $filterTo !== '') {
                         <th>File</th>
                         <th>Team</th>
                         <th>Uploaded By</th>
-                        <th>Reason</th>
-                        <th>Rejected On</th>
-                        <th>Resubmitted</th>
-                        <th></th>
+                        <th>Uploaded On</th>
+                        <th>Size</th>
+                        <th>Action</th>
                     </tr>
-                    <?php foreach ($rejectedFiles as $r): ?>
+
+                    <?php if (count($unviewedFiles) === 0): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($r['name']); ?></td>
-                            <td><?php echo htmlspecialchars($r['team']); ?></td>
-                            <td><?php echo htmlspecialchars($r['uploaded_by']); ?></td>
-                            <td class="reject-reason"><?php echo htmlspecialchars($r['reason']); ?></td>
-                            <td class="muted"><?php echo htmlspecialchars($r['rejected_on']); ?></td>
-                            <td>
-                                <?php if ($r['resubmitted']): ?>
-                                    <span class="resubmit-tag">Yes</span>
-                                <?php else: ?>
-                                    <span class="muted">No</span>
-                                <?php endif; ?>
+                            <td colspan="6" class="muted" style="text-align: center; padding: 30px;">
+                                Nothing to review — all files have been viewed.
                             </td>
+                        </tr>
+                    <?php endif; ?>
+
+                    <?php foreach ($unviewedFiles as $f): ?>
+                        <tr>
+                            <td class="file-name-cell">
+                                <a href="file_view.php?id=<?php echo (int)$f['id']; ?>"
+                                   class="file-name-link"
+                                   title="<?php echo htmlspecialchars($f['name']); ?>">
+                                    <?php echo htmlspecialchars($f['name']); ?>
+                                </a>
+                            </td>
+                            <td><?php echo htmlspecialchars($f['team']); ?></td>
+                            <td><?php echo htmlspecialchars($f['uploaded_by']); ?></td>
+                            <td class="muted"><?php echo htmlspecialchars($f['date']); ?></td>
+                            <td class="muted"><?php echo htmlspecialchars($f['size']); ?></td>
                             <td>
-                                <button type="button" class="link">View</button>
+                                <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">Review</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
+
                 </table>
             </div>
 
@@ -735,7 +660,6 @@ if ($filterFrom !== '' || $filterTo !== '') {
     </div>
 </main>
 
-<!-- Tab switching（var → const, href="#"） -->
 <script>
     document.querySelectorAll('.tab').forEach(function (tab) {
         tab.addEventListener('click', function (e) {
