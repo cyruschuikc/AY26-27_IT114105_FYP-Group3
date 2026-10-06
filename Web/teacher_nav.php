@@ -1,6 +1,4 @@
 <?php
-// teacher_nav.php
-// $active 可选值：dashboard / projects / teams / students / contributions / files / announcements / profile
 if (!isset($active)) { $active = ''; }
 ?>
 <aside class="sidebar">
@@ -10,7 +8,7 @@ if (!isset($active)) { $active = ''; }
     <a href="teacher_projects.php"       class="<?= $active==='projects'?'active':'' ?>">Projects</a>
     <a href="teacher_teams.php"          class="<?= $active==='teams'?'active':'' ?>">Teams</a>
     <a href="teacher_students.php"       class="<?= $active==='students'?'active':'' ?>">Students</a>
-    <a href="teacher_contributions.php"  class="<?= $active==='contributions'?'active':'' ?>">Contribution Reports</a>
+    <a href="teacher_review.php"         class="<?= $active==='review'?'active':'' ?>">Review Center</a>
     <a href="teacher_files.php"          class="<?= $active==='files'?'active':'' ?>">Files</a>
     <a href="teacher_announcements.php"  class="<?= $active==='announcements'?'active':'' ?>">Announcements</a>
     <a href="teacher_profile.php"        class="<?= $active==='profile'?'active':'' ?>">Profile</a>

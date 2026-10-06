@@ -113,7 +113,7 @@ while (date('Y-m', $cursor) <= $lastMonth) {
     $cursor = strtotime('+1 month', $cursor);
 }
 
-// ===== 延期里程碑计数 =====
+// ===== 延期计数 =====
 $lateCount = 0;
 foreach ($milestones as $m) {
     if (!empty($m['is_late'])) { $lateCount++; }
@@ -162,7 +162,7 @@ foreach ($milestones as $m) {
         .back:hover { color: #2c2f36; }
 
         /* =========================================================
-           通用两列布局
+           两列布局
         ========================================================= */
         .info-grid {
             display: grid;
@@ -235,7 +235,7 @@ foreach ($milestones as $m) {
         .activity-list li:last-child { border-bottom: none; }
 
         /* =========================================================
-           1. 文件统计（按团队分组）
+           File groups
         ========================================================= */
         .file-groups {
             display: grid;
@@ -304,7 +304,7 @@ foreach ($milestones as $m) {
         }
 
         /* =========================================================
-           2. 甘特图 / 时间线
+           Gantt
         ========================================================= */
         .gantt-wrap {
             padding: 24px;
@@ -325,7 +325,6 @@ foreach ($milestones as $m) {
             color: #6b6f78;
         }
 
-        /* ---------- 顶部月份刻度 ---------- */
         .gantt-months {
             display: flex;
             align-items: center;
@@ -356,15 +355,9 @@ foreach ($milestones as $m) {
             white-space: nowrap;
         }
 
-        /* 第一个月贴左，避免被裁 */
-        .gantt-month:first-child {
-            transform: translateX(0);
-        }
+        .gantt-month:first-child { transform: translateX(0); }
 
-        /* ---------- 甘特图主体 ---------- */
-        .gantt-body {
-            position: relative;
-        }
+        .gantt-body { position: relative; }
 
         .gantt-row {
             display: flex;
@@ -421,7 +414,6 @@ foreach ($milestones as $m) {
         .gantt-bar.pending { background: #c9ccd1; color: #2c2f36; }
         .gantt-bar.late    { background: #d32f2f; color: #fff; }
 
-        /* ---------- 月份分隔竖线 ---------- */
         .gantt-month-line {
             position: absolute;
             top: 0;
@@ -432,7 +424,6 @@ foreach ($milestones as $m) {
             pointer-events: none;
         }
 
-        /* ---------- today 红线 ---------- */
         .gantt-today-line {
             position: absolute;
             top: 0;
@@ -473,7 +464,6 @@ foreach ($milestones as $m) {
             font-weight: 600;
         }
 
-        /* ---------- 图例 ---------- */
         .gantt-legend {
             display: flex;
             gap: 20px;
@@ -501,9 +491,9 @@ foreach ($milestones as $m) {
         .gantt-legend .dot.today   { background: #d32f2f; border-radius: 50%; }
 
         /* =========================================================
-           3. 贡献报告入口
+           Review Center CTA（替换掉原来的 Contribution CTA）
         ========================================================= */
-        .contribution-cta {
+        .review-cta {
             padding: 26px 28px;
             background: #fff;
             border: 1px solid #e6e8eb;
@@ -516,41 +506,25 @@ foreach ($milestones as $m) {
             margin-bottom: 30px;
         }
 
-        .contribution-cta h3 {
+        .review-cta h3 {
             font-size: 16px;
             font-weight: 600;
             color: #2c2f36;
             margin-bottom: 6px;
         }
 
-        .contribution-cta p {
+        .review-cta p {
             font-size: 13px;
             color: #8b8f98;
             line-height: 1.5;
             max-width: 620px;
         }
 
-        .contribution-cta .cta-actions {
+        .review-cta .cta-actions {
             display: flex;
             gap: 10px;
             flex-shrink: 0;
         }
-
-        .btn-ghost {
-            background: #fff;
-            color: #175196;
-            border: 1px solid #175196;
-            border-radius: 6px;
-            padding: 10px 18px;
-            font-size: 13px;
-            cursor: pointer;
-            font-weight: 500;
-            font-family: inherit;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-ghost:hover { background: #f2f7fd; }
 
         /* =========================================================
            响应式
@@ -559,19 +533,14 @@ foreach ($milestones as $m) {
             .file-groups { grid-template-columns: 1fr; }
 
             .gantt-header { padding-left: 0; }
-
             .gantt-months { display: none; }
             .gantt-month-line { display: none; }
             .gantt-today-line { display: none; }
 
             .gantt-row { flex-direction: column; align-items: stretch; }
+            .gantt-label { width: 100%; padding: 0 0 6px 0; }
 
-            .gantt-label {
-                width: 100%;
-                padding: 0 0 6px 0;
-            }
-
-            .contribution-cta {
+            .review-cta {
                 flex-direction: column;
                 align-items: flex-start;
             }
@@ -637,25 +606,18 @@ foreach ($milestones as $m) {
             <?php echo htmlspecialchars($project['description']); ?>
         </p>
 
-        <!-- ★ 3. 贡献报告入口 -->
-        <div class="contribution-cta">
+        <!-- Review Center 入口（替换原来的 Contribution CTA） -->
+        <div class="review-cta">
             <div>
-                <h3>Contribution Reports</h3>
+                <h3>Review Center</h3>
                 <p>
-                    Review and approve contribution scores for all teams
-                    in this project. Reports are calculated from task
-                    completion, file updates and discussion activity.
+                    Check files uploaded by this project's teams, approve or
+                    reject them, and review group formation requests. Rejected
+                    files will be sent back to the students for revision.
                 </p>
             </div>
             <div class="cta-actions">
-                <a href="teacher_contributions.php?project=<?php echo (int)$project['id']; ?>"
-                   class="btn-primary">
-                    Open Contribution Reports
-                </a>
-                <a href="teacher_contributions.php?project=<?php echo (int)$project['id']; ?>&export=1"
-                   class="btn-ghost">
-                    Export PDF
-                </a>
+                <a href="teacher_review.php" class="btn-primary">Open Review Center</a>
             </div>
         </div>
 
@@ -752,18 +714,16 @@ foreach ($milestones as $m) {
             </div>
         </div>
 
-        <!-- ★ 2. 甘特图 -->
+        <!-- Gantt -->
         <h2>Project Timeline (Gantt)</h2>
         <div class="card">
             <div class="gantt-wrap">
 
-                <!-- 起止日期 -->
                 <div class="gantt-header">
                     <span class="gantt-start"><?php echo date('d M Y', $projStart); ?></span>
                     <span class="gantt-end"><?php echo date('d M Y', $projEnd); ?></span>
                 </div>
 
-                <!-- 月份刻度 -->
                 <div class="gantt-months">
                     <div class="gantt-months-label"></div>
                     <div class="gantt-months-track">
@@ -777,10 +737,8 @@ foreach ($milestones as $m) {
                     </div>
                 </div>
 
-                <!-- 甘特图主体 -->
                 <div class="gantt-body">
 
-                    <!-- today 红线 -->
                     <?php if ($todayInRange): ?>
                         <div class="gantt-today-line"
                              style="left: calc(160px + (100% - 160px) * <?php echo round($todayPercent / 100, 4); ?>);"
@@ -789,14 +747,12 @@ foreach ($milestones as $m) {
                         </div>
                     <?php endif; ?>
 
-                    <!-- 月份分隔竖线（第一个不画） -->
                     <?php foreach ($monthTicks as $i => $tick): ?>
                         <?php if ($i === 0) continue; ?>
                         <div class="gantt-month-line"
                              style="left: calc(160px + (100% - 160px) * <?php echo round($tick['percent'] / 100, 4); ?>);"></div>
                     <?php endforeach; ?>
 
-                    <!-- 里程碑行 -->
                     <?php foreach ($milestones as $m): ?>
                         <?php
                         if ($m['status'] === 'Completed')        { $cls = 'done'; }
@@ -819,7 +775,7 @@ foreach ($milestones as $m) {
                             <div class="gantt-track">
                                 <div class="gantt-bar <?php echo $cls; ?>"
                                      style="left: <?php echo round($m['offset'], 2); ?>%;
-                                         width: <?php echo round($m['width'], 2); ?>%;"
+                                             width: <?php echo round($m['width'], 2); ?>%;"
                                      title="<?php echo htmlspecialchars($m['name']); ?> · <?php echo $m['progress']; ?>%">
                                     <?php echo $m['progress']; ?>%
                                 </div>
@@ -829,7 +785,6 @@ foreach ($milestones as $m) {
 
                 </div>
 
-                <!-- 图例 -->
                 <div class="gantt-legend">
                     <span><span class="dot done"></span>Completed</span>
                     <span><span class="dot active"></span>In Progress</span>
@@ -861,7 +816,7 @@ foreach ($milestones as $m) {
             <?php endforeach; ?>
         </div>
 
-        <!-- ★ 1. 文件统计（按团队分组） -->
+        <!-- Files by Team -->
         <h2>Files by Team</h2>
         <div class="file-groups">
             <?php foreach ($fileGroups as $g): ?>

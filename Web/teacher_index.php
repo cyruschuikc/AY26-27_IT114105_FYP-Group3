@@ -31,7 +31,7 @@ $activities = array(
 <main class="main">
     <div class="content">
 
-        <h1>Instructor Dashboard</h1>
+        <h1>Dashboard</h1>
         <p class="subtitle">ITE4116M Final Year Project · Esther Yuen · 2026/27</p>
 
         <!-- Summary -->
@@ -79,11 +79,11 @@ $activities = array(
                 <div class="entry-meta">20 students</div>
             </a>
 
-            <a href="teacher_contributions.php" class="entry-card">
-                <div class="entry-icon">CONT</div>
-                <div class="entry-title">Contribution Reports</div>
-                <div class="entry-desc">Review and approve student contribution scores.</div>
-                <div class="entry-meta">3 pending</div>
+            <a href="teacher_review.php" class="entry-card">
+                <div class="entry-icon">REV</div>
+                <div class="entry-title">Review Center</div>
+                <div class="entry-desc">Review files and approve group formation requests.</div>
+                <div class="entry-meta">8 files · 5 requests</div>
             </a>
 
             <a href="teacher_files.php" class="entry-card">

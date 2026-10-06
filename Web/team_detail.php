@@ -3,6 +3,7 @@ $active = 'teams';
 
 $teamId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 
+// ===== 假数据 =====
 $team = array(
         'team_name'          => 'Team 01',
         'project_name'       => 'TeamBox',
@@ -64,11 +65,12 @@ $files = array(
         array('name'=>'UI_Wireframe.fig',         'owner'=>'MIAO Tung',       'meta'=>'5.1 MB · 2 days ago'),
 );
 
-$contributions = array(
-        array('CHAN Ho Yin',     2, 3, 14, '32%'),
-        array('CHUI Ka Chun',    1, 1,  8, '24%'),
-        array('LAI Ka-Yu Savio', 1, 2, 11, '26%'),
-        array('MIAO Tung',       0, 1,  6, '18%'),
+// ★ 改动：把原来的 $contributions（含百分比 / 分数）换成客观数量，不评分、不排名
+$memberActivity = array(
+        array('name'=>'CHAN Ho Yin',     'tasks'=>2, 'files'=>3, 'comments'=>14),
+        array('name'=>'CHUI Ka Chun',    'tasks'=>1, 'files'=>1, 'comments'=> 8),
+        array('name'=>'LAI Ka-Yu Savio', 'tasks'=>1, 'files'=>2, 'comments'=>11),
+        array('name'=>'MIAO Tung',       'tasks'=>0, 'files'=>1, 'comments'=> 6),
 );
 
 $activities = array(
@@ -87,13 +89,16 @@ $activities = array(
     <title><?php echo htmlspecialchars($team['team_name']); ?> | TeamBox</title>
     <link rel="stylesheet" href="teacher.css">
 
-    <!-- team_detail.php 专属样式 -->
     <style>
+        /* =========================================================
+           页面头部
+        ========================================================= */
         .page-head {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 34px;
+            gap: 20px;
         }
 
         .page-head h1 {
@@ -107,6 +112,20 @@ $activities = array(
             color: #8b8f98;
         }
 
+        .back {
+            display: inline-block;
+            font-size: 13px;
+            color: #8b8f98;
+            text-decoration: none;
+            margin-bottom: 22px;
+            cursor: pointer;
+        }
+
+        .back:hover { color: #2c2f36; }
+
+        /* =========================================================
+           两列布局
+        ========================================================= */
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -114,10 +133,7 @@ $activities = array(
             margin-bottom: 30px;
         }
 
-        /* Progress table */
-        .progress-table td {
-            white-space: normal;
-        }
+        .progress-table td { white-space: normal; }
 
         .progress-table td:first-child {
             width: 40%;
@@ -128,11 +144,11 @@ $activities = array(
             letter-spacing: 0.3px;
         }
 
-        .progress-table td:last-child {
-            color: #2c2f36;
-        }
+        .progress-table td:last-child { color: #2c2f36; }
 
-        /* Task rows */
+        /* =========================================================
+           Task rows
+        ========================================================= */
         .task-row {
             display: flex;
             justify-content: space-between;
@@ -142,13 +158,9 @@ $activities = array(
             font-size: 14px;
         }
 
-        .task-row:last-child {
-            border-bottom: none;
-        }
+        .task-row:last-child { border-bottom: none; }
 
-        .task-row .task-name {
-            color: #2c2f36;
-        }
+        .task-row .task-name { color: #2c2f36; }
 
         .task-row .task-owner {
             font-size: 13px;
@@ -167,7 +179,9 @@ $activities = array(
             margin-top: 3px;
         }
 
-        /* File list */
+        /* =========================================================
+           File list
+        ========================================================= */
         .file-list {
             list-style: none;
             font-size: 14px;
@@ -178,13 +192,14 @@ $activities = array(
             border-bottom: 1px solid #f2f3f5;
             display: flex;
             justify-content: space-between;
+            gap: 12px;
         }
 
-        .file-list li:last-child {
-            border-bottom: none;
-        }
+        .file-list li:last-child { border-bottom: none; }
 
-        /* Activity list */
+        /* =========================================================
+           Activity list
+        ========================================================= */
         .activity-list {
             list-style: none;
             font-size: 14px;
@@ -197,8 +212,27 @@ $activities = array(
             justify-content: space-between;
         }
 
-        .activity-list li:last-child {
-            border-bottom: none;
+        .activity-list li:last-child { border-bottom: none; }
+
+        /* =========================================================
+           Member Activity（替换原来的 Contribution）
+        ========================================================= */
+        .activity-table td {
+            white-space: normal;
+        }
+
+        .activity-table td:first-child {
+            color: #2c2f36;
+        }
+
+        .activity-table td:not(:first-child) {
+            text-align: right;
+            color: #2c2f36;
+            font-weight: 500;
+        }
+
+        .activity-table th:not(:first-child) {
+            text-align: right;
         }
 
         .leader-mark {
@@ -208,6 +242,9 @@ $activities = array(
             letter-spacing: 0.3px;
         }
 
+        /* =========================================================
+           响应式
+        ========================================================= */
         @media (max-width: 800px) {
             .info-grid { grid-template-columns: 1fr; gap: 0; }
         }
@@ -234,6 +271,7 @@ $activities = array(
                     <?php echo htmlspecialchars($team['project_category']); ?>
                 </div>
             </div>
+            <span class="pill"><?php echo htmlspecialchars($team['status']); ?></span>
         </div>
 
         <!-- Project -->
@@ -287,7 +325,7 @@ $activities = array(
             </table>
         </div>
 
-        <!-- Progress + division of work -->
+        <!-- Progress + Division -->
         <div class="info-grid">
             <div>
                 <h2>Progress</h2>
@@ -357,24 +395,25 @@ $activities = array(
             </ul>
         </div>
 
-        <!-- Contribution -->
-        <h2>Contribution</h2>
+        <!-- ★ Member Activity（替换原来的 Contribution） -->
+        <h2>Member Activity</h2>
+        <p class="muted" style="margin-bottom: 12px;">
+            Objective activity counts only — no scores, no ranking.
+        </p>
         <div class="card">
-            <table>
+            <table class="activity-table">
                 <tr>
                     <th>Member</th>
-                    <th>Tasks</th>
-                    <th>Files</th>
+                    <th>Tasks Completed</th>
+                    <th>Files Uploaded</th>
                     <th>Comments</th>
-                    <th>Score</th>
                 </tr>
-                <?php foreach ($contributions as $c): ?>
+                <?php foreach ($memberActivity as $a): ?>
                     <tr>
-                        <td><?php echo htmlspecialchars($c[0]); ?></td>
-                        <td><?php echo $c[1]; ?></td>
-                        <td><?php echo $c[2]; ?></td>
-                        <td><?php echo $c[3]; ?></td>
-                        <td><?php echo htmlspecialchars($c[4]); ?></td>
+                        <td><?php echo htmlspecialchars($a['name']); ?></td>
+                        <td><?php echo (int)$a['tasks']; ?></td>
+                        <td><?php echo (int)$a['files']; ?></td>
+                        <td><?php echo (int)$a['comments']; ?></td>
                     </tr>
                 <?php endforeach; ?>
             </table>
