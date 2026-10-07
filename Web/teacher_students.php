@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/helpers.php';
 /** @var mysqli $conn */
 
 
@@ -102,29 +103,6 @@ if ($rs) {
     mysqli_free_result($rs);
 }
 
-
-// =========================================================
-// 4. 辅助函数：把 grade_level 转成班级
-// =========================================================
-if (!function_exists('formatClass')) {
-    function formatClass($major, $gradeLevel) {
-        // 简化规则：
-        //   grade_level = 14 → 班级后缀 "2B"
-        //   其它值直接沿用
-        $majorShort = 'SE';
-        if (stripos($major, 'Cloud') !== false) $majorShort = 'CC';
-        elseif (stripos($major, 'Information') !== false) $majorShort = 'IT';
-        elseif (stripos($major, 'Software') !== false) $majorShort = 'SE';
-
-        if ($gradeLevel >= 12) {
-            $year = $gradeLevel - 12 + 1;  // 14 → 3
-        } else {
-            $year = $gradeLevel;
-        }
-
-        return $majorShort . '-' . $year . 'B';
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">

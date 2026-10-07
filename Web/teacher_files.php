@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/helpers.php';
 /** @var mysqli $conn */
 
 
@@ -95,52 +96,6 @@ $rs = mysqli_query($conn, $sql);
 if ($rs) {
     while ($row = mysqli_fetch_assoc($rs)) { $teamFiles[] = $row; }
     mysqli_free_result($rs);
-}
-
-
-// =========================================================
-// 4. 辅助函数
-// =========================================================
-if (!function_exists('timeAgo')) {
-    function timeAgo($datetime) {
-        if (empty($datetime)) return '—';
-        $ts = strtotime($datetime);
-        $diff = time() - $ts;
-
-        if ($diff < 60)         return 'just now';
-        if ($diff < 3600)       return floor($diff / 60) . 'm ago';
-        if ($diff < 86400)      return floor($diff / 3600) . 'h ago';
-        if ($diff < 86400 * 2)  return 'Yesterday';
-        if ($diff < 86400 * 7)  return floor($diff / 86400) . 'd ago';
-        return date('d M Y', $ts);
-    }
-}
-
-if (!function_exists('parseSizeToBytes')) {
-    function parseSizeToBytes($size) {
-        if (empty($size)) return 0;
-        if (is_numeric($size)) return (int)$size;
-
-        // 解析 "2.4 MB" / "120 KB" / "980 B" 等
-        $size = strtoupper(trim($size));
-        $num  = (float)$size;
-
-        if (strpos($size, 'GB') !== false) return (int)($num * 1024 * 1024 * 1024);
-        if (strpos($size, 'MB') !== false) return (int)($num * 1024 * 1024);
-        if (strpos($size, 'KB') !== false) return (int)($num * 1024);
-        if (strpos($size, 'B')  !== false) return (int)$num;
-
-        return (int)$num;
-    }
-}
-
-if (!function_exists('formatBytes')) {
-    function formatBytes($bytes) {
-        if ($bytes < 1024)               return $bytes . ' B';
-        if ($bytes < 1024 * 1024)        return round($bytes / 1024, 1) . ' KB';
-        if ($bytes < 1024 * 1024 * 1024) return round($bytes / 1024 / 1024, 1) . ' MB';
-        return round($bytes / 1024 / 1024 / 1024, 2) . ' GB';
-    }
 }
 ?>
 <!DOCTYPE html>

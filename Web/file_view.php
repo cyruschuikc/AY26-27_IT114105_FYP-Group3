@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/helpers.php';
 /** @var mysqli $conn */
 
 // 没登录 → 回登录页
@@ -120,26 +121,6 @@ if (!$file) {
     exit;
 }
 
-
-// =========================================================
-// 3. 辅助函数
-// =========================================================
-if (!function_exists('formatClass')) {
-    function formatClass($major, $gradeLevel) {
-        $majorShort = 'SE';
-        if (stripos($major, 'Cloud') !== false)         $majorShort = 'CC';
-        elseif (stripos($major, 'Information') !== false) $majorShort = 'IT';
-        elseif (stripos($major, 'Software') !== false)    $majorShort = 'SE';
-
-        if ($gradeLevel >= 12) {
-            $year = $gradeLevel - 12 + 1;
-        } else {
-            $year = $gradeLevel;
-        }
-
-        return $majorShort . '-' . $year . 'B';
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">

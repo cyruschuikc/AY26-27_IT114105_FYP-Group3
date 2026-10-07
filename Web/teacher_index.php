@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/helpers.php';
 /** @var mysqli $conn */
 
 
@@ -112,24 +113,6 @@ if ($rs) {
     mysqli_free_result($rs);
 }
 
-
-// =========================================================
-// 4. 辅助函数：把时间转成 "2h ago" / "Yesterday"
-// =========================================================
-if (!function_exists('timeAgo')) {
-    function timeAgo($datetime) {
-        if (empty($datetime)) return '—';
-        $ts = strtotime($datetime);
-        $diff = time() - $ts;
-
-        if ($diff < 60)         return 'just now';
-        if ($diff < 3600)       return floor($diff / 60) . 'm ago';
-        if ($diff < 86400)      return floor($diff / 3600) . 'h ago';
-        if ($diff < 86400 * 2)  return 'Yesterday';
-        if ($diff < 86400 * 7)  return floor($diff / 86400) . 'd ago';
-        return date('d M Y', $ts);
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
