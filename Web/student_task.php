@@ -83,9 +83,7 @@ $currentUser = "Student A";
             color: white;
             font-size: 15px;
             text-decoration: none;
-
             padding: 6px 2px;
-
             transition: color 0.3s;
         }
 
@@ -282,25 +280,7 @@ $currentUser = "Student A";
             font-weight: bold;
         }
 
-        /* Create Task Section */
-
-        .create-task-section {
-            padding: 28px;
-            margin-bottom: 25px;
-
-            background: white;
-            border-radius: 15px;
-            border-left: 5px solid black;
-            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .create-task-section h2 {
-            padding-bottom: 15px;
-            margin-bottom: 22px;
-
-            border-bottom: 2px solid #eeeeee;
-            font-size: 23px;
-        }
+        /* Form Elements */
 
         .form-row {
             display: grid;
@@ -739,6 +719,112 @@ $currentUser = "Student A";
             line-height: 1.6;
         }
 
+        /* =========================
+           Modal (Create Task)
+        ========================= */
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+
+            background: rgba(0, 0, 0, 0.55);
+
+            display: none;
+            justify-content: center;
+            align-items: center;
+
+            padding: 20px;
+            z-index: 1000;
+
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            width: 100%;
+            max-width: 700px;
+
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+
+            max-height: 90vh;
+            overflow-y: auto;
+
+            animation: modalFadeIn 0.25s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 22px 28px;
+
+            border-bottom: 2px solid #eeeeee;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 22px;
+        }
+
+        .modal-close {
+            width: 38px;
+            height: 38px;
+
+            background: white;
+            color: #555;
+            border: 2px solid #cccccc;
+            border-radius: 8px;
+
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            transition: 0.3s;
+        }
+
+        .modal-close:hover {
+            background: #c62828;
+            color: white;
+            border-color: #c62828;
+        }
+
+        .modal-body {
+            padding: 28px;
+        }
+
+        .modal-footer {
+            padding: 20px 28px;
+
+            border-top: 2px solid #eeeeee;
+
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
         /* Responsive */
 
         @media (max-width: 1000px) {
@@ -834,7 +920,8 @@ $currentUser = "Student A";
                 align-items: flex-start;
             }
 
-            .form-actions {
+            .form-actions,
+            .modal-footer {
                 flex-direction: column;
             }
 
@@ -849,6 +936,10 @@ $currentUser = "Student A";
 
             .progress-btn {
                 width: 100%;
+            }
+
+            .modal-box {
+                max-height: 95vh;
             }
         }
     </style>
@@ -934,7 +1025,7 @@ $currentUser = "Student A";
         <button
                 type="button"
                 class="create-task-btn"
-                onclick="document.getElementById('createTaskSection').scrollIntoView({behavior: 'smooth'});"
+                onclick="openCreateTaskModal()"
         >
             + Create Task
         </button>
@@ -971,9 +1062,7 @@ $currentUser = "Student A";
 
     </section>
 
-    <!-- =========================
-         Log My Contribution
-    ========================= -->
+    <!-- Log My Contribution -->
 
     <section class="log-contribution-section">
 
@@ -1053,106 +1142,6 @@ $currentUser = "Student A";
 
                 <button type="submit" class="submit-btn">
                     Log Contribution
-                </button>
-
-            </div>
-
-        </form>
-
-    </section>
-
-    <!-- Create Task -->
-
-    <section class="create-task-section" id="createTaskSection">
-
-        <h2>Create New Task</h2>
-
-        <form action="#" method="post">
-
-            <div class="form-group">
-                <label for="taskTitle">Task Title</label>
-
-                <input
-                        type="text"
-                        id="taskTitle"
-                        name="taskTitle"
-                        placeholder="e.g. Complete Project Proposal Draft"
-                        required
-                >
-            </div>
-
-            <div class="form-group">
-                <label for="taskDescription">Description</label>
-
-                <textarea
-                        id="taskDescription"
-                        name="taskDescription"
-                        placeholder="Describe what needs to be done"
-                        required
-                ></textarea>
-            </div>
-
-            <div class="form-row">
-
-                <div class="form-group">
-                    <label for="assignedTo">Assign To</label>
-
-                    <select id="assignedTo" name="assignedTo" required>
-                        <option value="">-- Select Member --</option>
-                        <option value="self">Myself (<?php echo htmlspecialchars($currentUser); ?>)</option>
-                        <option value="A">Student A</option>
-                        <option value="B">Student B</option>
-                        <option value="C">Student C</option>
-                        <option value="D">Student D</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="taskDeadline">Deadline</label>
-
-                    <input
-                            type="date"
-                            id="taskDeadline"
-                            name="taskDeadline"
-                            required
-                    >
-                </div>
-
-            </div>
-
-            <div class="form-row">
-
-                <div class="form-group">
-                    <label for="taskPriority">Priority</label>
-
-                    <select id="taskPriority" name="taskPriority" required>
-                        <option value="High">High</option>
-                        <option value="Medium" selected>Medium</option>
-                        <option value="Low">Low</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="taskCategory">Category</label>
-
-                    <select id="taskCategory" name="taskCategory">
-                        <option value="Development">Development</option>
-                        <option value="Documentation">Documentation</option>
-                        <option value="Design">Design</option>
-                        <option value="Testing">Testing</option>
-                    </select>
-                </div>
-
-            </div>
-
-            <div class="form-actions">
-
-                <button type="reset" class="cancel-btn">
-                    Clear
-                </button>
-
-                <button type="submit" class="submit-btn">
-                    Create Task
                 </button>
 
             </div>
@@ -1549,6 +1538,162 @@ $currentUser = "Student A";
     </div>
 
 </main>
+
+<!-- =========================
+     Create Task Modal
+========================= -->
+
+<div class="modal-overlay" id="createTaskModal">
+
+    <div class="modal-box">
+
+        <div class="modal-header">
+
+            <h2>Create New Task</h2>
+
+            <button
+                    type="button"
+                    class="modal-close"
+                    onclick="closeCreateTaskModal()"
+            >
+                ✕
+            </button>
+
+        </div>
+
+        <form action="#" method="post">
+
+            <div class="modal-body">
+
+                <div class="form-group">
+                    <label for="taskTitle">Task Title</label>
+
+                    <input
+                            type="text"
+                            id="taskTitle"
+                            name="taskTitle"
+                            placeholder="e.g. Complete Project Proposal Draft"
+                            required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="taskDescription">Description</label>
+
+                    <textarea
+                            id="taskDescription"
+                            name="taskDescription"
+                            placeholder="Describe what needs to be done"
+                            required
+                    ></textarea>
+                </div>
+
+                <div class="form-row">
+
+                    <div class="form-group">
+                        <label for="assignedTo">Assign To</label>
+
+                        <select id="assignedTo" name="assignedTo" required>
+                            <option value="">-- Select Member --</option>
+                            <option value="self">Myself (<?php echo htmlspecialchars($currentUser); ?>)</option>
+                            <option value="A">Student A</option>
+                            <option value="B">Student B</option>
+                            <option value="C">Student C</option>
+                            <option value="D">Student D</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskDeadline">Deadline</label>
+
+                        <input
+                                type="date"
+                                id="taskDeadline"
+                                name="taskDeadline"
+                                required
+                        >
+                    </div>
+
+                </div>
+
+                <div class="form-row">
+
+                    <div class="form-group">
+                        <label for="taskPriority">Priority</label>
+
+                        <select id="taskPriority" name="taskPriority" required>
+                            <option value="High">High</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskCategory">Category</label>
+
+                        <select id="taskCategory" name="taskCategory">
+                            <option value="Development">Development</option>
+                            <option value="Documentation">Documentation</option>
+                            <option value="Design">Design</option>
+                            <option value="Testing">Testing</option>
+                        </select>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                        type="button"
+                        class="cancel-btn"
+                        onclick="closeCreateTaskModal()"
+                >
+                    Cancel
+                </button>
+
+                <button type="submit" class="submit-btn">
+                    Create Task
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- =========================
+     JavaScript
+========================= -->
+
+<script>
+    function openCreateTaskModal() {
+        document.getElementById('createTaskModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeCreateTaskModal() {
+        document.getElementById('createTaskModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // 点遮罩关闭
+    document.getElementById('createTaskModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeCreateTaskModal();
+        }
+    });
+
+    // 按 ESC 关闭
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeCreateTaskModal();
+        }
+    });
+</script>
 
 </body>
 </html>

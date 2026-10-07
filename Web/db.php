@@ -1,7 +1,5 @@
 <?php
-// db.php —— mysqli 数据库连接
-// 任何需要 $conn 的页面，先 require_once 'db.php';
-
+// db.php
 $hostname = "127.0.0.1";
 $username = "root";
 $pwd      = "";

@@ -1,10 +1,210 @@
 <?php
 session_start();
 
-// if (!isset($_SESSION['studentID'])) {
-//     header('Location: student_login.php');
-//     exit;
-// }
+// ===== session + 数据库 =====
+require_once __DIR__ . '/db.php';
+/** @var mysqli $conn */
+
+// 没登录 → 回登录页
+if (!isset($_SESSION['userID'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$userID = (int) $_SESSION['userID'];
+
+
+// =========================================================
+// 1. 取得当前学生资料（含 student_id, 名字, 主修）
+// =========================================================
+$student = array(
+        'student_id'    => 0,
+        'student_no'    => '',
+        'full_name'     => '',
+        'major'         => '',
+        'grade_level'   => '',
+);
+
+$sql = "
+    SELECT s.id AS student_id,
+           s.student_number,
+           s.major,
+           s.grade_level,
+           u.username,
+           u.email
+    FROM `Students` s
+    JOIN `Users` u ON u.id = s.user_id
+    WHERE u.id = ?
+    LIMIT 1
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$row = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
+
+if ($row) {
+    $student['student_id']  = (int) $row['student_id'];
+    $student['student_no']  = $row['student_number'];
+    $student['full_name']   = $row['username'];
+    $student['major']       = $row['major'];
+    $student['grade_level'] = $row['grade_level'];
+} else {
+    // session 有问题
+    header('Location: logout.php');
+    exit;
+}
+
+$studentID = $student['student_id'];
+
+
+// =========================================================
+// 2. 汇总卡片
+// =========================================================
+
+// Active Projects：这个学生所在的组有几个项目还在进行
+$activeProjects = 0;
+$sql = "
+    SELECT COUNT(DISTINCT g.project_id) AS c
+    FROM `Group_Members` gm
+    JOIN `Groups` g ON g.id = gm.group_id
+    WHERE gm.student_id = ?
+      AND g.status IN ('Executing','Voting')
+";
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $studentID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$activeProjects = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// Assigned Tasks：分配给我的、未完成的任务
+$assignedTasks = 0;
+$sql = "
+    SELECT COUNT(*) AS c
+    FROM `Tasks`
+    WHERE assigned_to = ?
+      AND status <> 'Completed'
+";
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $studentID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$assignedTasks = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// Completed Tasks：我完成的任务
+$completedTasks = 0;
+$sql = "
+    SELECT COUNT(*) AS c
+    FROM `Tasks`
+    WHERE assigned_to = ?
+      AND status = 'Completed'
+";
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $studentID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$completedTasks = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// Notifications：未读通知
+$unreadNotifications = 0;
+$sql = "
+    SELECT COUNT(*) AS c
+    FROM `Notifications`
+    WHERE user_id = ?
+      AND is_read = 0
+";
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$unreadNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 3. Recent Tasks（最近 3 个分配给我的）
+// =========================================================
+$recentTasks = array();
+
+$sql = "
+    SELECT id, title, status, due_date
+    FROM `Tasks`
+    WHERE assigned_to = ?
+    ORDER BY created_at DESC
+    LIMIT 3
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $studentID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $recentTasks[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 4. Team Progress（我所在组的任务完成度）
+// =========================================================
+$teamProgress = 0;
+$teamDone     = 0;
+$teamTotal    = 0;
+
+$sql = "
+    SELECT
+        COUNT(*) AS total,
+        SUM(status = 'Completed') AS done
+    FROM `Tasks`
+    WHERE group_id IN (
+        SELECT group_id FROM `Group_Members` WHERE student_id = ?
+    )
+";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $studentID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
+
+if ($rc) {
+    $teamTotal = (int) $rc['total'];
+    $teamDone  = (int) $rc['done'];
+    if ($teamTotal > 0) {
+        $teamProgress = round($teamDone / $teamTotal * 100);
+    }
+}
+
+
+// =========================================================
+// 5. 辅助函数：status → CSS class
+// =========================================================
+if (!function_exists('statusClass')) {
+    function statusClass($status) {
+        switch ($status) {
+            case 'Completed':   return 'completed';
+            case 'In Progress': return 'in-progress';
+            default:            return 'pending';
+        }
+    }
+}
+
+if (!function_exists('formatDate')) {
+    function formatDate($date) {
+        if (empty($date)) return '—';
+        return date('d M Y', strtotime($date));
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -32,9 +232,7 @@ session_start();
             color: #222;
         }
 
-        /* =========================
-           Top Navigation Bar
-        ========================= */
+        /* Top Navigation Bar */
 
         .navbar {
             width: 100%;
@@ -51,7 +249,6 @@ session_start();
 
         .logo-area {
             display: flex;
-            flex-direction: row;
             justify-content: center;
             align-items: center;
             gap: 12px;
@@ -70,10 +267,6 @@ session_start();
             font-weight: bold;
         }
 
-        /* =========================
-           Navigation text links
-        ========================= */
-
         .function-menu {
             width: 100%;
 
@@ -88,9 +281,7 @@ session_start();
             color: white;
             font-size: 15px;
             text-decoration: none;
-
             padding: 6px 2px;
-
             transition: color 0.3s;
         }
 
@@ -98,18 +289,12 @@ session_start();
             color: #bbbbbb;
         }
 
-        .nav-link:active {
-            color: #ffffff;
-        }
-
-        /* Current page */
         .nav-link.active {
             color: white;
             font-weight: bold;
             border-bottom: 2px solid white;
         }
 
-        /* Log out */
         .logout-link {
             color: #ff8888;
         }
@@ -118,9 +303,7 @@ session_start();
             color: #ff4444;
         }
 
-        /* =========================
-           Main Content
-        ========================= */
+        /* Main Content */
 
         .main-content {
             width: 90%;
@@ -148,9 +331,7 @@ session_start();
             line-height: 1.6;
         }
 
-        /* =========================
-           Dashboard Cards
-        ========================= */
+        /* Dashboard Cards */
 
         .dashboard-grid {
             display: grid;
@@ -168,9 +349,7 @@ session_start();
             border-radius: 15px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
 
-            transition:
-                    transform 0.3s,
-                    box-shadow 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .dashboard-card:hover {
@@ -196,9 +375,7 @@ session_start();
             font-size: 14px;
         }
 
-        /* =========================
-           Lower Information Section
-        ========================= */
+        /* Lower Information Section */
 
         .information-grid {
             display: grid;
@@ -272,6 +449,11 @@ session_start();
             color: #555;
         }
 
+        .muted {
+            color: #777;
+            font-size: 14px;
+        }
+
         /* Team Progress */
 
         .progress-container {
@@ -306,9 +488,7 @@ session_start();
         }
 
         .progress-value {
-            width: 50%;
             height: 100%;
-
             background: black;
             border-radius: 10px;
         }
@@ -319,9 +499,7 @@ session_start();
             font-size: 14px;
         }
 
-        /* =========================
-           Quick Access (text links)
-        ========================= */
+        /* Quick Access */
 
         .quick-links {
             display: flex;
@@ -333,7 +511,6 @@ session_start();
             color: black;
             font-size: 16px;
             text-decoration: underline;
-
             transition: color 0.3s;
         }
 
@@ -352,9 +529,7 @@ session_start();
             line-height: 1.5;
         }
 
-        /* =========================
-           Responsive Design
-        ========================= */
+        /* Responsive */
 
         @media (max-width: 900px) {
             .dashboard-grid {
@@ -414,18 +589,17 @@ session_start();
 
     <div class="logo-area">
         <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
-
         <span>TeamBox</span>
     </div>
-
-    <!-- Navigation text links -->
 
     <div class="function-menu">
 
         <a href="student_index.php" class="nav-link active">
             Dashboard
         </a>
-        <a href="student_create_group.php" class="nav-link">Create Group</a>
+        <a href="student_create_group.php" class="nav-link">
+            Create Group
+        </a>
 
         <a href="my_team.php" class="nav-link">
             My Team
@@ -468,7 +642,7 @@ session_start();
 
     <section class="welcome-section">
 
-        <h1>Welcome, Student</h1>
+        <h1>Welcome, <?php echo htmlspecialchars($student['full_name']); ?></h1>
 
         <p>
             This is your TeamBox student dashboard. You can view
@@ -482,26 +656,26 @@ session_start();
 
         <div class="dashboard-card">
             <h2>Active Projects</h2>
-            <p class="number">1</p>
-            <p class="description">Project currently in progress</p>
+            <p class="number"><?php echo $activeProjects; ?></p>
+            <p class="description">Projects currently in progress</p>
         </div>
 
         <div class="dashboard-card">
             <h2>Assigned Tasks</h2>
-            <p class="number">4</p>
+            <p class="number"><?php echo $assignedTasks; ?></p>
             <p class="description">Tasks assigned to you</p>
         </div>
 
         <div class="dashboard-card">
             <h2>Completed Tasks</h2>
-            <p class="number">2</p>
+            <p class="number"><?php echo $completedTasks; ?></p>
             <p class="description">Tasks completed by you</p>
         </div>
 
         <div class="dashboard-card">
             <h2>Notifications</h2>
-            <p class="number">3</p>
-            <p class="description">Unread project notifications</p>
+            <p class="number"><?php echo $unreadNotifications; ?></p>
+            <p class="description">Unread notifications</p>
         </div>
 
     </section>
@@ -512,59 +686,44 @@ session_start();
 
             <h2>Recent Tasks</h2>
 
-            <div class="task-item">
-                <div class="task-information">
-                    <h3>Complete Project Proposal</h3>
-                    <p>Deadline: 30 September 2026</p>
+            <?php if (count($recentTasks) === 0): ?>
+                <p class="muted">No tasks yet.</p>
+            <?php endif; ?>
+
+            <?php foreach ($recentTasks as $task): ?>
+                <div class="task-item">
+                    <div class="task-information">
+                        <h3><?php echo htmlspecialchars($task['title']); ?></h3>
+                        <p>
+                            Deadline:
+                            <?php echo htmlspecialchars(formatDate($task['due_date'])); ?>
+                        </p>
+                    </div>
+
+                    <span class="task-status <?php echo statusClass($task['status']); ?>">
+                        <?php echo htmlspecialchars($task['status']); ?>
+                    </span>
                 </div>
-
-                <span class="task-status in-progress">
-                    In Progress
-                </span>
-            </div>
-
-            <div class="task-item">
-                <div class="task-information">
-                    <h3>Create System Interface</h3>
-                    <p>Deadline: 10 October 2026</p>
-                </div>
-
-                <span class="task-status pending">
-                    Pending
-                </span>
-            </div>
-
-            <div class="task-item">
-                <div class="task-information">
-                    <h3>Prepare Requirement Analysis</h3>
-                    <p>Completed task</p>
-                </div>
-
-                <span class="task-status completed">
-                    Completed
-                </span>
-            </div>
+            <?php endforeach; ?>
 
             <div class="progress-container">
 
                 <div class="progress-information">
                     <strong>Team Progress</strong>
-                    <span>50%</span>
+                    <span><?php echo $teamProgress; ?>%</span>
                 </div>
 
                 <div class="progress-bar">
-                    <div class="progress-value"></div>
+                    <div class="progress-value" style="width: <?php echo $teamProgress; ?>%;"></div>
                 </div>
 
                 <p class="progress-description">
-                    2 out of 4 project tasks have been completed.
+                    <?php echo $teamDone; ?> out of <?php echo $teamTotal; ?> team tasks completed.
                 </p>
 
             </div>
 
         </div>
-
-        <!-- Quick Access (text links) -->
 
         <div class="content-box">
 
@@ -572,16 +731,12 @@ session_start();
 
             <div class="quick-links">
 
-                <a href="my_project.php" class="text-link">
-                    View My Project
+                <a href="my_team.php" class="text-link">
+                    View My Team
                 </a>
 
                 <a href="student_task.php" class="text-link">
                     View My Tasks
-                </a>
-
-                <a href="my_team.php" class="text-link">
-                    View My Team
                 </a>
 
                 <a href="student_files.php" class="text-link">
