@@ -31,12 +31,12 @@ if (isset($_POST['userId'])) {
 
             // 老师：用 Teachers.teacher_code 登录
             $sql = "
-                SELECT u.id, u.username, u.email, u.password_hash, u.role
-                FROM `Teachers` t
-                INNER JOIN `Users` u ON u.id = t.user_id
-                WHERE t.teacher_code = ?
-                LIMIT 1
-            ";
+        SELECT u.id, u.username, u.email, u.password_hash, u.role
+        FROM `Teachers` t
+        INNER JOIN `Users` u ON u.id = t.user_id
+        WHERE t.teacher_code = ?
+        LIMIT 1
+    ";
 
             $stmt = mysqli_prepare($conn, $sql);
 
@@ -48,12 +48,12 @@ if (isset($_POST['userId'])) {
 
             // 学生：用 Students.student_number 登录
             $sql = "
-                SELECT u.id, u.username, u.email, u.password_hash, u.role
-                FROM `Students` s
-                INNER JOIN `Users` u ON u.id = s.user_id
-                WHERE s.student_number = ?
-                LIMIT 1
-            ";
+        SELECT u.id, u.username, u.email, u.password_hash, u.role
+        FROM `Students` s
+        INNER JOIN `Users` u ON u.id = s.user_id
+        WHERE s.student_number = ?
+        LIMIT 1
+    ";
 
             $stmt = mysqli_prepare($conn, $sql);
 
