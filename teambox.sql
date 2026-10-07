@@ -56,7 +56,6 @@ INSERT INTO `Users` (username, email, password_hash, role) VALUES
     ('YIU Ho Kwan',       '260222217@stu.vtc.edu.hk',  '12345', 'student'),  -- 29
     ('ZHAO Wei',          '260222218@stu.vtc.edu.hk',  '12345', 'student');  -- 30
 
-
 -- =========================================================
 -- 2. Teachers  (teacher_code = T + 5 位数字)
 -- =========================================================
