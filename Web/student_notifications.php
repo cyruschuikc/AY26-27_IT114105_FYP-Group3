@@ -1,301 +1,351 @@
 <?php
 session_start();
 
-// if (!isset($_SESSION['studentID'])) {
-//     header('Location: student_login.php');
-//     exit;
-// }
+require_once __DIR__ . '/db.php';
+/** @var mysqli $conn */
+
+if (!isset($_SESSION['userID'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$userID = (int) $_SESSION['userID'];
+
+// =========================================================
+// 未读数（给铃铛用）
+// =========================================================
+$unreadNotifications = 0;
+
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `notifications`
+    WHERE user_id = ? AND is_read = 0
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$unreadNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// =========================================================
+// 系统提示（?msg=）
+// =========================================================
+$systemMsg = '';
+$msgType   = '';
+
+if (isset($_GET['msg'])) {
+    if ($_GET['msg'] === 'accepted') {
+        $systemMsg = 'Invitation accepted. You have joined the group.';
+        $msgType   = 'success';
+    } elseif ($_GET['msg'] === 'rejected') {
+        $systemMsg = 'Invitation rejected.';
+        $msgType   = 'error';
+    } elseif ($_GET['msg'] === 'error') {
+        $systemMsg = 'Something went wrong.';
+        $msgType   = 'error';
+    }
+}
+
+// =========================================================
+// Summary 卡片统计
+// =========================================================
+
+// All Notifications
+$totalNotifications = 0;
+$stmt = mysqli_prepare($conn, "SELECT COUNT(*) AS c FROM `notifications` WHERE user_id = ?");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$totalNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// Task Alerts
+$taskNotifications = 0;
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `notifications`
+    WHERE user_id = ? AND type = 'task'
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$taskNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// System Alerts
+$deadlineNotifications = 0;
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `notifications`
+    WHERE user_id = ? AND type = 'system'
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$deadlineNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// =========================================================
+// 通知列表（带 filter）
+// =========================================================
+$filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
+
+$sql = "
+    SELECT id, type, title, message, link, is_read, created_at
+    FROM `notifications`
+    WHERE user_id = ?
+";
+
+switch ($filter) {
+    case 'unread':
+        $sql .= " AND is_read = 0";
+        break;
+    case 'tasks':
+        $sql .= " AND type = 'task'";
+        break;
+    case 'project':
+        $sql .= " AND type = 'project'";
+        break;
+    case 'team':
+        $sql .= " AND type = 'team'";
+        break;
+    case 'files':
+        $sql .= " AND type = 'file'";
+        break;
+    case 'all':
+    default:
+        break;
+}
+
+$sql .= " ORDER BY created_at DESC";
+
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+
+$notifications = array();
+while ($row = mysqli_fetch_assoc($rs)) {
+    $notifications[] = $row;
+}
+mysqli_stmt_close($stmt);
+
+// =========================================================
+// 辅助函数
+// =========================================================
+if (!function_exists('timeAgo')) {
+    function timeAgo($datetime) {
+        if (empty($datetime)) return '—';
+        $ts   = strtotime($datetime);
+        $diff = time() - $ts;
+
+        if ($diff < 60)         return 'Just now';
+        if ($diff < 3600)       return floor($diff / 60) . 'm ago';
+        if ($diff < 86400)      return floor($diff / 3600) . 'h ago';
+        if ($diff < 86400 * 2)  return 'Yesterday';
+        if ($diff < 86400 * 7)  return floor($diff / 86400) . 'd ago';
+        return date('d M Y', $ts);
+    }
+}
+
+if (!function_exists('typeClass')) {
+    function typeClass($type) {
+        switch ($type) {
+            case 'task':    return 'type-task';
+            case 'team':    return 'type-team';
+            case 'file':    return 'type-file';
+            case 'project': return 'type-project';
+            default:        return 'type-alert';
+        }
+    }
+}
+
+if (!function_exists('typeLabel')) {
+    function typeLabel($type) {
+        switch ($type) {
+            case 'task':    return 'Task';
+            case 'team':    return 'Team';
+            case 'file':    return 'File';
+            case 'project': return 'Project';
+            default:        return 'System';
+        }
+    }
+}
+
+if (!function_exists('typeIcon')) {
+    function typeIcon($type) {
+        switch ($type) {
+            case 'task':    return 'TASK';
+            case 'team':    return 'TEAM';
+            case 'file':    return 'FILE';
+            case 'project': return 'PROJ';
+            default:        return 'SYS';
+        }
+    }
+}
+
+// 从 link 抽 invitation ID
+if (!function_exists('extractInviteID')) {
+    function extractInviteID($link) {
+        if (empty($link)) return 0;
+        $q = array();
+        parse_str(parse_url($link, PHP_URL_QUERY), $q);
+        return isset($q['id']) ? (int)$q['id'] : 0;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notifications | TeamBox</title>
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { min-height: 100vh; background: #f5f5f5; color: #222; }
 
-        body {
-            min-height: 100vh;
-            background: #f5f5f5;
-            color: #222;
-        }
-
-        /* Top Navigation Bar */
-
+        /* Navbar */
         .navbar {
-            width: 100%;
-            padding: 15px 30px;
-            background: black;
-
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-
+            width: 100%; padding: 15px 30px; background: black;
+            display: flex; flex-direction: column; gap: 15px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
         }
-
-        .logo-area {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 12px;
+        .navbar-top {
+            position: relative; width: 100%; min-height: 65px;
+            display: flex; justify-content: center; align-items: center;
         }
+        .logo-area { display: flex; align-items: center; gap: 12px; }
+        .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
+        .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
-        .logo-area img {
-            width: 65px;
-            height: 65px;
-            object-fit: contain;
-            display: block;
+        .bell-link {
+            position: absolute; right: 0; top: 50%;
+            transform: translateY(-50%);
+            display: flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            transition: background 0.3s;
         }
-
-        .logo-area span {
-            color: white;
-            font-size: 30px;
-            font-weight: bold;
+        .bell-link:hover { background: rgba(255, 255, 255, 0.15); }
+        .bell-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
+        .bell-badge {
+            position: absolute; top: 2px; right: 2px;
+            min-width: 18px; height: 18px; padding: 0 5px;
+            background: #d93025; color: white;
+            border-radius: 9px;
+            font-size: 11px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid black;
         }
-
-        /* Navigation text links */
 
         .function-menu {
-            width: 100%;
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 22px;
+            width: 100%; display: flex; justify-content: center; align-items: center;
+            flex-wrap: wrap; gap: 22px;
         }
+        .nav-link { color: white; font-size: 15px; text-decoration: none; padding: 6px 2px; transition: color 0.3s; }
+        .nav-link:hover { color: #bbbbbb; }
+        .nav-link.active { color: white; font-weight: bold; border-bottom: 2px solid white; }
+        .logout-link { color: #ff8888; }
+        .logout-link:hover { color: #ff4444; }
 
-        .nav-link {
-            color: white;
-            font-size: 15px;
-            text-decoration: none;
-
-            padding: 6px 2px;
-
-            transition: color 0.3s;
-        }
-
-        .nav-link:hover {
-            color: #bbbbbb;
-        }
-
-        .nav-link:active {
-            color: #ffffff;
-        }
-
-        .nav-link.active {
-            color: white;
-            font-weight: bold;
-            border-bottom: 2px solid white;
-        }
-
-        .logout-link {
-            color: #ff8888;
-        }
-
-        .logout-link:hover {
-            color: #ff4444;
-        }
-
-        /* Main Content */
-
-        .main-content {
-            width: 90%;
-            max-width: 1200px;
-            margin: 40px auto;
-        }
+        /* Main */
+        .main-content { width: 90%; max-width: 1200px; margin: 40px auto; }
 
         .page-heading {
-            padding: 30px;
-            margin-bottom: 25px;
-
-            background: white;
-            border-radius: 15px;
+            padding: 30px; margin-bottom: 25px;
+            background: white; border-radius: 15px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
         }
+        .page-heading h1 { margin-bottom: 10px; font-size: 35px; }
+        .page-heading p { color: #666; font-size: 17px; line-height: 1.6; }
 
-        .page-heading h1 {
-            margin-bottom: 10px;
-            font-size: 35px;
+        /* Alert */
+        .alert {
+            padding: 14px 18px; margin-bottom: 20px;
+            border-radius: 8px; font-size: 14px;
+            border-left: 4px solid;
         }
+        .alert-success { background: #eaf7ee; color: #176b2c; border-color: #2e9d4d; }
+        .alert-error   { background: #fdeeee; color: #a21b1b; border-color: #d32f2f; }
 
-        .page-heading p {
-            color: #666;
-            font-size: 17px;
-            line-height: 1.6;
-        }
-
-        /* Notification Summary */
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-
+        /* Summary */
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
         .summary-card {
-            min-height: 140px;
-            padding: 24px;
-
-            background: white;
-            border-left: 5px solid black;
-            border-radius: 15px;
-            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
-
-            transition:
-                    transform 0.3s,
-                    box-shadow 0.3s;
+            min-height: 140px; padding: 24px;
+            background: white; border-left: 5px solid black;
+            border-radius: 15px; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
         }
-
-        .summary-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-        }
-
-        .summary-card h2 {
-            margin-bottom: 14px;
-            color: #666;
-            font-size: 16px;
-        }
-
-        .summary-number {
-            font-size: 38px;
-            font-weight: bold;
-        }
-
-        .summary-description {
-            margin-top: 7px;
-            color: #777;
-            font-size: 13px;
-        }
+        .summary-card:hover { transform: translateY(-5px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); }
+        .summary-card h2 { margin-bottom: 14px; color: #666; font-size: 16px; }
+        .summary-number { font-size: 38px; font-weight: bold; }
+        .summary-description { margin-top: 7px; color: #777; font-size: 13px; }
 
         /* Notification Section */
-
         .notification-section {
-            padding: 28px;
-
-            background: white;
-            border-radius: 15px;
+            padding: 28px; background: white; border-radius: 15px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
         }
-
         .section-header {
-            padding-bottom: 18px;
-            margin-bottom: 22px;
+            padding-bottom: 18px; margin-bottom: 22px;
             border-bottom: 2px solid #eeeeee;
-
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: flex; justify-content: space-between; align-items: center;
             gap: 20px;
         }
-
-        .section-header h2 {
-            font-size: 24px;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .section-header h2 { font-size: 24px; }
+        .header-actions { display: flex; align-items: center; gap: 10px; }
 
         .filter-select {
-            min-width: 165px;
-            height: 43px;
-            padding: 0 12px;
-
-            background: white;
-            color: black;
-            border: 2px solid #cccccc;
-            border-radius: 8px;
-
-            font-size: 14px;
-            outline: none;
-            cursor: pointer;
+            min-width: 165px; height: 43px; padding: 0 12px;
+            background: white; color: black;
+            border: 2px solid #cccccc; border-radius: 8px;
+            font-size: 14px; outline: none; cursor: pointer;
         }
-
-        .filter-select:focus {
-            border-color: black;
-        }
+        .filter-select:focus { border-color: black; }
 
         .mark-read-btn {
-            min-width: 155px;
-            height: 43px;
-            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
 
-            background: white;
-            color: black;
-            border: 2px solid black;
-            border-radius: 8px;
-
+            min-width: 155px; height: 43px; padding: 0 14px;
+            background: white; color: black;
+            border: 2px solid black; border-radius: 8px;
             font-size: 14px;
-            cursor: pointer;
-            transition: 0.3s;
+            text-decoration: none;
+            cursor: pointer; transition: 0.3s;
         }
+        .mark-read-btn:hover { background: black; color: white; }
 
-        .mark-read-btn:hover {
-            background: black;
-            color: white;
-        }
-
-        /* Notification Tabs */
-
-        .notification-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 22px;
-        }
+        /* Tabs */
+        .notification-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
 
         .tab-btn {
-            min-width: 100px;
-            height: 40px;
-            padding: 0 14px;
-
-            background: white;
-            color: black;
-            border: 1px solid #bbbbbb;
-            border-radius: 20px;
-
+            min-width: 100px; height: 40px; padding: 0 14px;
+            background: white; color: black;
+            border: 1px solid #bbbbbb; border-radius: 20px;
             font-size: 14px;
-            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             transition: 0.3s;
         }
-
         .tab-btn:hover,
         .tab-btn.active {
-            background: black;
-            color: white;
-            border-color: black;
+            background: black; color: white; border-color: black;
         }
 
         /* Notification List */
-
-        .notification-list {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
+        .notification-list { display: flex; flex-direction: column; gap: 14px; }
 
         .notification-item {
             padding: 20px;
-
             background: #fafafa;
             border: 1px solid #dddddd;
             border-radius: 12px;
@@ -305,230 +355,215 @@ session_start();
             align-items: center;
             gap: 17px;
 
-            transition:
-                    transform 0.3s,
-                    box-shadow 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
-
-        .notification-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .notification-item.unread {
-            background: white;
-            border-left: 6px solid black;
-        }
+        .notification-item:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
+        .notification-item.unread { background: white; border-left: 6px solid black; }
 
         .notification-icon {
-            width: 50px;
-            height: 50px;
+            width: 50px; height: 50px;
+            background: black; color: white; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 13px; font-weight: bold;
+        }
+        .read-icon { background: #777777; }
 
-            background: black;
-            color: white;
-            border-radius: 50%;
+        .notification-content h3 { margin-bottom: 7px; font-size: 17px; }
+        .notification-content p { color: #666; font-size: 14px; line-height: 1.5; }
+        .notification-time { display: block; margin-top: 8px; color: #888; font-size: 12px; }
+
+        .notification-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; }
+
+        .unread-dot {
+            width: 11px; height: 11px;
+            background: black; border-radius: 50%;
+        }
+
+        .notification-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+
+            min-width: 130px; height: 38px; padding: 0 12px;
+            background: white; color: black;
+            border: 2px solid black; border-radius: 7px;
+            font-size: 13px;
+            text-decoration: none;
+            cursor: pointer; transition: 0.3s;
+        }
+        .notification-btn:hover { background: black; color: white; }
+
+        .notification-type {
+            display: inline-block; padding: 5px 9px; margin-top: 9px;
+            background: #eeeeee; color: #555; border-radius: 15px;
+            font-size: 12px; font-weight: bold;
+        }
+        .type-task    { background: #fff1c2; color: #765900; }
+        .type-team    { background: #e5f0ff; color: #245889; }
+        .type-file    { background: #e9e1ff; color: #553192; }
+        .type-project { background: #d9f5df; color: #176b2c; }
+        .type-alert   { background: #ffe1e1; color: #a21b1b; }
+
+        .muted { color: #777; font-size: 14px; }
+
+        /* Note */
+        .notification-note {
+            padding: 18px; margin-top: 22px;
+            background: #f7f7f7; border-left: 5px solid black;
+            border-radius: 8px;
+            color: #666; font-size: 14px; line-height: 1.6;
+        }
+
+        /* =========================================================
+           Modal (Invitation)
+        ========================================================= */
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+
+            background: rgba(0, 0, 0, 0.55);
+
+            display: none;
+            justify-content: center;
+            align-items: center;
+
+            padding: 20px;
+            z-index: 1000;
+
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            width: 100%;
+            max-width: 460px;
+
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+
+            animation: modalFadeIn 0.25s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-15px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            padding: 22px 28px;
+            border-bottom: 2px solid #eeeeee;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 { font-size: 22px; }
+
+        .modal-close {
+            width: 38px; height: 38px;
+
+            background: white;
+            color: #555;
+            border: 2px solid #cccccc;
+            border-radius: 8px;
+
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
 
             display: flex;
             justify-content: center;
             align-items: center;
 
-            font-size: 13px;
-            font-weight: bold;
+            transition: 0.3s;
         }
 
-        .read-icon {
-            background: #777777;
+        .modal-close:hover {
+            background: #c62828;
+            color: white;
+            border-color: #c62828;
         }
 
-        .notification-content h3 {
-            margin-bottom: 7px;
-            font-size: 17px;
+        .modal-body {
+            padding: 28px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #444;
         }
 
-        .notification-content p {
-            color: #666;
+        .modal-body .muted {
+            margin-top: 10px;
+            color: #777;
             font-size: 14px;
-            line-height: 1.5;
         }
 
-        .notification-time {
-            display: block;
-            margin-top: 8px;
+        .modal-footer {
+            padding: 20px 28px;
+            border-top: 2px solid #eeeeee;
 
-            color: #888;
-            font-size: 12px;
-        }
-
-        .notification-actions {
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 9px;
+            justify-content: flex-end;
+            gap: 12px;
         }
 
-        .unread-dot {
-            width: 11px;
-            height: 11px;
+        .modal-btn {
+            min-width: 120px;
+            height: 46px;
+            padding: 0 18px;
 
-            background: black;
-            border-radius: 50%;
-        }
-
-        .notification-btn {
-            min-width: 105px;
-            height: 38px;
-            padding: 0 12px;
-
-            background: white;
-            color: black;
-            border: 2px solid black;
-            border-radius: 7px;
-
-            font-size: 13px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
             cursor: pointer;
             transition: 0.3s;
         }
 
-        .notification-btn:hover {
+        .modal-btn-agree {
             background: black;
             color: white;
+            border: 2px solid black;
         }
+        .modal-btn-agree:hover { background: #333; }
 
-        .notification-type {
-            display: inline-block;
-            padding: 5px 9px;
-            margin-top: 9px;
-
-            background: #eeeeee;
-            color: #555;
-            border-radius: 15px;
-
-            font-size: 12px;
-            font-weight: bold;
+        .modal-btn-reject {
+            background: white;
+            color: #c62828;
+            border: 2px solid #c62828;
         }
+        .modal-btn-reject:hover { background: #c62828; color: white; }
 
-        .type-task {
-            background: #fff1c2;
-            color: #765900;
-        }
-
-        .type-team {
-            background: #e5f0ff;
-            color: #245889;
-        }
-
-        .type-file {
-            background: #e9e1ff;
-            color: #553192;
-        }
-
-        .type-project {
-            background: #d9f5df;
-            color: #176b2c;
-        }
-
-        .type-alert {
-            background: #ffe1e1;
-            color: #a21b1b;
-        }
-
-        /* Information Note */
-
-        .notification-note {
-            padding: 18px;
-            margin-top: 22px;
-
-            background: #f7f7f7;
-            border-left: 5px solid black;
-            border-radius: 8px;
-
-            color: #666;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        /* Responsive Design */
-
+        /* Responsive */
         @media (max-width: 950px) {
-            .summary-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .section-header {
-                align-items: flex-start;
-                flex-direction: column;
-            }
-
-            .header-actions {
-                width: 100%;
-            }
-
-            .filter-select,
-            .mark-read-btn {
-                flex: 1;
-            }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .section-header { align-items: flex-start; flex-direction: column; }
+            .header-actions { width: 100%; }
+            .filter-select, .mark-read-btn { flex: 1; }
         }
-
         @media (max-width: 650px) {
-            .navbar {
-                padding: 15px;
-            }
+            .navbar { padding: 15px; }
+            .logo-area img { width: 55px; height: 55px; }
+            .logo-area span { font-size: 26px; }
+            .bell-link { width: 38px; height: 38px; }
+            .bell-link img { width: 22px; height: 22px; }
+            .function-menu { flex-direction: column; gap: 12px; }
+            .main-content { width: 94%; margin: 25px auto; }
+            .page-heading h1 { font-size: 28px; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .header-actions { align-items: stretch; flex-direction: column; }
+            .filter-select, .mark-read-btn { width: 100%; }
+            .notification-item { grid-template-columns: 48px 1fr; align-items: flex-start; }
+            .notification-icon { width: 45px; height: 45px; }
+            .notification-actions { grid-column: 1 / -1; align-items: stretch; }
+            .notification-btn { width: 100%; }
 
-            .logo-area img {
-                width: 55px;
-                height: 55px;
-            }
-
-            .logo-area span {
-                font-size: 26px;
-            }
-
-            .function-menu {
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .main-content {
-                width: 94%;
-                margin: 25px auto;
-            }
-
-            .page-heading h1 {
-                font-size: 28px;
-            }
-
-            .summary-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header-actions {
-                align-items: stretch;
-                flex-direction: column;
-            }
-
-            .filter-select,
-            .mark-read-btn {
-                width: 100%;
-            }
-
-            .notification-item {
-                grid-template-columns: 48px 1fr;
-                align-items: flex-start;
-            }
-
-            .notification-icon {
-                width: 45px;
-                height: 45px;
-            }
-
-            .notification-actions {
-                grid-column: 1 / -1;
-                align-items: stretch;
-            }
-
-            .notification-btn {
-                width: 100%;
-            }
+            .modal-footer { flex-direction: column; }
+            .modal-btn    { width: 100%; }
         }
     </style>
 </head>
@@ -536,60 +571,39 @@ session_start();
 <body>
 
 <!-- Top Navigation Bar -->
-
 <nav class="navbar">
 
-    <div class="logo-area">
-        <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
-        <span>TeamBox</span>
+    <div class="navbar-top">
+        <div class="logo-area">
+            <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
+            <span>TeamBox</span>
+        </div>
+
+        <a href="student_notifications.php" class="bell-link" title="Notifications">
+            <img src="bell.png" alt="Notifications">
+
+            <?php if ($unreadNotifications > 0): ?>
+                <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+            <?php endif; ?>
+        </a>
     </div>
 
-    <!-- Navigation text links -->
-
     <div class="function-menu">
-
-        <a href="student_index.php" class="nav-link">
-            Dashboard
-        </a>
+        <a href="student_index.php" class="nav-link">Dashboard</a>
         <a href="student_create_group.php" class="nav-link">Create Group</a>
-
-
-        <a href="my_team.php" class="nav-link">
-            My Team
-        </a>
-
-        <a href="student_task.php" class="nav-link">
-            Tasks
-        </a>
-
-        <a href="student_files.php" class="nav-link">
-            Files
-        </a>
-
-        <a href="student_chat.php" class="nav-link">
-            Group Chat
-        </a>
-        <a href="student_contribution.php" class="nav-link">
-            Contribution
-        </a>
-        <a href="student_notifications.php" class="nav-link active">
-            Notifications
-        </a>
-
-        <a href="student_profile.php" class="nav-link">
-            Profile
-        </a>
-
-        <a href="logout.php" class="nav-link logout-link">
-            Log Out
-        </a>
-
+        <a href="my_team.php" class="nav-link">My Team</a>
+        <a href="student_task.php" class="nav-link">Tasks</a>
+        <a href="student_files.php" class="nav-link">Files</a>
+        <a href="student_chat.php" class="nav-link">Group Chat</a>
+        <a href="student_contribution.php" class="nav-link">Contribution</a>
+        <a href="student_notifications.php" class="nav-link active">Notifications</a>
+        <a href="student_profile.php" class="nav-link">Profile</a>
+        <a href="logout.php" class="nav-link logout-link">Log Out</a>
     </div>
 
 </nav>
 
-<!-- Main Content -->
-
+<!-- Main -->
 <main class="main-content">
 
     <section class="page-heading">
@@ -600,38 +614,43 @@ session_start();
         </p>
     </section>
 
-    <!-- Notification Summary -->
+    <!-- System message -->
+    <?php if ($systemMsg !== ''): ?>
+        <div class="alert <?php echo $msgType === 'success' ? 'alert-success' : 'alert-error'; ?>">
+            <?php echo htmlspecialchars($systemMsg); ?>
+        </div>
+    <?php endif; ?>
 
+    <!-- Summary -->
     <section class="summary-grid">
 
         <div class="summary-card">
             <h2>All Notifications</h2>
-            <p class="summary-number">12</p>
+            <p class="summary-number"><?php echo $totalNotifications; ?></p>
             <p class="summary-description">Total notifications received</p>
         </div>
 
         <div class="summary-card">
             <h2>Unread</h2>
-            <p class="summary-number">4</p>
+            <p class="summary-number"><?php echo $unreadNotifications; ?></p>
             <p class="summary-description">Notifications not yet read</p>
         </div>
 
         <div class="summary-card">
             <h2>Task Alerts</h2>
-            <p class="summary-number">3</p>
+            <p class="summary-number"><?php echo $taskNotifications; ?></p>
             <p class="summary-description">Task assignments and reminders</p>
         </div>
 
         <div class="summary-card">
-            <h2>Deadline Alerts</h2>
-            <p class="summary-number">2</p>
-            <p class="summary-description">Upcoming project deadlines</p>
+            <h2>System Alerts</h2>
+            <p class="summary-number"><?php echo $deadlineNotifications; ?></p>
+            <p class="summary-description">System and deadline alerts</p>
         </div>
 
     </section>
 
     <!-- Notification List -->
-
     <section class="notification-section">
 
         <div class="section-header">
@@ -640,285 +659,208 @@ session_start();
 
             <div class="header-actions">
 
-                <select class="filter-select" aria-label="Filter notifications">
-                    <option value="all">All Notifications</option>
-                    <option value="unread">Unread Only</option>
-                    <option value="tasks">Task Notifications</option>
-                    <option value="project">Project Updates</option>
-                    <option value="team">Team Activities</option>
-                    <option value="files">File Updates</option>
-                </select>
+                <form method="get" action="student_notifications.php" style="margin:0;">
+                    <select name="filter" class="filter-select" onchange="this.form.submit()">
+                        <option value="all"     <?php echo $filter==='all'     ? 'selected' : ''; ?>>All Notifications</option>
+                        <option value="unread"  <?php echo $filter==='unread'  ? 'selected' : ''; ?>>Unread Only</option>
+                        <option value="tasks"   <?php echo $filter==='tasks'   ? 'selected' : ''; ?>>Task Notifications</option>
+                        <option value="project" <?php echo $filter==='project' ? 'selected' : ''; ?>>Project Updates</option>
+                        <option value="team"    <?php echo $filter==='team'    ? 'selected' : ''; ?>>Team Activities</option>
+                        <option value="files"   <?php echo $filter==='files'   ? 'selected' : ''; ?>>File Updates</option>
+                    </select>
+                </form>
 
-                <button type="button" class="mark-read-btn">
-                    Mark All as Read
-                </button>
+                <a href="mark_all_read.php" class="mark-read-btn">Mark All as Read</a>
 
             </div>
 
         </div>
 
+        <!-- Tabs -->
         <div class="notification-tabs">
-
-            <button type="button" class="tab-btn active">All</button>
-            <button type="button" class="tab-btn">Tasks</button>
-            <button type="button" class="tab-btn">Projects</button>
-            <button type="button" class="tab-btn">Team</button>
-            <button type="button" class="tab-btn">Files</button>
-
+            <a href="student_notifications.php?filter=all"     class="tab-btn <?php echo $filter==='all'     ? 'active' : ''; ?>">All</a>
+            <a href="student_notifications.php?filter=tasks"   class="tab-btn <?php echo $filter==='tasks'   ? 'active' : ''; ?>">Tasks</a>
+            <a href="student_notifications.php?filter=project" class="tab-btn <?php echo $filter==='project' ? 'active' : ''; ?>">Projects</a>
+            <a href="student_notifications.php?filter=team"    class="tab-btn <?php echo $filter==='team'    ? 'active' : ''; ?>">Team</a>
+            <a href="student_notifications.php?filter=files"   class="tab-btn <?php echo $filter==='files'   ? 'active' : ''; ?>">Files</a>
         </div>
 
         <div class="notification-list">
 
-            <!-- Notification 1 -->
+            <?php if (count($notifications) === 0): ?>
+                <p class="muted">No notifications yet.</p>
+            <?php endif; ?>
 
-            <article class="notification-item unread">
+            <?php foreach ($notifications as $n): ?>
 
-                <div class="notification-icon">TASK</div>
+                <?php
+                // 是否邀请通知（link 指向 accept_invite.php）
+                $isInvite = ($n['type'] === 'team'
+                        && !empty($n['link'])
+                        && strpos($n['link'], 'accept_invite.php') === 0);
 
-                <div class="notification-content">
+                $inviteID = $isInvite ? extractInviteID($n['link']) : 0;
+                ?>
 
-                    <h3>New Task Assigned</h3>
+                <article class="notification-item <?php echo ((int)$n['is_read'] === 0) ? 'unread' : ''; ?>">
 
-                    <p>
-                        Student A assigned the task "Develop Student
-                        Dashboard" to you.
-                    </p>
+                    <div class="notification-icon <?php echo ((int)$n['is_read'] === 1) ? 'read-icon' : ''; ?>">
+                        <?php echo htmlspecialchars(typeIcon($n['type'])); ?>
+                    </div>
 
-                    <span class="notification-type type-task">Task</span>
+                    <div class="notification-content">
 
-                    <span class="notification-time">Today at 09:15</span>
+                        <h3><?php echo htmlspecialchars($n['title']); ?></h3>
 
-                </div>
+                        <p><?php echo htmlspecialchars($n['message']); ?></p>
 
-                <div class="notification-actions">
+                        <span class="notification-type <?php echo typeClass($n['type']); ?>">
+                            <?php echo htmlspecialchars(typeLabel($n['type'])); ?>
+                        </span>
 
-                    <span class="unread-dot" title="Unread"></span>
+                        <span class="notification-time">
+                            <?php echo htmlspecialchars(timeAgo($n['created_at'])); ?>
+                        </span>
 
-                    <button type="button" class="notification-btn">
-                        View Task
-                    </button>
+                    </div>
 
-                </div>
+                    <div class="notification-actions">
 
-            </article>
+                        <?php if ((int)$n['is_read'] === 0): ?>
+                            <span class="unread-dot" title="Unread"></span>
+                        <?php endif; ?>
 
-            <!-- Notification 2 -->
+                        <?php if ($isInvite && $inviteID > 0): ?>
 
-            <article class="notification-item unread">
+                            <!-- 邀请通知 → 弹 Modal -->
+                            <button
+                                    type="button"
+                                    class="notification-btn"
+                                    onclick="openInviteModal(<?php echo (int)$inviteID; ?>);"
+                            >
+                                View Invitation
+                            </button>
 
-                <div class="notification-icon">ALERT</div>
+                        <?php elseif (!empty($n['link'])): ?>
 
-                <div class="notification-content">
+                            <a href="<?php echo htmlspecialchars($n['link']); ?>" class="notification-btn">
+                                Open
+                            </a>
 
-                    <h3>Task Deadline Approaching</h3>
+                        <?php else: ?>
 
-                    <p>
-                        The task "Create My Team Page" is due on
-                        15 October 2026.
-                    </p>
+                            <a href="student_notifications.php" class="notification-btn">
+                                View
+                            </a>
 
-                    <span class="notification-type type-alert">
-                        Deadline Alert
-                    </span>
+                        <?php endif; ?>
 
-                    <span class="notification-time">Today at 08:30</span>
+                    </div>
 
-                </div>
+                </article>
 
-                <div class="notification-actions">
-
-                    <span class="unread-dot" title="Unread"></span>
-
-                    <button type="button" class="notification-btn">
-                        View Details
-                    </button>
-
-                </div>
-
-            </article>
-
-            <!-- Notification 3 -->
-
-            <article class="notification-item unread">
-
-                <div class="notification-icon">FILE</div>
-
-                <div class="notification-content">
-
-                    <h3>New File Uploaded</h3>
-
-                    <p>
-                        Student B uploaded "Project_Proposal.pdf"
-                        to the shared project workspace.
-                    </p>
-
-                    <span class="notification-type type-file">File</span>
-
-                    <span class="notification-time">
-                        Yesterday at 16:40
-                    </span>
-
-                </div>
-
-                <div class="notification-actions">
-
-                    <span class="unread-dot" title="Unread"></span>
-
-                    <button type="button" class="notification-btn">
-                        View File
-                    </button>
-
-                </div>
-
-            </article>
-
-            <!-- Notification 4 -->
-
-            <article class="notification-item unread">
-
-                <div class="notification-icon">CHAT</div>
-
-                <div class="notification-content">
-
-                    <h3>New Group Message</h3>
-
-                    <p>
-                        A new meeting reminder was posted in the
-                        Team A group chat.
-                    </p>
-
-                    <span class="notification-type type-team">Team</span>
-
-                    <span class="notification-time">
-                        Yesterday at 15:20
-                    </span>
-
-                </div>
-
-                <div class="notification-actions">
-
-                    <span class="unread-dot" title="Unread"></span>
-
-                    <button type="button" class="notification-btn">
-                        Open Chat
-                    </button>
-
-                </div>
-
-            </article>
-
-            <!-- Notification 5 -->
-
-            <article class="notification-item">
-
-                <div class="notification-icon read-icon">PROJ</div>
-
-                <div class="notification-content">
-
-                    <h3>Project Progress Updated</h3>
-
-                    <p>
-                        The overall progress of the TeamBox project
-                        has been updated to 50%.
-                    </p>
-
-                    <span class="notification-type type-project">
-                        Project
-                    </span>
-
-                    <span class="notification-time">
-                        22 September 2026 at 14:10
-                    </span>
-
-                </div>
-
-                <div class="notification-actions">
-
-                    <button type="button" class="notification-btn">
-                        View Project
-                    </button>
-
-                </div>
-
-            </article>
-
-            <!-- Notification 6 -->
-
-            <article class="notification-item">
-
-                <div class="notification-icon read-icon">TEAM</div>
-
-                <div class="notification-content">
-
-                    <h3>Team Member Activity</h3>
-
-                    <p>
-                        Student C completed the database design task.
-                    </p>
-
-                    <span class="notification-type type-team">Team</span>
-
-                    <span class="notification-time">
-                        21 September 2026 at 11:45
-                    </span>
-
-                </div>
-
-                <div class="notification-actions">
-
-                    <button type="button" class="notification-btn">
-                        View Team
-                    </button>
-
-                </div>
-
-            </article>
-
-            <!-- Notification 7 -->
-
-            <article class="notification-item">
-
-                <div class="notification-icon read-icon">TASK</div>
-
-                <div class="notification-content">
-
-                    <h3>Task Completed Successfully</h3>
-
-                    <p>
-                        Your task "Create Student Login Page" has been
-                        marked as completed.
-                    </p>
-
-                    <span class="notification-type type-task">Task</span>
-
-                    <span class="notification-time">
-                        20 September 2026 at 17:30
-                    </span>
-
-                </div>
-
-                <div class="notification-actions">
-
-                    <button type="button" class="notification-btn">
-                        View Task
-                    </button>
-
-                </div>
-
-            </article>
+            <?php endforeach; ?>
 
         </div>
 
         <div class="notification-note">
-            This page currently demonstrates the notification interface only.
-            Filtering, marking notifications as read and displaying live
-            notifications will require PHP, database and real-time update
-            functions.
+            Notifications are loaded from the database.
+            Click "Mark All as Read" to clear the unread badge.
         </div>
 
     </section>
 
 </main>
+
+<!-- =========================================================
+     Invitation Modal
+========================================================== -->
+<div class="modal-overlay" id="inviteModal">
+
+    <div class="modal-box">
+
+        <div class="modal-header">
+            <h2>Group Invitation</h2>
+            <button
+                    type="button"
+                    class="modal-close"
+                    onclick="closeInviteModal();"
+            >
+                ✕
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <p>Do you want to join this group?</p>
+            <p class="muted">
+                Click <strong>Agree</strong> to join, or <strong>Reject</strong> to decline.
+            </p>
+        </div>
+
+        <div class="modal-footer">
+            <button
+                    type="button"
+                    class="modal-btn modal-btn-reject"
+                    onclick="rejectInvitation();"
+            >
+                Reject
+            </button>
+
+            <button
+                    type="button"
+                    class="modal-btn modal-btn-agree"
+                    onclick="agreeInvitation();"
+            >
+                Agree
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- JS -->
+<script>
+    var currentInviteID = 0;
+
+    function openInviteModal(inviteID) {
+        currentInviteID = inviteID;
+        document.getElementById('inviteModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeInviteModal() {
+        document.getElementById('inviteModal').classList.remove('active');
+        document.body.style.overflow = '';
+        currentInviteID = 0;
+    }
+
+    function agreeInvitation() {
+        if (currentInviteID > 0) {
+            window.location.href = 'accept_invite.php?id=' + currentInviteID;
+        }
+    }
+
+    function rejectInvitation() {
+        if (currentInviteID > 0) {
+            window.location.href = 'reject_invite.php?id=' + currentInviteID;
+        }
+    }
+
+    // 点遮罩关闭
+    document.getElementById('inviteModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeInviteModal();
+        }
+    });
+
+    // 按 ESC 关闭
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeInviteModal();
+        }
+    });
+</script>
 
 </body>
 </html>

@@ -16,7 +16,25 @@ if (!isset($_SESSION['userID'])) {
 $userID = (int) $_SESSION['userID'];
 
 // =========================================================
-// 1. 取当前学生 student_id
+// Unread notifications（给铃铛用）
+// =========================================================
+$unreadNotifications = 0;
+
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `notifications`
+    WHERE user_id = ?
+      AND is_read = 0
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$unreadNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// =========================================================
+// 1. Get student_id
 // =========================================================
 $studentID = 0;
 
@@ -35,7 +53,7 @@ if ($rc) {
 }
 
 // =========================================================
-// 2. 查这个学生所有加入的 Group（可能多个 project）
+// 2. Get all groups this student has joined
 // =========================================================
 $myGroups = array();
 
@@ -71,7 +89,7 @@ while ($row = mysqli_fetch_assoc($rs)) {
 mysqli_stmt_close($stmt);
 
 // =========================================================
-// 3. 决定当前显示哪一个 Group
+// 3. Decide active group
 // =========================================================
 $activeGroupID = 0;
 
@@ -96,7 +114,7 @@ if (!$myGroup && count($myGroups) > 0) {
 }
 
 // =========================================================
-// 4. 当前组成员
+// 4. Group members
 // =========================================================
 $groupMembers = array();
 
@@ -125,7 +143,7 @@ if ($myGroup) {
 }
 
 // =========================================================
-// 5. 邀请记录
+// 5. Invitations
 // =========================================================
 $invitations = array();
 
@@ -156,7 +174,7 @@ if ($myGroup) {
 }
 
 // =========================================================
-// 6. 投票结果
+// 6. Vote results
 // =========================================================
 $voteResults = array();
 
@@ -185,7 +203,7 @@ if ($myGroup) {
 }
 
 // =========================================================
-// 7. 辅助函数
+// 7. Helper functions
 // =========================================================
 if (!function_exists('initials')) {
     function initials($name) {
@@ -219,26 +237,146 @@ if (!function_exists('statusClass')) {
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
         body { min-height: 100vh; background: #f5f5f5; color: #222; }
 
-        /* Navbar */
+        /* =========================================================
+           Navbar (same as student_index.php)
+        ========================================================= */
+
         .navbar {
-            width: 100%; padding: 15px 30px; background: black;
-            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            width: 100%;
+            padding: 15px 30px;
+            background: black;
+
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
         }
-        .logo-area { display: flex; justify-content: center; align-items: center; gap: 12px; }
-        .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
-        .logo-area span { color: white; font-size: 30px; font-weight: bold; }
-        .function-menu {
-            width: 100%; display: flex; justify-content: center; align-items: center;
-            flex-wrap: wrap; gap: 22px;
-        }
-        .nav-link { color: white; font-size: 15px; text-decoration: none; padding: 6px 2px; transition: color 0.3s; }
-        .nav-link:hover { color: #bbbbbb; }
-        .nav-link.active { color: white; font-weight: bold; border-bottom: 2px solid white; }
-        .logout-link { color: #ff8888; }
-        .logout-link:hover { color: #ff4444; }
 
-        /* Layout */
+        /* First row: logo (center) + bell (right) */
+        .navbar-top {
+            position: relative;
+            width: 100%;
+            min-height: 65px;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-area img {
+            width: 65px;
+            height: 65px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .logo-area span {
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        /* Bell icon */
+        .bell-link {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            width: 44px;
+            height: 44px;
+
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        .bell-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .bell-link img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Unread badge */
+        .bell-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+
+            background: #d93025;
+            color: white;
+            border-radius: 9px;
+
+            font-size: 11px;
+            font-weight: bold;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border: 2px solid black;
+        }
+
+        /* Second row: Navigation */
+        .function-menu {
+            width: 100%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 22px;
+        }
+
+        .nav-link {
+            color: white;
+            font-size: 15px;
+            text-decoration: none;
+            padding: 6px 2px;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: #bbbbbb;
+        }
+
+        .nav-link.active {
+            color: white;
+            font-weight: bold;
+            border-bottom: 2px solid white;
+        }
+
+        .logout-link {
+            color: #ff8888;
+        }
+
+        .logout-link:hover {
+            color: #ff4444;
+        }
+
+        /* =========================================================
+           Page-specific CSS
+        ========================================================= */
+
         .main-content { width: 90%; max-width: 1250px; margin: 40px auto; }
 
         .page-heading {
@@ -248,42 +386,6 @@ if (!function_exists('statusClass')) {
         }
         .page-heading h1 { margin-bottom: 10px; font-size: 35px; }
         .page-heading p { color: #666; font-size: 17px; line-height: 1.6; }
-
-        /* Group Switcher */
-        .group-switcher {
-            padding: 20px 24px;
-            margin-bottom: 25px;
-
-            background: white;
-            border-radius: 15px;
-            border-left: 6px solid #245889;
-            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
-
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-        .group-switcher label {
-            font-size: 15px;
-            color: #333;
-        }
-        .group-switcher select {
-            flex: 1;
-            min-width: 260px;
-            height: 45px;
-            padding: 0 14px;
-
-            background: white;
-            color: #222;
-            border: 2px solid #cccccc;
-            border-radius: 8px;
-
-            font-size: 14px;
-            cursor: pointer;
-            outline: none;
-        }
-        .group-switcher select:focus { border-color: black; }
 
         .info-note {
             padding: 16px 20px; margin-bottom: 25px;
@@ -344,6 +446,15 @@ if (!function_exists('statusClass')) {
             background: #fafafa; border: 2px dashed #cccccc; border-radius: 12px;
         }
         .invite-form-row { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 14px; }
+        .invite-form-row.two-cols { grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        .invite-form .form-group { margin-bottom: 0; }
+
+        .readonly-input {
+            background: #f0f0f0 !important;
+            color: #555 !important;
+            cursor: not-allowed;
+        }
 
         .invite-btn-main {
             width: 100%; height: 47px; padding: 0 20px;
@@ -431,32 +542,99 @@ if (!function_exists('statusClass')) {
         }
         .result-value { height: 100%; background: black; border-radius: 10px; }
 
+        /* Group Switcher */
+        .group-switcher {
+            padding: 20px 24px;
+            margin-bottom: 25px;
+
+            background: white;
+            border-radius: 15px;
+            border-left: 6px solid #245889;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .group-switcher label {
+            font-size: 15px;
+            color: #333;
+            font-weight: bold;
+        }
+        .group-switcher select {
+            flex: 1;
+            min-width: 260px;
+            height: 45px;
+            padding: 0 14px;
+
+            background: white;
+            color: #222;
+            border: 2px solid #cccccc;
+            border-radius: 8px;
+
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+        }
+        .group-switcher select:focus { border-color: black; }
+
         .muted { color: #777; font-size: 14px; }
 
-        @media (max-width: 1000px) { .create-group-grid { grid-template-columns: 1fr; gap: 0; } }
-        @media (max-width: 900px)  { .section-grid { grid-template-columns: 1fr; } }
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .create-group-grid { grid-template-columns: 1fr; gap: 0; }
+        }
+        @media (max-width: 900px) {
+            .section-grid { grid-template-columns: 1fr; }
+        }
         @media (max-width: 650px) {
             .navbar { padding: 15px; }
             .logo-area img { width: 55px; height: 55px; }
             .logo-area span { font-size: 26px; }
+
+            .bell-link { width: 38px; height: 38px; }
+            .bell-link img { width: 22px; height: 22px; }
+
             .function-menu { flex-direction: column; gap: 12px; }
             .main-content { width: 94%; margin: 25px auto; }
             .page-heading h1 { font-size: 28px; }
 
             .group-switcher { flex-direction: column; align-items: stretch; }
             .group-switcher select { min-width: 100%; }
+
+            .invite-form-row.two-cols { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 
 <body>
 
+<!-- =========================================================
+     Top Navigation Bar (same as student_index.php)
+========================================================= -->
+
 <nav class="navbar">
-    <div class="logo-area">
-        <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
-        <span>TeamBox</span>
+
+    <!-- First row: Logo (center) + Bell (right) -->
+    <div class="navbar-top">
+
+        <div class="logo-area">
+            <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
+            <span>TeamBox</span>
+        </div>
+
+        <a href="student_notifications.php" class="bell-link" title="Notifications">
+            <img src="bell.png" alt="Notifications">
+
+            <?php if ($unreadNotifications > 0): ?>
+                <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+            <?php endif; ?>
+        </a>
+
     </div>
 
+    <!-- Second row: Navigation -->
     <div class="function-menu">
         <a href="student_index.php" class="nav-link">Dashboard</a>
         <a href="student_create_group.php" class="nav-link active">Create Group</a>
@@ -469,7 +647,12 @@ if (!function_exists('statusClass')) {
         <a href="student_profile.php" class="nav-link">Profile</a>
         <a href="logout.php" class="nav-link logout-link">Log Out</a>
     </div>
+
 </nav>
+
+<!-- =========================================================
+     Main Content
+========================================================= -->
 
 <main class="main-content">
 
@@ -481,36 +664,6 @@ if (!function_exists('statusClass')) {
         </p>
     </section>
 
-    <!-- Group / Project Switcher -->
-    <?php if (count($myGroups) > 1): ?>
-        <div class="group-switcher">
-            <label for="groupSwitcher">
-                <strong>切換 Project / Group：</strong>
-            </label>
-            <select id="groupSwitcher" onchange="switchGroup(this.value)">
-                <?php foreach ($myGroups as $g): ?>
-                    <option value="<?php echo (int)$g['group_id']; ?>"
-                            <?php echo ((int)$g['group_id'] === $activeGroupID) ? 'selected' : ''; ?>>
-                        <?php
-                        echo htmlspecialchars(
-                                ($g['course_code'] ? $g['course_code'] . ' - ' : '')
-                                . $g['project_name']
-                                . ' / ' . $g['group_name']
-                                . ' (' . $g['status'] . ')'
-                        );
-                        ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
-        <script>
-            function switchGroup(groupId) {
-                window.location.href = 'student_create_group.php?group_id=' + groupId;
-            }
-        </script>
-    <?php endif; ?>
-
     <div class="info-note">
         <strong>How it works:</strong>
         1. Fill the Create Group form (Course + Group Name + Project + Max Members) &nbsp;→&nbsp;
@@ -521,7 +674,7 @@ if (!function_exists('statusClass')) {
         6. Vote Group Leader.
     </div>
 
-    <!-- 系统提示 -->
+    <!-- System messages -->
     <?php if (isset($_GET['msg'])): ?>
         <?php if ($_GET['msg'] === 'created'): ?>
             <div class="alert alert-success">Group created successfully.</div>
@@ -544,9 +697,7 @@ if (!function_exists('statusClass')) {
         <?php endif; ?>
     <?php endif; ?>
 
-    <!-- =============================
-         Create Group 表单（永远显示）
-    ============================== -->
+    <!-- Create Group Form (always shown) -->
     <section class="create-group-section">
 
         <h2>Create Group</h2>
@@ -562,7 +713,7 @@ if (!function_exists('statusClass')) {
                 </div>
 
                 <div class="form-group">
-                    <label for="courseID">Course（科目）</label>
+                    <label for="courseID">Course</label>
                     <select id="courseID" name="courseID" required>
                         <option value="">-- Select Course --</option>
                         <?php
@@ -628,9 +779,35 @@ if (!function_exists('statusClass')) {
 
     </section>
 
-    <!-- =============================
-         有组 → Invite + Current Group + Vote
-    ============================== -->
+    <!-- Group / Project Switcher -->
+    <?php if (count($myGroups) > 1): ?>
+        <div class="group-switcher">
+            <label for="groupSwitcher">Switch Project / Group:</label>
+            <select id="groupSwitcher" onchange="switchGroup(this.value)">
+                <?php foreach ($myGroups as $g): ?>
+                    <option value="<?php echo (int)$g['group_id']; ?>"
+                            <?php echo ((int)$g['group_id'] === $activeGroupID) ? 'selected' : ''; ?>>
+                        <?php
+                        echo htmlspecialchars(
+                                ($g['course_code'] ? $g['course_code'] . ' - ' : '')
+                                . $g['project_name']
+                                . ' / ' . $g['group_name']
+                                . ' (' . $g['status'] . ')'
+                        );
+                        ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <script>
+            function switchGroup(groupId) {
+                window.location.href = 'student_create_group.php?group_id=' + groupId;
+            }
+        </script>
+    <?php endif; ?>
+
+    <!-- Has group → Invite + Current Group + Vote -->
     <?php if ($myGroup): ?>
 
         <section class="section-grid">
@@ -644,12 +821,24 @@ if (!function_exists('statusClass')) {
 
                     <input type="hidden" name="groupID" value="<?php echo (int)$myGroup['group_id']; ?>">
 
-                    <div class="invite-form-row">
+                    <div class="invite-form-row two-cols">
+
                         <div class="form-group">
-                            <label for="inviteStudentNo">Student ID (學號)</label>
+                            <label for="inviteStudentNo">Student ID</label>
                             <input type="text" id="inviteStudentNo" name="inviteStudentNo"
-                                   placeholder="e.g. 260222112" required>
+                                   placeholder="e.g. S15942736"
+                                   autocomplete="off"
+                                   required>
                         </div>
+
+                        <div class="form-group">
+                            <label for="inviteStudentName">Student Name</label>
+                            <input type="text" id="inviteStudentName" name="inviteStudentName"
+                                   placeholder="(auto-filled)"
+                                   class="readonly-input"
+                                   readonly>
+                        </div>
+
                     </div>
 
                     <button type="submit" class="invite-btn-main">Invite to Group</button>
@@ -706,7 +895,7 @@ if (!function_exists('statusClass')) {
                     echo htmlspecialchars(
                             !empty($myGroup['course_code'])
                                     ? $myGroup['course_code'] . ' - ' . $myGroup['course_name']
-                                    : '—'
+                                    : '-'
                     );
                     ?><br>
 
@@ -751,7 +940,7 @@ if (!function_exists('statusClass')) {
 
         </section>
 
-        <!-- 投票区 -->
+        <!-- Voting -->
         <?php if ($myGroup['status'] === 'Voting' || $myGroup['status'] === 'Executing' || count($voteResults) > 0): ?>
 
             <section class="section-grid">
@@ -831,6 +1020,49 @@ if (!function_exists('statusClass')) {
     <?php endif; ?>
 
 </main>
+
+<!-- Auto-fill Student Name -->
+<script>
+    (function () {
+        var inputId   = document.getElementById('inviteStudentNo');
+        var inputName = document.getElementById('inviteStudentName');
+        var timer     = null;
+
+        if (!inputId || !inputName) return;
+
+        inputId.addEventListener('input', function () {
+            var no = inputId.value.trim();
+
+            inputName.value = '';
+            inputName.style.background = '';
+            inputName.style.color = '';
+
+            if (no === '') return;
+
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+
+                fetch('get_student_name.php?student_no=' + encodeURIComponent(no))
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        if (data && data.name) {
+                            inputName.value = data.name;
+                            inputName.style.background = '#eaf7ee';
+                            inputName.style.color = '#176b2c';
+                        } else {
+                            inputName.value = 'Not found';
+                            inputName.style.background = '#fdeeee';
+                            inputName.style.color = '#a21b1b';
+                        }
+                    })
+                    .catch(function () {
+                        inputName.value = '';
+                    });
+
+            }, 300);
+        });
+    })();
+</script>
 
 </body>
 </html>

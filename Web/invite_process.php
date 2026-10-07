@@ -15,6 +15,9 @@ if (!isset($_SESSION['userID'])) {
 
 $userID = (int) $_SESSION['userID'];
 
+// =========================================================
+// 取表单
+// =========================================================
 $groupID         = (int) (isset($_POST['groupID'])        ? $_POST['groupID']        : 0);
 $inviteStudentNo = trim(isset($_POST['inviteStudentNo']) ? $_POST['inviteStudentNo'] : '');
 
@@ -24,9 +27,18 @@ if ($groupID === 0 || $inviteStudentNo === '') {
 }
 
 // =========================================================
-// 取自己的 student_id
+// 1. 取自己的 student_id + 名字
 // =========================================================
-$stmt = mysqli_prepare($conn, "SELECT id FROM `students` WHERE user_id = ? LIMIT 1");
+$inviterID   = 0;
+$inviterName = '';
+
+$stmt = mysqli_prepare($conn, "
+    SELECT s.id AS student_id, u.username
+    FROM `students` s
+    JOIN `users` u ON u.id = s.user_id
+    WHERE s.user_id = ?
+    LIMIT 1
+");
 mysqli_stmt_bind_param($stmt, "i", $userID);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
@@ -37,12 +49,24 @@ if (!$rc) {
     header('Location: logout.php');
     exit;
 }
-$inviterID = (int) $rc['id'];
+
+$inviterID   = (int) $rc['student_id'];
+$inviterName = $rc['username'];
 
 // =========================================================
-// 找被邀请人
+// 2. 找被邀请人（用 student_number 查）
 // =========================================================
-$stmt = mysqli_prepare($conn, "SELECT id FROM `students` WHERE student_number = ? LIMIT 1");
+$inviteeID     = 0;
+$inviteeUserID = 0;
+$inviteeName   = '';
+
+$stmt = mysqli_prepare($conn, "
+    SELECT s.id AS student_id, s.user_id, u.username
+    FROM `students` s
+    JOIN `users` u ON u.id = s.user_id
+    WHERE s.student_number = ?
+    LIMIT 1
+");
 mysqli_stmt_bind_param($stmt, "s", $inviteStudentNo);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
@@ -53,15 +77,19 @@ if (!$rc) {
     header('Location: student_create_group.php?msg=notfound');
     exit;
 }
-$inviteeID = (int) $rc['id'];
 
+$inviteeID     = (int) $rc['student_id'];
+$inviteeUserID = (int) $rc['user_id'];
+$inviteeName   = $rc['username'];
+
+// 不能邀请自己
 if ($inviteeID === $inviterID) {
     header('Location: student_create_group.php?msg=error');
     exit;
 }
 
 // =========================================================
-// 检查是否已经邀请过
+// 3. 检查是否已经邀请过
 // =========================================================
 $stmt = mysqli_prepare($conn, "
     SELECT id FROM `invitations`
@@ -80,7 +108,29 @@ if ($exists) {
 }
 
 // =========================================================
-// 写邀请
+// 4. 检查组是否存在 + 取组名
+// =========================================================
+$groupName = '';
+
+$stmt = mysqli_prepare($conn, "
+    SELECT name FROM `groups`
+    WHERE id = ?
+    LIMIT 1
+");
+mysqli_stmt_bind_param($stmt, "i", $groupID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
+
+if (!$rc) {
+    header('Location: student_create_group.php?msg=error');
+    exit;
+}
+$groupName = $rc['name'];
+
+// =========================================================
+// 5. 写邀请（invitations）
 // =========================================================
 $stmt = mysqli_prepare($conn, "
     INSERT INTO `invitations` (group_id, inviter_id, invitee_id, status)
@@ -88,7 +138,33 @@ $stmt = mysqli_prepare($conn, "
 ");
 mysqli_stmt_bind_param($stmt, "iii", $groupID, $inviterID, $inviteeID);
 mysqli_stmt_execute($stmt);
+$newInviteID = mysqli_insert_id($conn);
 mysqli_stmt_close($stmt);
 
+// =========================================================
+// 6. 写通知（notifications）
+// =========================================================
+$notifyTitle   = 'Group Invitation';
+$notifyMessage = $inviterName . ' invited you to join group "' . $groupName . '".';
+$notifyLink    = 'accept_invite.php?id=' . $newInviteID;
+
+$stmt = mysqli_prepare($conn, "
+    INSERT INTO `notifications` (user_id, type, title, message, link, is_read)
+    VALUES (?, 'team', ?, ?, ?, 0)
+");
+mysqli_stmt_bind_param(
+    $stmt,
+    "isss",
+    $inviteeUserID,
+    $notifyTitle,
+    $notifyMessage,
+    $notifyLink
+);
+mysqli_stmt_execute($stmt);
+mysqli_stmt_close($stmt);
+
+// =========================================================
+// 7. 回页面
+// =========================================================
 header('Location: student_create_group.php?msg=invited');
 exit;

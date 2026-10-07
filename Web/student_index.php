@@ -32,8 +32,8 @@ $sql = "
            s.grade_level,
            u.username,
            u.email
-    FROM `Students` s
-    JOIN `Users` u ON u.id = s.user_id
+    FROM `students` s
+    JOIN `users` u ON u.id = s.user_id
     WHERE u.id = ?
     LIMIT 1
 ";
@@ -52,7 +52,6 @@ if ($row) {
     $student['major']       = $row['major'];
     $student['grade_level'] = $row['grade_level'];
 } else {
-    // session 有问题
     header('Location: logout.php');
     exit;
 }
@@ -64,12 +63,12 @@ $studentID = $student['student_id'];
 // 2. 汇总卡片
 // =========================================================
 
-// Active Projects：这个学生所在的组有几个项目还在进行
+// Active Projects
 $activeProjects = 0;
 $sql = "
     SELECT COUNT(DISTINCT g.project_id) AS c
-    FROM `Group_Members` gm
-    JOIN `Groups` g ON g.id = gm.group_id
+    FROM `group_members` gm
+    JOIN `groups` g ON g.id = gm.group_id
     WHERE gm.student_id = ?
       AND g.status IN ('Executing','Voting')
 ";
@@ -81,11 +80,11 @@ $rc = mysqli_fetch_assoc($rs);
 $activeProjects = (int) $rc['c'];
 mysqli_stmt_close($stmt);
 
-// Assigned Tasks：分配给我的、未完成的任务
+// Assigned Tasks
 $assignedTasks = 0;
 $sql = "
     SELECT COUNT(*) AS c
-    FROM `Tasks`
+    FROM `tasks`
     WHERE assigned_to = ?
       AND status <> 'Completed'
 ";
@@ -97,11 +96,11 @@ $rc = mysqli_fetch_assoc($rs);
 $assignedTasks = (int) $rc['c'];
 mysqli_stmt_close($stmt);
 
-// Completed Tasks：我完成的任务
+// Completed Tasks
 $completedTasks = 0;
 $sql = "
     SELECT COUNT(*) AS c
-    FROM `Tasks`
+    FROM `tasks`
     WHERE assigned_to = ?
       AND status = 'Completed'
 ";
@@ -113,11 +112,11 @@ $rc = mysqli_fetch_assoc($rs);
 $completedTasks = (int) $rc['c'];
 mysqli_stmt_close($stmt);
 
-// Notifications：未读通知
+// Notifications
 $unreadNotifications = 0;
 $sql = "
     SELECT COUNT(*) AS c
-    FROM `Notifications`
+    FROM `notifications`
     WHERE user_id = ?
       AND is_read = 0
 ";
@@ -131,13 +130,13 @@ mysqli_stmt_close($stmt);
 
 
 // =========================================================
-// 3. Recent Tasks（最近 3 个分配给我的）
+// 3. Recent Tasks
 // =========================================================
 $recentTasks = array();
 
 $sql = "
     SELECT id, title, status, due_date
-    FROM `Tasks`
+    FROM `tasks`
     WHERE assigned_to = ?
     ORDER BY created_at DESC
     LIMIT 3
@@ -154,7 +153,7 @@ mysqli_stmt_close($stmt);
 
 
 // =========================================================
-// 4. Team Progress（我所在组的任务完成度）
+// 4. Team Progress
 // =========================================================
 $teamProgress = 0;
 $teamDone     = 0;
@@ -164,9 +163,9 @@ $sql = "
     SELECT
         COUNT(*) AS total,
         SUM(status = 'Completed') AS done
-    FROM `Tasks`
+    FROM `tasks`
     WHERE group_id IN (
-        SELECT group_id FROM `Group_Members` WHERE student_id = ?
+        SELECT group_id FROM `group_members` WHERE student_id = ?
     )
 ";
 
@@ -187,7 +186,7 @@ if ($rc) {
 
 
 // =========================================================
-// 5. 辅助函数：status → CSS class
+// 5. 辅助函数
 // =========================================================
 if (!function_exists('statusClass')) {
     function statusClass($status) {
@@ -210,12 +209,7 @@ if (!function_exists('formatDate')) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-
-    <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard | TeamBox</title>
 
     <style>
@@ -241,15 +235,24 @@ if (!function_exists('formatDate')) {
 
             display: flex;
             flex-direction: column;
-            align-items: center;
             gap: 15px;
 
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
         }
 
-        .logo-area {
+        /* First row: logo (left) + bell (right) */
+        .navbar-top {
+            position: relative;
+            width: 100%;
+            min-height: 65px;
+
             display: flex;
             justify-content: center;
+            align-items: center;
+        }
+
+        .logo-area {
+            display: flex;
             align-items: center;
             gap: 12px;
         }
@@ -267,6 +270,59 @@ if (!function_exists('formatDate')) {
             font-weight: bold;
         }
 
+        /* Bell icon */
+        .bell-link {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            width: 44px;
+            height: 44px;
+
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        .bell-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .bell-link img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Unread badge (optional) */
+        .bell-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+
+            background: #d93025;
+            color: white;
+            border-radius: 9px;
+
+            font-size: 11px;
+            font-weight: bold;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border: 2px solid black;
+        }
+        /* Second row: Navigation */
         .function-menu {
             width: 100%;
 
@@ -555,6 +611,16 @@ if (!function_exists('formatDate')) {
                 font-size: 26px;
             }
 
+            .bell-link {
+                width: 38px;
+                height: 38px;
+            }
+
+            .bell-link img {
+                width: 22px;
+                height: 22px;
+            }
+
             .function-menu {
                 flex-direction: column;
                 gap: 12px;
@@ -587,11 +653,25 @@ if (!function_exists('formatDate')) {
 
 <nav class="navbar">
 
-    <div class="logo-area">
-        <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
-        <span>TeamBox</span>
+    <!-- First row: Logo (left) + Bell (right) -->
+    <div class="navbar-top">
+
+        <div class="logo-area">
+            <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
+            <span>TeamBox</span>
+        </div>
+
+        <a href="student_notifications.php" class="bell-link" title="Notifications">
+            <img src="bell.png" alt="Notifications">
+
+            <?php if ($unreadNotifications > 0): ?>
+                <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+            <?php endif; ?>
+        </a>
+
     </div>
 
+    <!-- Second row: Navigation -->
     <div class="function-menu">
 
         <a href="student_index.php" class="nav-link active">
