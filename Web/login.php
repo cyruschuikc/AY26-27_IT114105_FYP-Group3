@@ -21,48 +21,52 @@ if (isset($_POST['userId'])) {
 
     $userId   = trim($_POST['userId']);
     $password = isset($_POST['password']) ? $_POST['password'] : '';
-    $userType = isset($_POST['userType']) ? $_POST['userType'] : 'student';
 
     if ($userId === '' || $password === '') {
         $error = 'Please enter both User ID and password.';
     } else {
 
-        if ($userType === 'teacher') {
+        $firstChar = strtoupper(substr($userId, 0, 1));
+
+        $stmt = null;
+
+        if ($firstChar === 'T') {
 
             // 老师：用 Teachers.teacher_code 登录
             $sql = "
-        SELECT u.id, u.username, u.email, u.password_hash, u.role
-        FROM `Teachers` t
-        INNER JOIN `Users` u ON u.id = t.user_id
-        WHERE t.teacher_code = ?
-        LIMIT 1
-    ";
+                SELECT u.id, u.username, u.email, u.password_hash, u.role
+                FROM `Teachers` t
+                INNER JOIN `Users` u ON u.id = t.user_id
+                WHERE t.teacher_code = ?
+                LIMIT 1
+            ";
 
             $stmt = mysqli_prepare($conn, $sql);
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, "s", $userId);
+            }
 
+        } elseif ($firstChar === 'S') {
+
+            // 学生：用 Students.student_number 登录
+            $sql = "
+                SELECT u.id, u.username, u.email, u.password_hash, u.role
+                FROM `Students` s
+                INNER JOIN `Users` u ON u.id = s.user_id
+                WHERE s.student_number = ?
+                LIMIT 1
+            ";
+
+            $stmt = mysqli_prepare($conn, $sql);
             if ($stmt) {
                 mysqli_stmt_bind_param($stmt, "s", $userId);
             }
 
         } else {
-
-            // 学生：用 Students.student_number 登录
-            $sql = "
-        SELECT u.id, u.username, u.email, u.password_hash, u.role
-        FROM `Students` s
-        INNER JOIN `Users` u ON u.id = s.user_id
-        WHERE s.student_number = ?
-        LIMIT 1
-    ";
-
-            $stmt = mysqli_prepare($conn, $sql);
-
-            if ($stmt) {
-                mysqli_stmt_bind_param($stmt, "s", $userId);
-            }
+            $error = 'Invalid User ID. It should start with "T" (teacher) or "S" (student).';
         }
 
-        if (!empty($stmt)) {
+        if ($stmt) {
             mysqli_stmt_execute($stmt);
             $rs = mysqli_stmt_get_result($stmt);
 
@@ -150,8 +154,7 @@ if (isset($_POST['userId'])) {
             font-size: 17px; font-weight: bold; margin-bottom: 9px;
         }
 
-        .form-group input,
-        .form-group select {
+        .form-group input {
             width: 100%; height: 52px; padding: 0 15px;
             background: #fff; color: #000;
             border: 2px solid #ccc; border-radius: 9px;
@@ -160,8 +163,7 @@ if (isset($_POST['userId'])) {
             font-family: inherit;
         }
 
-        .form-group input:focus,
-        .form-group select:focus {
+        .form-group input:focus {
             border-color: #000;
             box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
         }
@@ -211,14 +213,6 @@ if (isset($_POST['userId'])) {
         <?php endif; ?>
 
         <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post">
-
-            <div class="form-group">
-                <label for="userType">Login As</label>
-                <select id="userType" name="userType" required>
-                    <option value="teacher">Teacher</option>
-                    <option value="student" selected>Student</option>
-                </select>
-            </div>
 
             <div class="form-group">
                 <label for="userId">User ID</label>
