@@ -17,31 +17,52 @@ $error = '';
 if (isset($_POST['userId'])) {
 
     require_once 'db.php';
-
     /** @var mysqli $conn */
 
     $userId   = trim($_POST['userId']);
-    $password = $_POST['password'];
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
+    $userType = isset($_POST['userType']) ? $_POST['userType'] : 'student';
 
     if ($userId === '' || $password === '') {
         $error = 'Please enter both User ID and password.';
     } else {
 
-        $sql = "
-            SELECT u.id, u.username, u.email, u.password_hash, u.role,
-                   s.student_number
-            FROM Users u
-            LEFT JOIN Students s ON s.user_id = u.id
-            WHERE u.username = ?
-               OR u.email = ?
-               OR s.student_number = ?
-            LIMIT 1
-        ";
+        if ($userType === 'teacher') {
 
-        $stmt = mysqli_prepare($conn, $sql);
+            // 老师：用 Teachers.teacher_code 登录
+            $sql = "
+                SELECT u.id, u.username, u.email, u.password_hash, u.role
+                FROM `Teachers` t
+                INNER JOIN `Users` u ON u.id = t.user_id
+                WHERE t.teacher_code = ?
+                LIMIT 1
+            ";
 
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "sss", $userId, $userId, $userId);
+            $stmt = mysqli_prepare($conn, $sql);
+
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, "s", $userId);
+            }
+
+        } else {
+
+            // 学生：用 Students.student_number 登录
+            $sql = "
+                SELECT u.id, u.username, u.email, u.password_hash, u.role
+                FROM `Students` s
+                INNER JOIN `Users` u ON u.id = s.user_id
+                WHERE s.student_number = ?
+                LIMIT 1
+            ";
+
+            $stmt = mysqli_prepare($conn, $sql);
+
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, "s", $userId);
+            }
+        }
+
+        if (!empty($stmt)) {
             mysqli_stmt_execute($stmt);
             $rs = mysqli_stmt_get_result($stmt);
 
@@ -50,8 +71,7 @@ if (isset($_POST['userId'])) {
             } else {
                 $rc = mysqli_fetch_assoc($rs);
 
-                // UI 阶段：密码是明文 '12345'
-                // 正式阶段：password_verify($password, $rc['password_hash'])
+                // UI 阶段：明文比较
                 if ($password !== $rc['password_hash']) {
                     $error = 'Invalid User ID or password.';
                 } else {
@@ -130,15 +150,18 @@ if (isset($_POST['userId'])) {
             font-size: 17px; font-weight: bold; margin-bottom: 9px;
         }
 
-        .form-group input {
+        .form-group input,
+        .form-group select {
             width: 100%; height: 52px; padding: 0 15px;
             background: #fff; color: #000;
             border: 2px solid #ccc; border-radius: 9px;
             font-size: 17px; outline: none;
             transition: 0.3s;
+            font-family: inherit;
         }
 
-        .form-group input:focus {
+        .form-group input:focus,
+        .form-group select:focus {
             border-color: #000;
             box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
         }
@@ -190,12 +213,20 @@ if (isset($_POST['userId'])) {
         <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post">
 
             <div class="form-group">
+                <label for="userType">Login As</label>
+                <select id="userType" name="userType" required>
+                    <option value="teacher">Teacher</option>
+                    <option value="student" selected>Student</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="userId">User ID</label>
                 <input
                         type="text"
                         id="userId"
                         name="userId"
-                        placeholder="e.g. Esther Yuen / 260222111"
+                        placeholder="Teacher: T48291 · Student: S48291537"
                         autocomplete="username"
                         required
                 >
@@ -218,8 +249,8 @@ if (isset($_POST['userId'])) {
 
         <div class="login-hint">
             <strong>Test Accounts:</strong><br>
-            Teacher → <strong>Esther Yuen</strong> / <strong>12345</strong><br>
-            Student → <strong>260222111</strong> / <strong>12345</strong>
+            Teacher → <strong>T48291</strong> / <strong>12345</strong><br>
+            Student → <strong>S48291537</strong> / <strong>12345</strong>
         </div>
 
     </div>
