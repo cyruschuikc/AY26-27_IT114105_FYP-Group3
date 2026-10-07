@@ -10,9 +10,9 @@ CREATE DATABASE teambox
 USE teambox;
 
 -- =========================================================
--- 1. Users
+-- 1. Users  ——  1~5 = 老师，6~30 = 学生
 -- =========================================================
-CREATE TABLE Users (
+CREATE TABLE `Users` (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     username       VARCHAR(100) NOT NULL,
     email          VARCHAR(150) NOT NULL UNIQUE,
@@ -21,112 +21,116 @@ CREATE TABLE Users (
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
-INSERT INTO Users (username, email, password_hash, role) VALUES
-    ('Esther Yuen',       'wyyuen@vtc.edu.hk',          '12345', 'teacher'),  -- 1
-    ('CHAN Ho Yin',       '260222111@stu.vtc.edu.hk',   '12345', 'student'),  -- 2
-    ('CHUI Ka Chun',      '260222112@stu.vtc.edu.hk',   '12345', 'student'),  -- 3
-    ('LAI Ka-Yu Savio',   '260222113@stu.vtc.edu.hk',   '12345', 'student'),  -- 4
-    ('MIAO Tung',         '260222114@stu.vtc.edu.hk',   '12345', 'student'),  -- 5
-    ('WONG Mei Ling',     '260222115@stu.vtc.edu.hk',   '12345', 'student'),  -- 6
-    ('LEE Chun Kit',      '260222116@stu.vtc.edu.hk',   '12345', 'student'),  -- 7
-    ('NG Wing Yan',       '260222117@stu.vtc.edu.hk',   '12345', 'student'),  -- 8
-    ('Dr. Alan Ho',       'alanho@vtc.edu.hk',          '12345', 'teacher'),  -- 9
-    ('Prof. Rebecca Lam', 'rebeccalam@vtc.edu.hk',      '12345', 'teacher'),  -- 10
-    ('Dr. Vincent Ng',    'vincentng@vtc.edu.hk',       '12345', 'teacher'),  -- 11
-    ('Ms. Karen Tsang',   'karentsang@vtc.edu.hk',      '12345', 'teacher'),  -- 12
-    ('TAM Chi Hang',      '260222201@stu.vtc.edu.hk',   '12345', 'student'),  -- 13
-    ('HO Wing Sze',       '260222202@stu.vtc.edu.hk',   '12345', 'student'),  -- 14
-    ('LAM Ka Ho',         '260222203@stu.vtc.edu.hk',   '12345', 'student'),  -- 15
-    ('YIP Man Yee',       '260222204@stu.vtc.edu.hk',   '12345', 'student'),  -- 16
-    ('SO Chun Ming',      '260222205@stu.vtc.edu.hk',   '12345', 'student'),  -- 17
-    ('CHEUNG Ka Yan',     '260222206@stu.vtc.edu.hk',   '12345', 'student'),  -- 18
-    ('CHU Ho Yin',        '260222207@stu.vtc.edu.hk',   '12345', 'student'),  -- 19
-    ('FUNG Wing Chi',     '260222208@stu.vtc.edu.hk',   '12345', 'student'),  -- 20
-    ('KWOK Chi Wai',      '260222209@stu.vtc.edu.hk',   '12345', 'student'),  -- 21
-    ('LEUNG Mei Mei',     '260222210@stu.vtc.edu.hk',   '12345', 'student'),  -- 22
-    ('MAK Ho Cheung',     '260222211@stu.vtc.edu.hk',   '12345', 'student'),  -- 23
-    ('NGAI Ka Wai',       '260222212@stu.vtc.edu.hk',   '12345', 'student'),  -- 24
-    ('POON Yuen Ting',    '260222213@stu.vtc.edu.hk',   '12345', 'student'),  -- 25
-    ('SIU Chun Hei',      '260222214@stu.vtc.edu.hk',   '12345', 'student'),  -- 26
-    ('TSE Wing Lam',      '260222215@stu.vtc.edu.hk',   '12345', 'student'),  -- 27
-    ('WU Ka Man',         '260222216@stu.vtc.edu.hk',   '12345', 'student'),  -- 28
-    ('YIU Ho Kwan',       '260222217@stu.vtc.edu.hk',   '12345', 'student'),  -- 29
-    ('ZHAO Wei',          '260222218@stu.vtc.edu.hk',   '12345', 'student');  -- 30
+INSERT INTO `Users` (username, email, password_hash, role) VALUES
+    -- 老师 (id 1~5)
+    ('Esther Yuen',       'wyyuen@vtc.edu.hk',         '12345', 'teacher'),  -- 1
+    ('Dr. Alan Ho',       'alanho@vtc.edu.hk',         '12345', 'teacher'),  -- 2
+    ('Prof. Rebecca Lam', 'rebeccalam@vtc.edu.hk',     '12345', 'teacher'),  -- 3
+    ('Dr. Vincent Ng',    'vincentng@vtc.edu.hk',      '12345', 'teacher'),  -- 4
+    ('Ms. Karen Tsang',   'karentsang@vtc.edu.hk',     '12345', 'teacher'),  -- 5
+
+    -- 学生 (id 6~30)
+    ('CHAN Ho Yin',       '260222111@stu.vtc.edu.hk',  '12345', 'student'),  -- 6
+    ('CHUI Ka Chun',      '260222112@stu.vtc.edu.hk',  '12345', 'student'),  -- 7
+    ('LAI Ka-Yu Savio',   '260222113@stu.vtc.edu.hk',  '12345', 'student'),  -- 8
+    ('MIAO Tung',         '260222114@stu.vtc.edu.hk',  '12345', 'student'),  -- 9
+    ('WONG Mei Ling',     '260222115@stu.vtc.edu.hk',  '12345', 'student'),  -- 10
+    ('LEE Chun Kit',      '260222116@stu.vtc.edu.hk',  '12345', 'student'),  -- 11
+    ('NG Wing Yan',       '260222117@stu.vtc.edu.hk',  '12345', 'student'),  -- 12
+    ('TAM Chi Hang',      '260222201@stu.vtc.edu.hk',  '12345', 'student'),  -- 13
+    ('HO Wing Sze',       '260222202@stu.vtc.edu.hk',  '12345', 'student'),  -- 14
+    ('LAM Ka Ho',         '260222203@stu.vtc.edu.hk',  '12345', 'student'),  -- 15
+    ('YIP Man Yee',       '260222204@stu.vtc.edu.hk',  '12345', 'student'),  -- 16
+    ('SO Chun Ming',      '260222205@stu.vtc.edu.hk',  '12345', 'student'),  -- 17
+    ('CHEUNG Ka Yan',     '260222206@stu.vtc.edu.hk',  '12345', 'student'),  -- 18
+    ('CHU Ho Yin',        '260222207@stu.vtc.edu.hk',  '12345', 'student'),  -- 19
+    ('FUNG Wing Chi',     '260222208@stu.vtc.edu.hk',  '12345', 'student'),  -- 20
+    ('KWOK Chi Wai',      '260222209@stu.vtc.edu.hk',  '12345', 'student'),  -- 21
+    ('LEUNG Mei Mei',     '260222210@stu.vtc.edu.hk',  '12345', 'student'),  -- 22
+    ('MAK Ho Cheung',     '260222211@stu.vtc.edu.hk',  '12345', 'student'),  -- 23
+    ('NGAI Ka Wai',       '260222212@stu.vtc.edu.hk',  '12345', 'student'),  -- 24
+    ('POON Yuen Ting',    '260222213@stu.vtc.edu.hk',  '12345', 'student'),  -- 25
+    ('SIU Chun Hei',      '260222214@stu.vtc.edu.hk',  '12345', 'student'),  -- 26
+    ('TSE Wing Lam',      '260222215@stu.vtc.edu.hk',  '12345', 'student'),  -- 27
+    ('WU Ka Man',         '260222216@stu.vtc.edu.hk',  '12345', 'student'),  -- 28
+    ('YIU Ho Kwan',       '260222217@stu.vtc.edu.hk',  '12345', 'student'),  -- 29
+    ('ZHAO Wei',          '260222218@stu.vtc.edu.hk',  '12345', 'student');  -- 30
 
 
 -- =========================================================
--- 2. Teachers
+-- 2. Teachers  (teacher_code = T + 5 位数字)
 -- =========================================================
-CREATE TABLE Teachers (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    user_id     INT NOT NULL UNIQUE,
-    hire_date   DATE,
-    department  VARCHAR(100),
-    title       VARCHAR(100),
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+CREATE TABLE `Teachers` (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    user_id       INT NOT NULL UNIQUE,
+    teacher_code  VARCHAR(6) NOT NULL UNIQUE,
+    hire_date     DATE,
+    department    VARCHAR(100),
+    title         VARCHAR(100),
+    FOREIGN KEY (user_id) REFERENCES `Users`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO Teachers (user_id, hire_date, department, title) VALUES
-    (1,  '2022-09-01', 'Information Technology', 'Senior Lecturer'),     -- 1
-    (9,  '2020-09-01', 'Information Technology', 'Lecturer'),            -- 2
-    (10, '2017-09-01', 'Computer Science',       'Associate Professor'), -- 3
-    (11, '2021-09-01', 'Information Technology', 'Lecturer'),            -- 4
-    (12, '2018-09-01', 'Software Engineering',   'Senior Lecturer');     -- 5
+INSERT INTO `Teachers` (user_id, teacher_code, hire_date, department, title) VALUES
+    (1, 'T48291', '2022-09-01', 'Information Technology', 'Senior Lecturer'),     -- 1  Esther Yuen
+    (2, 'T15942', '2020-09-01', 'Information Technology', 'Lecturer'),            -- 2  Dr. Alan Ho
+    (3, 'T73658', '2017-09-01', 'Computer Science',       'Associate Professor'), -- 3  Prof. Rebecca Lam
+    (4, 'T20473', '2021-09-01', 'Information Technology', 'Lecturer'),            -- 4  Dr. Vincent Ng
+    (5, 'T91826', '2018-09-01', 'Software Engineering',   'Senior Lecturer');     -- 5  Ms. Karen Tsang
 
 
 -- =========================================================
--- 3. Students
+-- 3. Students  (student_number = S + 8 位数字)
 -- =========================================================
-CREATE TABLE Students (
+CREATE TABLE `Students` (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     user_id         INT NOT NULL UNIQUE,
     student_number  VARCHAR(20) NOT NULL UNIQUE,
     major           VARCHAR(100),
     grade_level     INT,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES `Users`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO Students (user_id, student_number, major, grade_level) VALUES
-    (2,  '260222111', 'Software Engineering', 14),
-    (3,  '260222112', 'Software Engineering', 14),
-    (4,  '260222113', 'Software Engineering', 14),
-    (5,  '260222114', 'Software Engineering', 14),
-    (6,  '260222115', 'Software Engineering', 14),
-    (7,  '260222116', 'Software Engineering', 14),
-    (8,  '260222117', 'Software Engineering', 14),
-    (13, '260222201', 'Software Engineering', 14),
-    (14, '260222202', 'Software Engineering', 14),
-    (15, '260222203', 'Software Engineering', 14),
-    (16, '260222204', 'Information Technology', 14),
-    (17, '260222205', 'Software Engineering', 14),
-    (18, '260222206', 'Cloud Computing', 14),
-    (19, '260222207', 'Software Engineering', 14),
-    (20, '260222208', 'Information Technology', 14),
-    (21, '260222209', 'Software Engineering', 14),
-    (22, '260222210', 'Cloud Computing', 14),
-    (23, '260222211', 'Software Engineering', 14),
-    (24, '260222212', 'Information Technology', 14),
-    (25, '260222213', 'Software Engineering', 14),
-    (26, '260222214', 'Software Engineering', 14),
-    (27, '260222215', 'Cloud Computing', 14),
-    (28, '260222216', 'Software Engineering', 14),
-    (29, '260222217', 'Information Technology', 14),
-    (30, '260222218', 'Software Engineering', 14);
+INSERT INTO `Students` (user_id, student_number, major, grade_level) VALUES
+    (6,  'S48291537', 'Software Engineering', 14),  -- 1
+    (7,  'S15942736', 'Software Engineering', 14),  -- 2
+    (8,  'S73658120', 'Software Engineering', 14),  -- 3
+    (9,  'S20473819', 'Software Engineering', 14),  -- 4
+    (10, 'S91826504', 'Software Engineering', 14),  -- 5
+    (11, 'S35718492', 'Software Engineering', 14),  -- 6
+    (12, 'S62048571', 'Software Engineering', 14),  -- 7
+    (13, 'S17395028', 'Software Engineering', 14),  -- 8
+    (14, 'S84926315', 'Software Engineering', 14),  -- 9
+    (15, 'S50274186', 'Software Engineering', 14),  -- 10
+    (16, 'S31486972', 'Information Technology', 14),-- 11
+    (17, 'S76592043', 'Software Engineering', 14),  -- 12
+    (18, 'S09851426', 'Cloud Computing', 14),       -- 13
+    (19, 'S47203581', 'Software Engineering', 14),  -- 14
+    (20, 'S61573924', 'Information Technology', 14),-- 15
+    (21, 'S28639174', 'Software Engineering', 14),  -- 16
+    (22, 'S93051768', 'Cloud Computing', 14),       -- 17
+    (23, 'S34718059', 'Software Engineering', 14),  -- 18
+    (24, 'S80245391', 'Information Technology', 14),-- 19
+    (25, 'S15972806', 'Software Engineering', 14),  -- 20
+    (26, 'S62048913', 'Software Engineering', 14),  -- 21
+    (27, 'S47123895', 'Cloud Computing', 14),       -- 22
+    (28, 'S90471625', 'Software Engineering', 14),  -- 23
+    (29, 'S23850147', 'Information Technology', 14),-- 24
+    (30, 'S76093184', 'Software Engineering', 14);  -- 25
 
 
 -- =========================================================
 -- 4. Teacher_Student
 -- =========================================================
-CREATE TABLE Teacher_Student (
+CREATE TABLE `Teacher_Student` (
     teacher_id  INT NOT NULL,
     student_id  INT NOT NULL,
     assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (teacher_id, student_id),
-    FOREIGN KEY (teacher_id) REFERENCES Teachers(id) ON DELETE CASCADE,
-    FOREIGN KEY (student_id) REFERENCES Students(id) ON DELETE CASCADE
+    FOREIGN KEY (teacher_id) REFERENCES `Teachers`(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES `Students`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO Teacher_Student (teacher_id, student_id) VALUES
+INSERT INTO `Teacher_Student` (teacher_id, student_id) VALUES
     (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10), (1, 11), (1, 12),
     (2, 13), (2, 14), (2, 15), (2, 16), (2, 17),
     (3, 18), (3, 19), (3, 20), (3, 21),
@@ -137,7 +141,7 @@ INSERT INTO Teacher_Student (teacher_id, student_id) VALUES
 -- =========================================================
 -- 5. Projects
 -- =========================================================
-CREATE TABLE Projects (
+CREATE TABLE `Projects` (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     name           VARCHAR(150) NOT NULL,
     category       VARCHAR(100),
@@ -147,10 +151,10 @@ CREATE TABLE Projects (
     status         ENUM('Recruiting','Voting','Executing','Completed','Archived') DEFAULT 'Recruiting',
     progress       INT DEFAULT 0,
     description    TEXT,
-    FOREIGN KEY (supervisor_id) REFERENCES Teachers(id) ON DELETE RESTRICT
+    FOREIGN KEY (supervisor_id) REFERENCES `Teachers`(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
-INSERT INTO Projects
+INSERT INTO `Projects`
     (name, category, supervisor_id, period_start, period_end, status, progress, description) VALUES
     ('TeamBox',            'Software Engineering', 1, '2026-09-01', '2027-04-30', 'Executing',  60, 'Cross-platform collaboration and management system for student teams.'),
     ('Smart Attendance',   'Mobile App',           1, '2026-09-01', '2027-04-30', 'Executing',  35, 'Face recognition based attendance system.'),
@@ -168,7 +172,7 @@ INSERT INTO Projects
 -- =========================================================
 -- 6. Milestones
 -- =========================================================
-CREATE TABLE Milestones (
+CREATE TABLE `Milestones` (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     project_id  INT NOT NULL,
     name        VARCHAR(150) NOT NULL,
@@ -176,10 +180,10 @@ CREATE TABLE Milestones (
     end_date    DATE NOT NULL,
     status      ENUM('Pending','In Progress','Completed') DEFAULT 'Pending',
     progress    INT DEFAULT 0,
-    FOREIGN KEY (project_id) REFERENCES Projects(id) ON DELETE CASCADE
+    FOREIGN KEY (project_id) REFERENCES `Projects`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO Milestones (project_id, name, start_date, end_date, status, progress) VALUES
+INSERT INTO `Milestones` (project_id, name, start_date, end_date, status, progress) VALUES
     (1, 'Requirement Analysis',    '2026-09-01', '2026-10-05', 'Completed',   100),
     (1, 'System Design',           '2026-10-06', '2026-10-20', 'Completed',   100),
     (1, 'Core Development',        '2026-10-21', '2027-01-15', 'In Progress',  55),
@@ -231,7 +235,7 @@ INSERT INTO Milestones (project_id, name, start_date, end_date, status, progress
 -- =========================================================
 -- 7. Groups
 -- =========================================================
-CREATE TABLE Groups (
+CREATE TABLE `Groups` (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     project_id   INT NOT NULL,
     name         VARCHAR(100) NOT NULL,
@@ -240,11 +244,11 @@ CREATE TABLE Groups (
     status       ENUM('Recruiting','Voting','Executing','Completed') DEFAULT 'Recruiting',
     formed_at    DATETIME NULL,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES Projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (leader_id)  REFERENCES Students(id) ON DELETE SET NULL
+    FOREIGN KEY (project_id) REFERENCES `Projects`(id) ON DELETE CASCADE,
+    FOREIGN KEY (leader_id)  REFERENCES `Students`(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
-INSERT INTO Groups (project_id, name, leader_id, max_members, status, formed_at) VALUES
+INSERT INTO `Groups` (project_id, name, leader_id, max_members, status, formed_at) VALUES
     (1,  'Team 01', 1,  4, 'Executing', '2026-09-15 10:00:00'),
     (1,  'Team 02', 3,  4, 'Voting',    NULL),
     (2,  'Team 03', 5,  4, 'Recruiting',NULL),
@@ -260,17 +264,17 @@ INSERT INTO Groups (project_id, name, leader_id, max_members, status, formed_at)
 -- =========================================================
 -- 8. Group_Members
 -- =========================================================
-CREATE TABLE Group_Members (
+CREATE TABLE `Group_Members` (
     group_id    INT NOT NULL,
     student_id  INT NOT NULL,
     role        ENUM('leader','member') DEFAULT 'member',
     joined_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (group_id, student_id),
-    FOREIGN KEY (group_id)   REFERENCES Groups(id)   ON DELETE CASCADE,
-    FOREIGN KEY (student_id) REFERENCES Students(id) ON DELETE CASCADE
+    FOREIGN KEY (group_id)   REFERENCES `Groups`(id)   ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES `Students`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO Group_Members (group_id, student_id, role) VALUES
+INSERT INTO `Group_Members` (group_id, student_id, role) VALUES
     (1, 1, 'leader'), (1, 2, 'member'), (1, 3, 'member'), (1, 4, 'member'),
     (2, 3, 'leader'), (2, 6, 'member'),
     (3, 5, 'leader'), (3, 6, 'member'), (3, 7, 'member'),
@@ -286,7 +290,7 @@ INSERT INTO Group_Members (group_id, student_id, role) VALUES
 -- =========================================================
 -- 9. Group_Requests
 -- =========================================================
-CREATE TABLE Group_Requests (
+CREATE TABLE `Group_Requests` (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     group_name     VARCHAR(100) NOT NULL,
     project_id     INT NOT NULL,
@@ -296,12 +300,12 @@ CREATE TABLE Group_Requests (
     submitted_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reviewed_at    DATETIME NULL,
     reviewed_by    INT NULL,
-    FOREIGN KEY (project_id)   REFERENCES Projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (submitted_by) REFERENCES Students(id) ON DELETE CASCADE,
-    FOREIGN KEY (reviewed_by)  REFERENCES Teachers(id) ON DELETE SET NULL
+    FOREIGN KEY (project_id)   REFERENCES `Projects`(id) ON DELETE CASCADE,
+    FOREIGN KEY (submitted_by) REFERENCES `Students`(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by)  REFERENCES `Teachers`(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
-INSERT INTO Group_Requests (group_name, project_id, submitted_by, status, submitted_at) VALUES
+INSERT INTO `Group_Requests` (group_name, project_id, submitted_by, status, submitted_at) VALUES
     ('Team A', 1,  1,  'Pending', '2026-10-04 08:42:00'),
     ('Team B', 2,  6,  'Pending', '2026-10-03 14:20:00'),
     ('Team C', 4,  8,  'Pending', '2026-10-05 09:10:00'),
@@ -317,16 +321,16 @@ INSERT INTO Group_Requests (group_name, project_id, submitted_by, status, submit
 -- =========================================================
 -- 10. Request_Members
 -- =========================================================
-CREATE TABLE Request_Members (
+CREATE TABLE `Request_Members` (
     request_id  INT NOT NULL,
     student_id  INT NOT NULL,
     is_leader   TINYINT(1) DEFAULT 0,
     PRIMARY KEY (request_id, student_id),
-    FOREIGN KEY (request_id) REFERENCES Group_Requests(id) ON DELETE CASCADE,
-    FOREIGN KEY (student_id) REFERENCES Students(id)       ON DELETE CASCADE
+    FOREIGN KEY (request_id) REFERENCES `Group_Requests`(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES `Students`(id)       ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO Request_Members (request_id, student_id, is_leader) VALUES
+INSERT INTO `Request_Members` (request_id, student_id, is_leader) VALUES
     (1, 1, 1), (1, 2, 0), (1, 3, 0), (1, 4, 0),
     (2, 6, 1), (2, 7, 0), (2, 8, 0),
     (3, 8, 1), (3, 9, 0), (3, 10, 0),
@@ -342,23 +346,23 @@ INSERT INTO Request_Members (request_id, student_id, is_leader) VALUES
 -- =========================================================
 -- 11. Leader_Votes
 -- =========================================================
-CREATE TABLE Leader_Votes (
+CREATE TABLE `Leader_Votes` (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     group_id      INT NOT NULL,
     voter_id      INT NOT NULL,
     candidate_id  INT NOT NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY unique_vote (group_id, voter_id),
-    FOREIGN KEY (group_id)     REFERENCES Groups(id)   ON DELETE CASCADE,
-    FOREIGN KEY (voter_id)     REFERENCES Students(id) ON DELETE CASCADE,
-    FOREIGN KEY (candidate_id) REFERENCES Students(id) ON DELETE CASCADE
+    FOREIGN KEY (group_id)     REFERENCES `Groups`(id)   ON DELETE CASCADE,
+    FOREIGN KEY (voter_id)     REFERENCES `Students`(id) ON DELETE CASCADE,
+    FOREIGN KEY (candidate_id) REFERENCES `Students`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 
 -- =========================================================
 -- 12. Tasks
 -- =========================================================
-CREATE TABLE Tasks (
+CREATE TABLE `Tasks` (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     project_id    INT NOT NULL,
     group_id      INT NOT NULL,
@@ -371,36 +375,36 @@ CREATE TABLE Tasks (
     due_date      DATE,
     completed_at  DATETIME NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id)  REFERENCES Projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (group_id)    REFERENCES Groups(id)   ON DELETE CASCADE,
-    FOREIGN KEY (assigned_to) REFERENCES Students(id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by)  REFERENCES Users(id)    ON DELETE RESTRICT
+    FOREIGN KEY (project_id)  REFERENCES `Projects`(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id)    REFERENCES `Groups`(id)   ON DELETE CASCADE,
+    FOREIGN KEY (assigned_to) REFERENCES `Students`(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by)  REFERENCES `Users`(id)    ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
-INSERT INTO Tasks (project_id, group_id, title, description, assigned_to, created_by, status, priority, due_date) VALUES
-    (1, 1, 'Complete Project Proposal',  'Draft and submit the FYP proposal.',          1, 2, 'Completed',   'High',   '2026-09-30'),
-    (1, 1, 'Requirement Analysis',       'Analyse requirements and produce document.',  3, 1, 'Completed',   'Medium', '2026-10-05'),
-    (1, 1, 'Create System Interface',    'Design the main UI screens.',                 4, 1, 'In Progress', 'High',   '2026-10-10'),
-    (1, 1, 'Database Schema Design',     'Design the MySQL schema for TeamBox.',        3, 1, 'Pending',     'Medium', '2026-10-15'),
-    (1, 2, 'Android Prototype',          'Build a first Android prototype.',            2, 3, 'Pending',     'High',   '2026-10-25'),
-    (4, 4, 'Write SRS Document',         'Software requirement spec.',                  8, 9, 'Completed',   'High',   '2026-10-05'),
-    (4, 4, 'Design Seat Map UI',         'Interactive seat map design.',                9, 9, 'In Progress', 'Medium', '2026-10-15'),
-    (4, 4, 'Booking API',                'Implement booking API.',                     10, 9, 'Pending',     'High',   '2026-10-25'),
-    (5, 5, 'Menu Database',              'Create menu database schema.',                9, 9, 'Completed',   'Medium', '2026-10-01'),
-    (5, 5, 'Payment Integration',        'Integrate payment gateway.',                 12, 9, 'In Progress', 'High',   '2026-10-20'),
-    (5, 5, 'Order Tracking UI',          'Design order tracking screen.',              13, 9, 'Pending',     'Low',    '2026-10-30'),
-    (6, 6, 'Data Collection',            'Collect study material dataset.',            13, 10,'Completed',   'High',   '2026-09-30'),
-    (6, 6, 'Train Baseline Model',       'Train first ML baseline.',                   15, 10,'In Progress', 'High',   '2026-10-25'),
-    (6, 6, 'Prompt Engineering',         'Design prompt templates.',                   16, 10,'Pending',     'Medium', '2026-11-10'),
-    (8, 9, 'Company Database',           'Collect company data.',                      20, 12,'Completed',   'Medium', '2026-10-05'),
-    (8, 9, 'Matching Algorithm',         'Build matching algorithm.',                  21, 12,'In Progress', 'High',   '2026-10-28'),
-    (8, 9, 'Frontend Dashboard',         'Build student dashboard.',                   22, 12,'Pending',     'Medium', '2026-11-15');
+INSERT INTO `Tasks` (project_id, group_id, title, description, assigned_to, created_by, status, priority, due_date) VALUES
+    (1, 1, 'Complete Project Proposal',  'Draft and submit the FYP proposal.',          1,  1, 'Completed',   'High',   '2026-09-30'),
+    (1, 1, 'Requirement Analysis',       'Analyse requirements and produce document.',  3,  1, 'Completed',   'Medium', '2026-10-05'),
+    (1, 1, 'Create System Interface',    'Design the main UI screens.',                 4,  1, 'In Progress', 'High',   '2026-10-10'),
+    (1, 1, 'Database Schema Design',     'Design the MySQL schema for TeamBox.',        3,  1, 'Pending',     'Medium', '2026-10-15'),
+    (1, 2, 'Android Prototype',          'Build a first Android prototype.',            2,  1, 'Pending',     'High',   '2026-10-25'),
+    (4, 4, 'Write SRS Document',         'Software requirement spec.',                  8,  2, 'Completed',   'High',   '2026-10-05'),
+    (4, 4, 'Design Seat Map UI',         'Interactive seat map design.',                9,  2, 'In Progress', 'Medium', '2026-10-15'),
+    (4, 4, 'Booking API',                'Implement booking API.',                     10,  2, 'Pending',     'High',   '2026-10-25'),
+    (5, 5, 'Menu Database',              'Create menu database schema.',                9,  2, 'Completed',   'Medium', '2026-10-01'),
+    (5, 5, 'Payment Integration',        'Integrate payment gateway.',                 12,  2, 'In Progress', 'High',   '2026-10-20'),
+    (5, 5, 'Order Tracking UI',          'Design order tracking screen.',              13,  2, 'Pending',     'Low',    '2026-10-30'),
+    (6, 6, 'Data Collection',            'Collect study material dataset.',            13,  3, 'Completed',   'High',   '2026-09-30'),
+    (6, 6, 'Train Baseline Model',       'Train first ML baseline.',                   15,  3, 'In Progress', 'High',   '2026-10-25'),
+    (6, 6, 'Prompt Engineering',         'Design prompt templates.',                   16,  3, 'Pending',     'Medium', '2026-11-10'),
+    (8, 9, 'Company Database',           'Collect company data.',                      20,  4, 'Completed',   'Medium', '2026-10-05'),
+    (8, 9, 'Matching Algorithm',         'Build matching algorithm.',                  21,  4, 'In Progress', 'High',   '2026-10-28'),
+    (8, 9, 'Frontend Dashboard',         'Build student dashboard.',                   22,  4, 'Pending',     'Medium', '2026-11-15');
 
 
 -- =========================================================
 -- 13. Files
 -- =========================================================
-CREATE TABLE Files (
+CREATE TABLE `Files` (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     project_id   INT NOT NULL,
     group_id     INT NOT NULL,
@@ -413,13 +417,13 @@ CREATE TABLE Files (
     reviewed_by  INT NULL,
     reviewed_at  DATETIME NULL,
     review_note  TEXT,
-    FOREIGN KEY (project_id)  REFERENCES Projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (group_id)    REFERENCES Groups(id)   ON DELETE CASCADE,
-    FOREIGN KEY (uploader_id) REFERENCES Students(id) ON DELETE CASCADE,
-    FOREIGN KEY (reviewed_by) REFERENCES Teachers(id) ON DELETE SET NULL
+    FOREIGN KEY (project_id)  REFERENCES `Projects`(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id)    REFERENCES `Groups`(id)   ON DELETE CASCADE,
+    FOREIGN KEY (uploader_id) REFERENCES `Students`(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by) REFERENCES `Teachers`(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
-INSERT INTO Files (project_id, group_id, uploader_id, file_name, file_size, file_type, status, uploaded_at, reviewed_by, reviewed_at, review_note) VALUES
+INSERT INTO `Files` (project_id, group_id, uploader_id, file_name, file_size, file_type, status, uploaded_at, reviewed_by, reviewed_at, review_note) VALUES
     (1, 1, 1, 'Proposal_v2.docx',                '2.4 MB', 'DOCX', 'Unviewed', '2026-10-04 10:42:00', NULL, NULL, NULL),
     (1, 1, 3, 'Requirement_Analysis.pdf',        '1.8 MB', 'PDF',  'Accepted', '2026-10-03 15:20:00', 1,   '2026-10-04 09:00:00', 'Looks good.'),
     (1, 1, 4, 'UI_Wireframe.fig',                '5.1 MB', 'FIG',  'Unviewed', '2026-10-02 09:15:00', NULL, NULL, NULL),
@@ -449,19 +453,19 @@ INSERT INTO Files (project_id, group_id, uploader_id, file_name, file_size, file
 -- =========================================================
 -- 14. Messages
 -- =========================================================
-CREATE TABLE Messages (
+CREATE TABLE `Messages` (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     group_id      INT NOT NULL,
     sender_id     INT NOT NULL,
     content       TEXT,
     attachment_id INT NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (group_id)      REFERENCES Groups(id) ON DELETE CASCADE,
-    FOREIGN KEY (sender_id)     REFERENCES Students(id) ON DELETE CASCADE,
-    FOREIGN KEY (attachment_id) REFERENCES Files(id)   ON DELETE SET NULL
+    FOREIGN KEY (group_id)      REFERENCES `Groups`(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id)     REFERENCES `Students`(id) ON DELETE CASCADE,
+    FOREIGN KEY (attachment_id) REFERENCES `Files`(id)   ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
-INSERT INTO Messages (group_id, sender_id, content) VALUES
+INSERT INTO `Messages` (group_id, sender_id, content) VALUES
     (1, 1, 'Please update your assigned task progress before the team meeting.'),
     (1, 3, 'I have completed the student login page and I am currently developing the student dashboard.'),
     (1, 2, 'I have uploaded the latest project proposal to the shared files page.'),
@@ -484,7 +488,7 @@ INSERT INTO Messages (group_id, sender_id, content) VALUES
 -- =========================================================
 -- 15. Announcements
 -- =========================================================
-CREATE TABLE Announcements (
+CREATE TABLE `Announcements` (
     id                INT AUTO_INCREMENT PRIMARY KEY,
     teacher_id        INT NOT NULL,
     title             VARCHAR(200) NOT NULL,
@@ -492,12 +496,12 @@ CREATE TABLE Announcements (
     target_group_id   INT NULL,
     target_project_id INT NULL,
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (teacher_id)        REFERENCES Teachers(id) ON DELETE CASCADE,
-    FOREIGN KEY (target_group_id)   REFERENCES Groups(id)   ON DELETE SET NULL,
-    FOREIGN KEY (target_project_id) REFERENCES Projects(id) ON DELETE SET NULL
+    FOREIGN KEY (teacher_id)        REFERENCES `Teachers`(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_group_id)   REFERENCES `Groups`(id)   ON DELETE SET NULL,
+    FOREIGN KEY (target_project_id) REFERENCES `Projects`(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
-INSERT INTO Announcements (teacher_id, title, message, target_project_id) VALUES
+INSERT INTO `Announcements` (teacher_id, title, message, target_project_id) VALUES
     (1, 'Progress Report Deadline', 'Please submit your progress report by 15 Oct.', 1),
     (1, 'Welcome to FYP',           'Welcome everyone to the Final Year Project.',   NULL),
     (2, 'Mid-term Demo Schedule',   'Mid-term demo will be held on 20 Nov 2026.',   4),
@@ -513,7 +517,7 @@ INSERT INTO Announcements (teacher_id, title, message, target_project_id) VALUES
 -- =========================================================
 -- 16. Notifications
 -- =========================================================
-CREATE TABLE Notifications (
+CREATE TABLE `Notifications` (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     user_id     INT NOT NULL,
     type        ENUM('task','file','team','project','system') NOT NULL,
@@ -522,13 +526,13 @@ CREATE TABLE Notifications (
     link        VARCHAR(255),
     is_read     TINYINT(1) DEFAULT 0,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES `Users`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO Notifications (user_id, type, title, message, link) VALUES
-    (2,  'task', 'New Task Assigned',   'You have been assigned "Develop Student Dashboard".', 'student_task.php'),
-    (2,  'file', 'New File Uploaded',   'Student B uploaded "Proposal_v2.docx".',              'student_files.php'),
-    (2,  'team', 'New Group Message',   'A new meeting reminder was posted.',                  'student_chat.php'),
+INSERT INTO `Notifications` (user_id, type, title, message, link) VALUES
+    (6,  'task', 'New Task Assigned',   'You have been assigned "Develop Student Dashboard".', 'student_task.php'),
+    (6,  'file', 'New File Uploaded',   'Student B uploaded "Proposal_v2.docx".',              'student_files.php'),
+    (6,  'team', 'New Group Message',   'A new meeting reminder was posted.',                  'student_chat.php'),
     (13, 'task', 'New Task Assigned',   'You have been assigned "Design Seat Map UI".',        'student_task.php'),
     (14, 'file', 'File Approved',       'Your "Menu_Schema.sql" was approved.',                'student_files.php'),
     (15, 'file', 'File Rejected',       'Your "API_Design.pdf" was rejected.',                 'student_files.php'),
@@ -542,7 +546,7 @@ INSERT INTO Notifications (user_id, type, title, message, link) VALUES
 -- =========================================================
 -- 17. Activities
 -- =========================================================
-CREATE TABLE Activities (
+CREATE TABLE `Activities` (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     project_id  INT NULL,
     group_id    INT NULL,
@@ -550,31 +554,31 @@ CREATE TABLE Activities (
     action      VARCHAR(100) NOT NULL,
     detail      TEXT,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES Projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (group_id)   REFERENCES Groups(id)   ON DELETE CASCADE,
-    FOREIGN KEY (actor_id)   REFERENCES Users(id)    ON DELETE CASCADE
+    FOREIGN KEY (project_id) REFERENCES `Projects`(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id)   REFERENCES `Groups`(id)   ON DELETE CASCADE,
+    FOREIGN KEY (actor_id)   REFERENCES `Users`(id)    ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO Activities (project_id, group_id, actor_id, action, detail) VALUES
-    (1,  1,  2, 'uploaded',  'uploaded Proposal_v2.docx'),
-    (1,  1,  4, 'completed', 'marked Requirement Analysis complete'),
-    (1,  1,  5, 'commented', 'commented on UI_Wireframe'),
-    (1,  1,  2, 'elected',   'was elected as team leader'),
+INSERT INTO `Activities` (project_id, group_id, actor_id, action, detail) VALUES
+    (1,  1,  6, 'uploaded',  'uploaded Proposal_v2.docx'),
+    (1,  1,  8, 'completed', 'marked Requirement Analysis complete'),
+    (1,  1,  9, 'commented', 'commented on UI_Wireframe'),
+    (1,  1,  6, 'elected',   'was elected as team leader'),
     (1,  1,  1, 'locked',    'locked the team roster'),
-    (4,  4,  8, 'uploaded',  'uploaded SRS_v1.docx'),
-    (4,  4,  9, 'uploaded',  'uploaded SeatMap_Mockup.png'),
-    (4,  4,  10,'uploaded',  'uploaded API_Design.pdf'),
-    (4,  4,  9, 'reviewed',  'accepted SRS_v1.docx'),
-    (5,  5,  9, 'uploaded',  'uploaded Menu_Schema.sql'),
-    (5,  5,  12,'uploaded',  'uploaded Payment_Flow.pdf'),
-    (6,  6,  13,'uploaded',  'uploaded Dataset_Description.pdf'),
-    (6,  6,  15,'uploaded',  'uploaded Baseline_Model.ipynb'),
-    (6,  6,  16,'uploaded',  'uploaded Prompt_Templates.txt'),
-    (8,  9,  20,'uploaded',  'uploaded Company_List.xlsx'),
-    (8,  9,  21,'uploaded',  'uploaded Matching_Algo.pdf'),
-    (8,  9,  22,'uploaded',  'uploaded Dashboard_Wireframe.fig'),
-    (1,  1,  2, 'created',   'created Task "Create System Interface"'),
-    (5,  5,  9, 'reviewed',  'rejected API_Design.pdf');
+    (4,  4,  13,'uploaded',  'uploaded SRS_v1.docx'),
+    (4,  4,  14,'uploaded',  'uploaded SeatMap_Mockup.png'),
+    (4,  4,  15,'uploaded',  'uploaded API_Design.pdf'),
+    (4,  4,  2, 'reviewed',  'accepted SRS_v1.docx'),
+    (5,  5,  14,'uploaded',  'uploaded Menu_Schema.sql'),
+    (5,  5,  17,'uploaded',  'uploaded Payment_Flow.pdf'),
+    (6,  6,  18,'uploaded',  'uploaded Dataset_Description.pdf'),
+    (6,  6,  20,'uploaded',  'uploaded Baseline_Model.ipynb'),
+    (6,  6,  21,'uploaded',  'uploaded Prompt_Templates.txt'),
+    (8,  9,  25,'uploaded',  'uploaded Company_List.xlsx'),
+    (8,  9,  26,'uploaded',  'uploaded Matching_Algo.pdf'),
+    (8,  9,  27,'uploaded',  'uploaded Dashboard_Wireframe.fig'),
+    (1,  1,  6, 'created',   'created Task "Create System Interface"'),
+    (5,  5,  2, 'reviewed',  'rejected API_Design.pdf');
 
 
 -- =========================================================
