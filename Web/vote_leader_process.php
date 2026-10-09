@@ -2,6 +2,7 @@
 session_start();
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/check_voting_timeout.php';
 /** @var mysqli $conn */
 
 if (!isset($conn) || !$conn) {
@@ -110,77 +111,12 @@ mysqli_stmt_bind_param($stmt, "iii", $groupID, $myStudentID, $candidateID);
 mysqli_stmt_execute($stmt);
 mysqli_stmt_close($stmt);
 
-// 全部投完？
-$stmt = mysqli_prepare($conn, "
-    SELECT
-        (SELECT COUNT(*) FROM `group_members` WHERE group_id = ?) AS total_members,
-        (SELECT COUNT(*) FROM `leader_votes`   WHERE group_id = ?) AS total_votes
-");
-mysqli_stmt_bind_param($stmt, "ii", $groupID, $groupID);
-mysqli_stmt_execute($stmt);
-$rs = mysqli_stmt_get_result($stmt);
-$counts = mysqli_fetch_assoc($rs);
-mysqli_stmt_close($stmt);
+// =========================================================
+// 檢查係咪要結算
+// 情況 1：所有人投完 → 立即計票
+// 情況 2：未投完但 48 小時已過 → 都結算
+// =========================================================
+finalizeGroupVoting($conn, $groupID);
 
-$allVoted = ((int)$counts['total_members'] === (int)$counts['total_votes']);
-
-if ($allVoted) {
-    // 找最高票（同票用最早加入者）
-    $stmt = mysqli_prepare($conn, "
-        SELECT
-            v.candidate_id,
-            COUNT(*) AS vote_count,
-            gm.joined_at
-        FROM `leader_votes` v
-        JOIN `group_members` gm
-          ON gm.group_id = v.group_id
-         AND gm.student_id = v.candidate_id
-        WHERE v.group_id = ?
-        GROUP BY v.candidate_id, gm.joined_at
-        ORDER BY vote_count DESC, gm.joined_at ASC
-        LIMIT 1
-    ");
-    mysqli_stmt_bind_param($stmt, "i", $groupID);
-    mysqli_stmt_execute($stmt);
-    $rs = mysqli_stmt_get_result($stmt);
-    $winner = mysqli_fetch_assoc($rs);
-    mysqli_stmt_close($stmt);
-
-    if ($winner) {
-        $leaderID = (int) $winner['candidate_id'];
-
-        // 全员 role = member
-        $stmt = mysqli_prepare($conn, "
-            UPDATE `group_members`
-            SET role = 'member'
-            WHERE group_id = ?
-        ");
-        mysqli_stmt_bind_param($stmt, "i", $groupID);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-
-        // 当选者 role = leader
-        $stmt = mysqli_prepare($conn, "
-            UPDATE `group_members`
-            SET role = 'leader'
-            WHERE group_id = ? AND student_id = ?
-        ");
-        mysqli_stmt_bind_param($stmt, "ii", $groupID, $leaderID);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-
-        // Groups 更新
-        $stmt = mysqli_prepare($conn, "
-            UPDATE `groups`
-            SET leader_id = ?,
-                status = 'Executing'
-            WHERE id = ?
-        ");
-        mysqli_stmt_bind_param($stmt, "ii", $leaderID, $groupID);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-    }
-}
-
-header('Location: student_create_group.php?msg=voted');
+header('Location: student_create_group.php?msg=voted&group_id=' . $groupID);
 exit;

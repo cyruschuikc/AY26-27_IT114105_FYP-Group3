@@ -16,7 +16,7 @@ if (!isset($_SESSION['userID'])) {
 $userID = (int) $_SESSION['userID'];
 
 // =========================================================
-// 取表单
+// 取表單
 // =========================================================
 $groupID         = (int) (isset($_POST['groupID'])        ? $_POST['groupID']        : 0);
 $inviteStudentNo = trim(isset($_POST['inviteStudentNo']) ? $_POST['inviteStudentNo'] : '');
@@ -54,7 +54,7 @@ $inviterID   = (int) $rc['student_id'];
 $inviterName = $rc['username'];
 
 // =========================================================
-// 2. 找被邀请人（用 student_number 查）
+// 2. 找被邀請人（用 student_number 查）
 // =========================================================
 $inviteeID     = 0;
 $inviteeUserID = 0;
@@ -82,39 +82,31 @@ $inviteeID     = (int) $rc['student_id'];
 $inviteeUserID = (int) $rc['user_id'];
 $inviteeName   = $rc['username'];
 
-// 不能邀请自己
+// 不能邀請自己
 if ($inviteeID === $inviterID) {
     header('Location: student_create_group.php?msg=error');
     exit;
 }
 
 // =========================================================
-// 3. 检查是否已经邀请过
+// 3. 檢查組是否存在 + 是否仍可邀請 + 取組名
 // =========================================================
-$stmt = mysqli_prepare($conn, "
-    SELECT id FROM `invitations`
-    WHERE group_id = ? AND invitee_id = ?
-    LIMIT 1
-");
-mysqli_stmt_bind_param($stmt, "ii", $groupID, $inviteeID);
-mysqli_stmt_execute($stmt);
-$rs = mysqli_stmt_get_result($stmt);
-$exists = mysqli_fetch_assoc($rs);
-mysqli_stmt_close($stmt);
-
-if ($exists) {
-    header('Location: student_create_group.php?msg=error');
-    exit;
-}
-
-// =========================================================
-// 4. 检查组是否存在 + 取组名
-// =========================================================
-$groupName = '';
+$groupName       = '';
+$groupStatus     = '';
+$groupMaxMembers = 0;
+$groupMemberCnt  = 0;
+$groupPendingCnt = 0;
 
 $stmt = mysqli_prepare($conn, "
-    SELECT name FROM `groups`
-    WHERE id = ?
+    SELECT
+        g.name,
+        g.status,
+        g.max_members,
+        (SELECT COUNT(*) FROM `group_members` gm WHERE gm.group_id = g.id) AS member_count,
+        (SELECT COUNT(*) FROM `invitations` i
+            WHERE i.group_id = g.id AND i.status = 'Pending') AS pending_count
+    FROM `groups` g
+    WHERE g.id = ?
     LIMIT 1
 ");
 mysqli_stmt_bind_param($stmt, "i", $groupID);
@@ -127,22 +119,78 @@ if (!$rc) {
     header('Location: student_create_group.php?msg=error');
     exit;
 }
-$groupName = $rc['name'];
+
+$groupName       = $rc['name'];
+$groupStatus     = $rc['status'];
+$groupMaxMembers = (int) $rc['max_members'];
+$groupMemberCnt  = (int) $rc['member_count'];
+$groupPendingCnt = (int) $rc['pending_count'];
+
+// 只有 Recruiting 可以邀請
+if ($groupStatus !== 'Recruiting') {
+    header('Location: student_create_group.php?msg=locked&group_id=' . $groupID);
+    exit;
+}
 
 // =========================================================
-// 5. 写邀请（invitations）
+// 【新增】檢查「目前成員 + Pending 邀請」有冇超過 max
+// =========================================================
+if (($groupMemberCnt + $groupPendingCnt) >= $groupMaxMembers) {
+    header('Location: student_create_group.php?msg=full&group_id=' . $groupID);
+    exit;
+}
+
+// =========================================================
+// 4. 檢查是否已經邀請過（Pending / Accepted）
 // =========================================================
 $stmt = mysqli_prepare($conn, "
-    INSERT INTO `invitations` (group_id, inviter_id, invitee_id, status)
-    VALUES (?, ?, ?, 'Pending')
+    SELECT id, status FROM `invitations`
+    WHERE group_id = ? AND invitee_id = ?
+    LIMIT 1
 ");
-mysqli_stmt_bind_param($stmt, "iii", $groupID, $inviterID, $inviteeID);
+mysqli_stmt_bind_param($stmt, "ii", $groupID, $inviteeID);
 mysqli_stmt_execute($stmt);
-$newInviteID = mysqli_insert_id($conn);
+$rs = mysqli_stmt_get_result($stmt);
+$exists = mysqli_fetch_assoc($rs);
 mysqli_stmt_close($stmt);
 
+if ($exists) {
+    // 如果係 Pending → 唔重複邀請
+    // 如果係 Accepted → 已經係組員
+    // 如果係 Rejected / Cancelled → 可以再邀請（重新 INSERT）
+    if ($exists['status'] === 'Pending' || $exists['status'] === 'Accepted') {
+        header('Location: student_create_group.php?msg=error&group_id=' . $groupID);
+        exit;
+    }
+
+    // Rejected / Cancelled → 更新返做 Pending
+    $stmt = mysqli_prepare($conn, "
+        UPDATE `invitations`
+        SET status = 'Pending', sent_at = NOW(), responded_at = NULL
+        WHERE id = ?
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $exists['id']);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+
+    $newInviteID = (int) $exists['id'];
+
+} else {
+    // =========================================================
+    // 5. 寫邀請（invitations）
+    // =========================================================
+    $stmt = mysqli_prepare($conn, "
+        INSERT INTO `invitations` (group_id, inviter_id, invitee_id, status)
+        VALUES (?, ?, ?, 'Pending')
+    ");
+    mysqli_stmt_bind_param($stmt, "iii", $groupID, $inviterID, $inviteeID);
+    mysqli_stmt_execute($stmt);
+    $newInviteID = (int) mysqli_insert_id($conn);
+    mysqli_stmt_close($stmt);
+}
+
 // =========================================================
-// 6. 写通知（notifications）
+// 6. 寫通知（notifications）
 // =========================================================
 $notifyTitle   = 'Group Invitation';
 $notifyMessage = $inviterName . ' invited you to join group "' . $groupName . '".';
@@ -164,7 +212,7 @@ mysqli_stmt_execute($stmt);
 mysqli_stmt_close($stmt);
 
 // =========================================================
-// 7. 回页面
+// 7. 回頁面
 // =========================================================
-header('Location: student_create_group.php?msg=invited');
+header('Location: student_create_group.php?msg=invited&group_id=' . $groupID);
 exit;

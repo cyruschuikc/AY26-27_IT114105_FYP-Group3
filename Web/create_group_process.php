@@ -83,27 +83,32 @@ if (!$validProject) {
 }
 
 // =========================================================
-// 5. 建组
+// 5. 建组（creator_id = 自己）
 // =========================================================
 $stmt = mysqli_prepare($conn, "
-    INSERT INTO `groups` (project_id, course_id, name, leader_id, max_members, status)
-    VALUES (?, ?, ?, ?, ?, 'Recruiting')
+    INSERT INTO `groups`
+        (project_id, course_id, name, leader_id, creator_id, max_members, status)
+    VALUES (?, ?, ?, NULL, ?, ?, 'Recruiting')
 ");
-mysqli_stmt_bind_param($stmt, "iisii", $projectID, $courseID, $groupName, $studentID, $maxMembers);
+mysqli_stmt_bind_param(
+    $stmt, "iisii",
+    $projectID, $courseID, $groupName,
+    $studentID, $maxMembers
+);
 mysqli_stmt_execute($stmt);
-$groupID = mysqli_insert_id($conn);
+$groupID = (int) mysqli_insert_id($conn);
 mysqli_stmt_close($stmt);
 
 // =========================================================
-// 6. 自己加进组（leader）
+// 6. 自己加进组（role = member）
 // =========================================================
 $stmt = mysqli_prepare($conn, "
     INSERT INTO `group_members` (group_id, student_id, role)
-    VALUES (?, ?, 'leader')
+    VALUES (?, ?, 'member')
 ");
 mysqli_stmt_bind_param($stmt, "ii", $groupID, $studentID);
 mysqli_stmt_execute($stmt);
 mysqli_stmt_close($stmt);
 
-header('Location: student_create_group.php?msg=created');
+header('Location: student_create_group.php?msg=created&group_id=' . $groupID);
 exit;

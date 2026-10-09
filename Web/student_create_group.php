@@ -16,7 +16,7 @@ if (!isset($_SESSION['userID'])) {
 $userID = (int) $_SESSION['userID'];
 
 // =========================================================
-// Unread notifications（给铃铛用）
+// Unread notifications
 // =========================================================
 $unreadNotifications = 0;
 
@@ -66,15 +66,21 @@ $stmt = mysqli_prepare($conn, "
         g.project_id,
         g.course_id,
         g.leader_id,
+        g.creator_id,
         g.created_at,
         p.name          AS project_name,
+        p.supervisor_id AS supervisor_id,
+        t.user_id       AS supervisor_user_id,
+        tu.username     AS supervisor_name,
         c.code          AS course_code,
         c.name          AS course_name,
         (SELECT COUNT(*) FROM `group_members` gm2 WHERE gm2.group_id = g.id) AS member_count
     FROM `group_members` gm
     JOIN `groups` g ON g.id = gm.group_id
-    LEFT JOIN `projects` p ON p.id = g.project_id
-    LEFT JOIN `courses`  c ON c.id = g.course_id
+    LEFT JOIN `projects` p  ON p.id = g.project_id
+    LEFT JOIN `teachers` t  ON t.id = p.supervisor_id
+    LEFT JOIN `users`    tu ON tu.id = t.user_id
+    LEFT JOIN `courses`  c  ON c.id = g.course_id
     WHERE gm.student_id = ?
       AND g.status <> 'Completed'
     ORDER BY g.created_at DESC
@@ -111,6 +117,59 @@ if ($activeGroupID > 0) {
 if (!$myGroup && count($myGroups) > 0) {
     $myGroup = $myGroups[0];
     $activeGroupID = (int) $myGroup['group_id'];
+}
+
+// =========================================================
+// 3.5 檢查投票超時（48 小時）
+// =========================================================
+if ($myGroup && $myGroup['status'] === 'Voting') {
+    require_once __DIR__ . '/check_voting_timeout.php';
+    finalizeGroupVoting($conn, (int)$myGroup['group_id']);
+
+    // 重新讀取 group 資料（如果已結算，狀態會變 Executing）
+    $stmtRefresh = mysqli_prepare($conn, "
+        SELECT
+            g.id            AS group_id,
+            g.name          AS group_name,
+            g.status,
+            g.max_members,
+            g.project_id,
+            g.course_id,
+            g.leader_id,
+            g.creator_id,
+            g.created_at,
+            p.name          AS project_name,
+            p.supervisor_id AS supervisor_id,
+            t.user_id       AS supervisor_user_id,
+            tu.username     AS supervisor_name,
+            c.code          AS course_code,
+            c.name          AS course_name,
+            (SELECT COUNT(*) FROM `group_members` gm2 WHERE gm2.group_id = g.id) AS member_count
+        FROM `groups` g
+        LEFT JOIN `projects` p  ON p.id = g.project_id
+        LEFT JOIN `teachers` t  ON t.id = p.supervisor_id
+        LEFT JOIN `users`    tu ON tu.id = t.user_id
+        LEFT JOIN `courses`  c  ON c.id = g.course_id
+        WHERE g.id = ?
+        LIMIT 1
+    ");
+    mysqli_stmt_bind_param($stmtRefresh, "i", $myGroup['group_id']);
+    mysqli_stmt_execute($stmtRefresh);
+    $rsRefresh = mysqli_stmt_get_result($stmtRefresh);
+    $refreshed = mysqli_fetch_assoc($rsRefresh);
+    mysqli_stmt_close($stmtRefresh);
+
+    if ($refreshed) {
+        $myGroup = $refreshed;
+
+        // 更新 $myGroups 陣列
+        foreach ($myGroups as $idx => $g) {
+            if ((int)$g['group_id'] === (int)$myGroup['group_id']) {
+                $myGroups[$idx] = $myGroup;
+                break;
+            }
+        }
+    }
 }
 
 // =========================================================
@@ -203,6 +262,31 @@ if ($myGroup) {
 }
 
 // =========================================================
+// 6.5 投票截止時間（for UI 顯示）
+// =========================================================
+$votingDeadline     = null;
+$votingSecondsLeft  = 0;
+
+if ($myGroup && $myGroup['status'] === 'Voting') {
+    $stmt = mysqli_prepare($conn, "
+        SELECT formed_at FROM `groups` WHERE id = ? LIMIT 1
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $myGroup['group_id']);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rowTime = mysqli_fetch_assoc($rs);
+    mysqli_stmt_close($stmt);
+
+    if ($rowTime && !empty($rowTime['formed_at'])) {
+        $startTs = strtotime($rowTime['formed_at']);
+        $deadline = $startTs + 48 * 3600;
+
+        $votingDeadline    = date('d M Y, H:i', $deadline);
+        $votingSecondsLeft = max(0, $deadline - time());
+    }
+}
+
+// =========================================================
 // 7. Helper functions
 // =========================================================
 if (!function_exists('initials')) {
@@ -237,145 +321,66 @@ if (!function_exists('statusClass')) {
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
         body { min-height: 100vh; background: #f5f5f5; color: #222; }
 
-        /* =========================================================
-           Navbar (same as student_index.php)
-        ========================================================= */
-
         .navbar {
             width: 100%;
             padding: 15px 30px;
             background: black;
-
             display: flex;
             flex-direction: column;
             gap: 15px;
-
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
         }
 
-        /* First row: logo (center) + bell (right) */
         .navbar-top {
             position: relative;
             width: 100%;
             min-height: 65px;
-
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .logo-area { display: flex; align-items: center; gap: 12px; }
+        .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
+        .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
-        .logo-area img {
-            width: 65px;
-            height: 65px;
-            object-fit: contain;
-            display: block;
-        }
-
-        .logo-area span {
-            color: white;
-            font-size: 30px;
-            font-weight: bold;
-        }
-
-        /* Bell icon */
         .bell-link {
             position: absolute;
-            right: 0;
-            top: 50%;
+            right: 0; top: 50%;
             transform: translateY(-50%);
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            width: 44px;
-            height: 44px;
-
+            display: flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px;
             border-radius: 50%;
             transition: background 0.3s;
         }
-
-        .bell-link:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        .bell-link img {
-            width: 28px;
-            height: 28px;
-            object-fit: contain;
-            display: block;
-        }
-
-        /* Unread badge */
+        .bell-link:hover { background: rgba(255, 255, 255, 0.15); }
+        .bell-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
         .bell-badge {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-
-            min-width: 18px;
-            height: 18px;
-            padding: 0 5px;
-
-            background: #d93025;
-            color: white;
+            position: absolute; top: 2px; right: 2px;
+            min-width: 18px; height: 18px; padding: 0 5px;
+            background: #d93025; color: white;
             border-radius: 9px;
-
-            font-size: 11px;
-            font-weight: bold;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
+            font-size: 11px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
             border: 2px solid black;
         }
 
-        /* Second row: Navigation */
         .function-menu {
             width: 100%;
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 22px;
+            display: flex; justify-content: center; align-items: center;
+            flex-wrap: wrap; gap: 22px;
         }
-
         .nav-link {
-            color: white;
-            font-size: 15px;
-            text-decoration: none;
-            padding: 6px 2px;
-            transition: color 0.3s;
+            color: white; font-size: 15px; text-decoration: none;
+            padding: 6px 2px; transition: color 0.3s;
         }
-
-        .nav-link:hover {
-            color: #bbbbbb;
-        }
-
+        .nav-link:hover { color: #bbbbbb; }
         .nav-link.active {
-            color: white;
-            font-weight: bold;
+            color: white; font-weight: bold;
             border-bottom: 2px solid white;
         }
-
-        .logout-link {
-            color: #ff8888;
-        }
-
-        .logout-link:hover {
-            color: #ff4444;
-        }
-
-        /* =========================================================
-           Page-specific CSS
-        ========================================================= */
+        .logout-link { color: #ff8888; }
+        .logout-link:hover { color: #ff4444; }
 
         .main-content { width: 90%; max-width: 1250px; margin: 40px auto; }
 
@@ -447,7 +452,6 @@ if (!function_exists('statusClass')) {
         }
         .invite-form-row { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 14px; }
         .invite-form-row.two-cols { grid-template-columns: 1fr 1fr; gap: 14px; }
-
         .invite-form .form-group { margin-bottom: 0; }
 
         .readonly-input {
@@ -515,6 +519,7 @@ if (!function_exists('statusClass')) {
         .member-status { padding: 6px 12px; border-radius: 18px; font-size: 12px; font-weight: bold; white-space: nowrap; }
         .status-accepted-member { background: #d9f5df; color: #176b2c; }
         .status-leader          { background: black; color: white; }
+        .status-creator         { background: #245889; color: white; }
 
         .vote-option {
             padding: 16px; margin-bottom: 12px;
@@ -542,46 +547,112 @@ if (!function_exists('statusClass')) {
         }
         .result-value { height: 100%; background: black; border-radius: 10px; }
 
-        /* Group Switcher */
+        /* 投票倒數 */
+        .voting-countdown {
+            padding: 14px 18px;
+            margin-bottom: 18px;
+            background: #fff8e1;
+            border-left: 4px solid #e0a030;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #765900;
+            line-height: 1.6;
+        }
+        .voting-countdown strong {
+            color: #222;
+        }
+
         .group-switcher {
             padding: 20px 24px;
             margin-bottom: 25px;
-
             background: white;
             border-radius: 15px;
             border-left: 6px solid #245889;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
-
             display: flex;
             align-items: center;
             gap: 16px;
             flex-wrap: wrap;
         }
-        .group-switcher label {
-            font-size: 15px;
-            color: #333;
-            font-weight: bold;
-        }
+        .group-switcher label { font-size: 15px; color: #333; font-weight: bold; }
         .group-switcher select {
-            flex: 1;
-            min-width: 260px;
-            height: 45px;
-            padding: 0 14px;
-
-            background: white;
-            color: #222;
-            border: 2px solid #cccccc;
-            border-radius: 8px;
-
-            font-size: 14px;
-            cursor: pointer;
-            outline: none;
+            flex: 1; min-width: 260px; height: 45px; padding: 0 14px;
+            background: white; color: #222;
+            border: 2px solid #cccccc; border-radius: 8px;
+            font-size: 14px; cursor: pointer; outline: none;
         }
         .group-switcher select:focus { border-color: black; }
 
         .muted { color: #777; font-size: 14px; }
 
-        /* Responsive */
+        .invite-form.disabled {
+            background: #f0f0f0;
+            border-color: #cccccc;
+            opacity: 0.65;
+            pointer-events: none;
+        }
+        .invite-form.disabled input,
+        .invite-form.disabled button {
+            background: #e8e8e8 !important;
+            color: #999 !important;
+            border-color: #cccccc !important;
+            cursor: not-allowed !important;
+        }
+        .invite-form.disabled input::placeholder { color: #aaaaaa; }
+
+        .invite-locked-note {
+            padding: 12px 16px;
+            margin-bottom: 18px;
+            background: #fdeeee;
+            border-left: 4px solid #d32f2f;
+            border-radius: 6px;
+            color: #a21b1b;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .invite-locked-note.success {
+            background: #eaf7ee;
+            border-left-color: #2e9d4d;
+            color: #176b2c;
+        }
+
+        .invite-progress {
+            margin-bottom: 18px;
+            padding: 14px 18px;
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+        }
+        .invite-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #555;
+        }
+        .invite-progress-header strong { color: #222; font-size: 14px; }
+        .invite-progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .invite-progress-fill {
+            height: 100%;
+            background: black;
+            border-radius: 6px;
+            transition: width 0.3s;
+        }
+        .invite-progress-fill.full { background: #2e9d4d; }
+        .invite-progress-note {
+            margin-top: 10px;
+            font-size: 12px;
+            text-align: right;
+            color: #777;
+        }
+
         @media (max-width: 1000px) {
             .create-group-grid { grid-template-columns: 1fr; gap: 0; }
         }
@@ -610,13 +681,8 @@ if (!function_exists('statusClass')) {
 
 <body>
 
-<!-- =========================================================
-     Top Navigation Bar (same as student_index.php)
-========================================================= -->
-
 <nav class="navbar">
 
-    <!-- First row: Logo (center) + Bell (right) -->
     <div class="navbar-top">
 
         <div class="logo-area">
@@ -634,7 +700,6 @@ if (!function_exists('statusClass')) {
 
     </div>
 
-    <!-- Second row: Navigation -->
     <div class="function-menu">
         <a href="student_index.php" class="nav-link">Dashboard</a>
         <a href="student_create_group.php" class="nav-link active">Create Group</a>
@@ -650,31 +715,26 @@ if (!function_exists('statusClass')) {
 
 </nav>
 
-<!-- =========================================================
-     Main Content
-========================================================= -->
-
 <main class="main-content">
 
     <section class="page-heading">
         <h1>Create Group</h1>
         <p>
             Name your group, choose the course and project,
-            invite classmates by Student ID, then lock the team and vote for a leader.
+            invite classmates by Student ID, then send the group
+            to your supervisor once it is full. Voting starts after that.
         </p>
     </section>
 
     <div class="info-note">
         <strong>How it works:</strong>
-        1. Fill the Create Group form (Course + Group Name + Project + Max Members) &nbsp;→&nbsp;
-        2. Enter Student ID, click "Invite" &nbsp;→&nbsp;
-        3. Wait for them to accept &nbsp;→&nbsp;
-        4. Group fills to full &nbsp;→&nbsp;
-        5. Lock Team &nbsp;→&nbsp;
-        6. Vote Group Leader.
+        1. Create Group form &nbsp;→&nbsp;
+        2. Invite classmates &nbsp;→&nbsp;
+        3. Group fills to full (auto-locked) &nbsp;→&nbsp;
+        4. Group creator sends it to the supervisor &nbsp;→&nbsp;
+        5. Voting for group leader starts (48-hour window).
     </div>
 
-    <!-- System messages -->
     <?php if (isset($_GET['msg'])): ?>
         <?php if ($_GET['msg'] === 'created'): ?>
             <div class="alert alert-success">Group created successfully.</div>
@@ -683,21 +743,28 @@ if (!function_exists('statusClass')) {
         <?php elseif ($_GET['msg'] === 'cancel'): ?>
             <div class="alert alert-success">Invitation cancelled.</div>
         <?php elseif ($_GET['msg'] === 'locked'): ?>
-            <div class="alert alert-success">Team locked. Voting has started.</div>
+            <div class="alert alert-error">This group has been locked. Invitations are no longer allowed.</div>
+        <?php elseif ($_GET['msg'] === 'full'): ?>
+            <div class="alert alert-error">This group is already full. You cannot send more invitations.</div>
         <?php elseif ($_GET['msg'] === 'voted'): ?>
             <div class="alert alert-success">Your vote has been recorded.</div>
+        <?php elseif ($_GET['msg'] === 'sent'): ?>
+            <div class="alert alert-success">Group has been submitted. Voting is now open (48-hour window).</div>
         <?php elseif ($_GET['msg'] === 'notfound'): ?>
             <div class="alert alert-error">Student ID not found.</div>
         <?php elseif ($_GET['msg'] === 'notfull'): ?>
             <div class="alert alert-error">Team is not full yet.</div>
         <?php elseif ($_GET['msg'] === 'notenrolled'): ?>
             <div class="alert alert-error">You are not enrolled in this course.</div>
+        <?php elseif ($_GET['msg'] === 'notcreator'): ?>
+            <div class="alert alert-error">Only the group creator can send to supervisor.</div>
+        <?php elseif ($_GET['msg'] === 'notwaiting'): ?>
+            <div class="alert alert-error">The group is not in the correct state to send to supervisor.</div>
         <?php elseif ($_GET['msg'] === 'error'): ?>
             <div class="alert alert-error">Something went wrong. Please try again.</div>
         <?php endif; ?>
     <?php endif; ?>
 
-    <!-- Create Group Form (always shown) -->
     <section class="create-group-section">
 
         <h2>Create Group</h2>
@@ -779,7 +846,6 @@ if (!function_exists('statusClass')) {
 
     </section>
 
-    <!-- Group / Project Switcher -->
     <?php if (count($myGroups) > 1): ?>
         <div class="group-switcher">
             <label for="groupSwitcher">Switch Project / Group:</label>
@@ -807,7 +873,6 @@ if (!function_exists('statusClass')) {
         </script>
     <?php endif; ?>
 
-    <!-- Has group → Invite + Current Group + Vote -->
     <?php if ($myGroup): ?>
 
         <section class="section-grid">
@@ -815,9 +880,65 @@ if (!function_exists('statusClass')) {
             <!-- Invite -->
             <div class="content-box">
 
+                <?php
+                $memberCount  = count($groupMembers);
+                $maxMembers   = (int)$myGroup['max_members'];
+
+                // 計算 Pending 邀請數
+                $pendingCount = 0;
+                foreach ($invitations as $inv) {
+                    if ($inv['status'] === 'Pending') {
+                        $pendingCount++;
+                    }
+                }
+
+                $slotsLeft    = $maxMembers - $memberCount - $pendingCount;
+                $isFull       = ($memberCount >= $maxMembers);
+                $isRecruiting = ($myGroup['status'] === 'Recruiting');
+                $canInvite    = ($isRecruiting && !$isFull && $slotsLeft > 0);
+                $pct          = $maxMembers > 0 ? round($memberCount / $maxMembers * 100) : 0;
+                ?>
+
                 <h2>Invite Classmate</h2>
 
-                <form action="invite_process.php" method="post" class="invite-form">
+                <div class="invite-progress">
+                    <div class="invite-progress-header">
+                        <span>Members</span>
+                        <strong><?php echo $memberCount; ?> / <?php echo $maxMembers; ?></strong>
+                    </div>
+                    <div class="invite-progress-bar">
+                        <div class="invite-progress-fill <?php echo $isFull ? 'full' : ''; ?>"
+                             style="width: <?php echo $pct; ?>%;"></div>
+                    </div>
+                    <?php if ($isRecruiting): ?>
+                        <p class="invite-progress-note">
+                            <?php if ($slotsLeft > 0): ?>
+                                <?php echo $slotsLeft; ?> slot<?php echo $slotsLeft > 1 ? 's' : ''; ?> left
+                            <?php else: ?>
+                                All slots reserved
+                            <?php endif; ?>
+                        </p>
+                    <?php endif; ?>
+                </div>
+
+                <?php if (!$canInvite): ?>
+                    <div class="invite-locked-note">
+                        <?php if ($isFull): ?>
+                            <strong>🔒 Group is full.</strong>
+                            You cannot invite more members
+                            (<?php echo $memberCount; ?> / <?php echo $maxMembers; ?>).
+                        <?php elseif ($slotsLeft <= 0): ?>
+                            <strong>🔒 All slots reserved.</strong>
+                            You have pending invitations for all remaining slots.
+                        <?php else: ?>
+                            <strong>🔒 Group is locked.</strong>
+                            Invitations are no longer allowed.
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <form action="invite_process.php" method="post"
+                      class="invite-form <?php echo $canInvite ? '' : 'disabled'; ?>">
 
                     <input type="hidden" name="groupID" value="<?php echo (int)$myGroup['group_id']; ?>">
 
@@ -826,22 +947,26 @@ if (!function_exists('statusClass')) {
                         <div class="form-group">
                             <label for="inviteStudentNo">Student ID</label>
                             <input type="text" id="inviteStudentNo" name="inviteStudentNo"
-                                   placeholder="e.g. S15942736"
+                                   placeholder="<?php echo $canInvite ? 'e.g. S15942736' : 'Locked'; ?>"
                                    autocomplete="off"
-                                   required>
+                                    <?php echo $canInvite ? 'required' : 'disabled'; ?>>
                         </div>
 
                         <div class="form-group">
                             <label for="inviteStudentName">Student Name</label>
                             <input type="text" id="inviteStudentName" name="inviteStudentName"
-                                   placeholder="(auto-filled)"
+                                   placeholder="<?php echo $canInvite ? '(auto-filled)' : 'Locked'; ?>"
                                    class="readonly-input"
-                                   readonly>
+                                   readonly
+                                   disabled>
                         </div>
 
                     </div>
 
-                    <button type="submit" class="invite-btn-main">Invite to Group</button>
+                    <button type="submit" class="invite-btn-main"
+                            <?php echo $canInvite ? '' : 'disabled'; ?>>
+                        <?php echo $canInvite ? 'Invite to Group' : 'Invitation Locked'; ?>
+                    </button>
 
                 </form>
 
@@ -902,6 +1027,9 @@ if (!function_exists('statusClass')) {
                     <strong>Project:</strong>
                     <?php echo htmlspecialchars($myGroup['project_name']); ?><br>
 
+                    <strong>Supervisor:</strong>
+                    <?php echo htmlspecialchars($myGroup['supervisor_name'] ? $myGroup['supervisor_name'] : '-'); ?><br>
+
                     <strong>Maximum Members:</strong>
                     <?php echo (int)$myGroup['max_members']; ?><br>
 
@@ -913,27 +1041,96 @@ if (!function_exists('statusClass')) {
                 </div>
 
                 <?php foreach ($groupMembers as $m): ?>
+                    <?php
+                    $isThisCreator = ((int)$m['student_id'] === (int)$myGroup['creator_id']);
+                    $isThisLeader  = ((int)$m['student_id'] === (int)$myGroup['leader_id']);
+                    ?>
                     <div class="member-item">
                         <div>
                             <h3><?php echo htmlspecialchars($m['username']); ?></h3>
                             <p>Student ID: <?php echo htmlspecialchars($m['student_number']); ?></p>
                         </div>
 
-                        <span class="member-status <?php echo $m['role'] === 'leader' ? 'status-leader' : 'status-accepted-member'; ?>">
-                            <?php echo $m['role'] === 'leader' ? 'Leader' : 'Member'; ?>
+                        <span class="member-status
+                            <?php
+                        if ($isThisCreator) {
+                            echo 'status-creator';
+                        } elseif ($isThisLeader) {
+                            echo 'status-leader';
+                        } else {
+                            echo 'status-accepted-member';
+                        }
+                        ?>">
+                            <?php
+                            if ($isThisCreator) {
+                                echo 'Creator';
+                            } elseif ($isThisLeader) {
+                                echo 'Leader';
+                            } else {
+                                echo 'Member';
+                            }
+                            ?>
                         </span>
                     </div>
                 <?php endforeach; ?>
 
-                <?php if (count($groupMembers) < (int)$myGroup['max_members']): ?>
-                    <button type="button" class="primary-btn" disabled>
-                        Lock Team (Need <?php echo (int)$myGroup['max_members']; ?> / <?php echo (int)$myGroup['max_members']; ?>)
+                <?php
+                $isFullNow = (count($groupMembers) >= (int)$myGroup['max_members']);
+                $isCreator = ((int)$myGroup['creator_id'] === (int)$studentID);
+                ?>
+
+                <?php if (!$isFullNow): ?>
+
+                    <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
+                        Waiting for Members
+                        (<?php echo count($groupMembers); ?> / <?php echo (int)$myGroup['max_members']; ?>)
                     </button>
-                <?php elseif ($myGroup['status'] === 'Recruiting'): ?>
-                    <form action="lock_team_process.php" method="post" style="margin-top: 20px;">
+                    <p class="muted" style="margin-top: 12px; font-size: 13px;">
+                        The group will be locked automatically once it is full.
+                    </p>
+
+                <?php elseif ($myGroup['status'] === 'Waiting_Send' && $isCreator): ?>
+
+                    <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
+                        🔒 Team Full — Ready to Submit
+                    </button>
+
+                    <form action="send_to_supervisor_process.php" method="post" style="margin-top: 12px;"
+                          onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Sending...';">
                         <input type="hidden" name="groupID" value="<?php echo (int)$myGroup['group_id']; ?>">
-                        <button type="submit" class="primary-btn">Lock Team &amp; Start Voting</button>
+                        <button type="submit" class="primary-btn">
+                            Send to Supervisor
+                            <?php if (!empty($myGroup['supervisor_name'])): ?>
+                                (<?php echo htmlspecialchars($myGroup['supervisor_name']); ?>)
+                            <?php endif; ?>
+                        </button>
                     </form>
+
+                <?php elseif ($myGroup['status'] === 'Waiting_Send' && !$isCreator): ?>
+
+                    <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
+                        🔒 Team Full — Waiting for Creator
+                    </button>
+                    <p class="muted" style="margin-top: 12px; font-size: 13px;">
+                        Only the group creator can send the group to the supervisor.
+                        Voting will start after that.
+                    </p>
+
+                <?php elseif ($myGroup['status'] === 'Voting'): ?>
+
+                    <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
+                        🗳 Voting in Progress
+                    </button>
+                    <p class="muted" style="margin-top: 12px; font-size: 13px;">
+                        Please cast your vote for the group leader below.
+                    </p>
+
+                <?php elseif ($myGroup['status'] === 'Executing'): ?>
+
+                    <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
+                        ✓ Voting Complete — Team Executing
+                    </button>
+
                 <?php endif; ?>
 
             </div>
@@ -950,6 +1147,23 @@ if (!function_exists('statusClass')) {
                     <h2>Vote Group Leader</h2>
 
                     <?php if ($myGroup['status'] === 'Voting'): ?>
+
+                        <?php if ($votingDeadline): ?>
+                            <div class="voting-countdown">
+                                <strong>Voting closes at:</strong> <?php echo htmlspecialchars($votingDeadline); ?>
+                                <br>
+                                <span style="font-size: 13px;">
+                                    If not all members vote within 48 hours:
+                                    <br>
+                                    · If no one has voted → the group creator becomes leader.
+                                    <br>
+                                    · If some voted → the member with the most votes becomes leader.
+                                    <br>
+                                    · Ties are broken randomly.
+                                </span>
+                            </div>
+                        <?php endif; ?>
+
                         <p style="margin-bottom: 18px; color: #666; font-size: 14px;">
                             Each member casts <strong>one anonymous vote</strong>. The member
                             with the most votes becomes the group leader.
@@ -1021,7 +1235,6 @@ if (!function_exists('statusClass')) {
 
 </main>
 
-<!-- Auto-fill Student Name -->
 <script>
     (function () {
         var inputId   = document.getElementById('inviteStudentNo');
