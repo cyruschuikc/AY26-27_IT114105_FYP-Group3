@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機: 127.0.0.1
--- 產生時間： 2026-10-09 16:59:17
+-- 產生時間： 2026-10-12 18:49:06
 -- 伺服器版本: 10.1.30-MariaDB
 -- PHP 版本： 5.6.33
 
@@ -62,7 +62,8 @@ INSERT INTO `activities` (`id`, `project_id`, `group_id`, `actor_id`, `action`, 
 (17, 8, 9, 27, 'uploaded', 'uploaded Dashboard_Wireframe.fig', '2026-10-07 11:11:59'),
 (18, 1, 1, 6, 'created', 'created Task \"Create System Interface\"', '2026-10-07 11:11:59'),
 (19, 5, 5, 2, 'reviewed', 'rejected API_Design.pdf', '2026-10-07 11:11:59'),
-(20, 4, 13, 6, 'submitted', 'submitted group \"ABC\" to supervisor Dr. Alan Ho', '2026-10-09 11:09:13');
+(20, 4, 13, 6, 'submitted', 'submitted group \"ABC\" to supervisor Dr. Alan Ho', '2026-10-09 11:09:13'),
+(21, 4, 13, 6, 'elected', 'was elected as team leader', '2026-10-12 16:25:28');
 
 -- --------------------------------------------------------
 
@@ -254,7 +255,7 @@ INSERT INTO `groups` (`id`, `project_id`, `course_id`, `name`, `leader_id`, `cre
 (10, 9, 1, 'Team 10', 22, 22, 4, 'Recruiting', NULL, '2026-10-07 11:11:58'),
 (11, 11, 1, 'Team A', 1, 1, 4, 'Voting', NULL, '2026-10-07 11:12:46'),
 (12, 4, 1, 'dff', 3, 1, 3, 'Executing', '2026-10-07 23:37:11', '2026-10-07 12:34:06'),
-(13, 4, 1, 'ABC', NULL, 1, 4, 'Voting', '2026-10-09 19:09:13', '2026-10-09 11:06:49'),
+(13, 4, 1, 'ABC', 1, 1, 4, 'Executing', '2026-10-09 19:09:13', '2026-10-09 11:06:49'),
 (14, 9, 1, 'Teram b', NULL, 1, 4, 'Recruiting', NULL, '2026-10-09 11:58:44');
 
 -- --------------------------------------------------------
@@ -313,7 +314,7 @@ INSERT INTO `group_members` (`group_id`, `student_id`, `role`, `joined_at`) VALU
 (12, 1, 'member', '2026-10-07 12:34:06'),
 (12, 3, 'leader', '2026-10-07 15:35:11'),
 (12, 4, 'member', '2026-10-07 15:36:55'),
-(13, 1, 'member', '2026-10-09 11:06:49'),
+(13, 1, 'leader', '2026-10-09 11:06:49'),
 (13, 2, 'member', '2026-10-09 11:08:42'),
 (13, 3, 'member', '2026-10-09 11:08:23'),
 (13, 4, 'member', '2026-10-09 11:08:01'),
@@ -355,7 +356,7 @@ CREATE TABLE `invitations` (
   `group_id` int(11) NOT NULL,
   `inviter_id` int(11) NOT NULL,
   `invitee_id` int(11) NOT NULL,
-  `status` enum('Pending','Accepted','Rejected','Cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
+  `status` enum('Pending','Accepted','Rejected','Cancelled','Leave') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
   `sent_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `responded_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -375,8 +376,8 @@ INSERT INTO `invitations` (`id`, `group_id`, `inviter_id`, `invitee_id`, `status
 (8, 13, 1, 3, 'Accepted', '2026-10-09 11:07:27', '2026-10-09 19:08:23'),
 (9, 13, 1, 4, 'Accepted', '2026-10-09 11:07:38', '2026-10-09 19:08:01'),
 (10, 14, 1, 2, 'Pending', '2026-10-09 11:59:02', NULL),
-(11, 14, 1, 3, 'Pending', '2026-10-09 14:14:43', NULL),
-(12, 14, 1, 4, 'Pending', '2026-10-09 14:14:55', NULL);
+(11, 14, 1, 3, 'Leave', '2026-10-09 14:14:43', '2026-10-13 00:48:22'),
+(12, 14, 1, 4, 'Accepted', '2026-10-09 14:14:55', '2026-10-13 00:25:45');
 
 -- --------------------------------------------------------
 
@@ -563,10 +564,16 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `link`
 (31, 9, 'team', 'Voting Started', 'Group \"ABC\" has been sent to Dr. Alan Ho. Please vote for the group leader.', 'student_create_group.php?group_id=13', 0, '2026-10-09 11:09:13'),
 (32, 2, 'project', 'New Group Submission', 'Group \"ABC\" has submitted for project \"Smart Library\".', 'teacher_teams.php', 0, '2026-10-09 11:09:13'),
 (33, 7, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"Teram b\".', 'accept_invite.php?id=10', 0, '2026-10-09 11:59:02'),
-(34, 8, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"Teram b\".', 'accept_invite.php?id=11', 0, '2026-10-09 11:59:15'),
+(34, 8, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"Teram b\".', 'accept_invite.php?id=11', 1, '2026-10-09 11:59:15'),
 (35, 9, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"Teram b\".', 'accept_invite.php?id=12', 1, '2026-10-09 11:59:23'),
-(36, 8, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"Teram b\".', 'accept_invite.php?id=11', 0, '2026-10-09 14:14:43'),
-(37, 9, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"Teram b\".', 'accept_invite.php?id=12', 0, '2026-10-09 14:14:55');
+(36, 8, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"Teram b\".', 'accept_invite.php?id=11', 1, '2026-10-09 14:14:43'),
+(37, 9, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"Teram b\".', 'accept_invite.php?id=12', 1, '2026-10-09 14:14:55'),
+(38, 6, 'team', 'Group Leader Elected', 'CHAN Ho Yin has been elected as the group leader after the 48-hour voting window ended.', 'student_create_group.php?group_id=13', 0, '2026-10-12 16:25:28'),
+(39, 7, 'team', 'Group Leader Elected', 'CHAN Ho Yin has been elected as the group leader after the 48-hour voting window ended.', 'student_create_group.php?group_id=13', 0, '2026-10-12 16:25:28'),
+(40, 8, 'team', 'Group Leader Elected', 'CHAN Ho Yin has been elected as the group leader after the 48-hour voting window ended.', 'student_create_group.php?group_id=13', 0, '2026-10-12 16:25:28'),
+(41, 9, 'team', 'Group Leader Elected', 'CHAN Ho Yin has been elected as the group leader after the 48-hour voting window ended.', 'student_create_group.php?group_id=13', 0, '2026-10-12 16:25:28'),
+(42, 6, 'team', 'Member Left Group', 'MIAO Tung has left your group \"Teram b\".', 'student_create_group.php?group_id=14', 0, '2026-10-12 16:25:54'),
+(43, 6, 'team', 'Member Left Group', 'LAI Ka-Yu Savio has left your group \"Teram b\".', 'student_create_group.php?group_id=14', 0, '2026-10-12 16:48:22');
 
 -- --------------------------------------------------------
 
@@ -1003,7 +1010,7 @@ ALTER TABLE `users`
 -- 使用資料表 AUTO_INCREMENT `activities`
 --
 ALTER TABLE `activities`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- 使用資料表 AUTO_INCREMENT `announcements`
@@ -1069,7 +1076,7 @@ ALTER TABLE `milestones`
 -- 使用資料表 AUTO_INCREMENT `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
 
 --
 -- 使用資料表 AUTO_INCREMENT `projects`
