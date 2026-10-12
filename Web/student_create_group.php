@@ -126,7 +126,6 @@ if ($myGroup && $myGroup['status'] === 'Voting') {
     require_once __DIR__ . '/check_voting_timeout.php';
     finalizeGroupVoting($conn, (int)$myGroup['group_id']);
 
-    // 重新讀取 group 資料（如果已結算，狀態會變 Executing）
     $stmtRefresh = mysqli_prepare($conn, "
         SELECT
             g.id            AS group_id,
@@ -162,7 +161,6 @@ if ($myGroup && $myGroup['status'] === 'Voting') {
     if ($refreshed) {
         $myGroup = $refreshed;
 
-        // 更新 $myGroups 陣列
         foreach ($myGroups as $idx => $g) {
             if ((int)$g['group_id'] === (int)$myGroup['group_id']) {
                 $myGroups[$idx] = $myGroup;
@@ -262,10 +260,9 @@ if ($myGroup) {
 }
 
 // =========================================================
-// 6.5 投票截止時間（for UI 顯示）
+// 6.5 投票截止時間
 // =========================================================
-$votingDeadline     = null;
-$votingSecondsLeft  = 0;
+$votingDeadline = null;
 
 if ($myGroup && $myGroup['status'] === 'Voting') {
     $stmt = mysqli_prepare($conn, "
@@ -278,11 +275,9 @@ if ($myGroup && $myGroup['status'] === 'Voting') {
     mysqli_stmt_close($stmt);
 
     if ($rowTime && !empty($rowTime['formed_at'])) {
-        $startTs = strtotime($rowTime['formed_at']);
+        $startTs  = strtotime($rowTime['formed_at']);
         $deadline = $startTs + 48 * 3600;
-
-        $votingDeadline    = date('d M Y, H:i', $deadline);
-        $votingSecondsLeft = max(0, $deadline - time());
+        $votingDeadline = date('d M Y, H:i', $deadline);
     }
 }
 
@@ -305,6 +300,7 @@ if (!function_exists('statusClass')) {
             case 'Accepted':  return 'status-accepted';
             case 'Rejected':  return 'status-rejected';
             case 'Cancelled': return 'status-cancelled';
+            case 'Leave':     return 'status-leave';
             default:          return 'status-pending';
         }
     }
@@ -491,12 +487,14 @@ if (!function_exists('statusClass')) {
         .status-accepted  { background: #d9f5df; color: #176b2c; }
         .status-rejected  { background: #ffe1e1; color: #a21b1b; }
         .status-cancelled { background: #eeeeee; color: #777; }
+        .status-leave     { background: #ffe1e1; color: #a21b1b; }
 
         .cancel-invite-btn {
             background: white; color: #c62828;
             border: 2px solid #c62828; border-radius: 7px;
             padding: 5px 9px; font-size: 11px; font-weight: bold;
             cursor: pointer; transition: 0.3s;
+            white-space: nowrap;
         }
         .cancel-invite-btn:hover { background: #c62828; color: white; }
 
@@ -520,6 +518,23 @@ if (!function_exists('statusClass')) {
         .status-accepted-member { background: #d9f5df; color: #176b2c; }
         .status-leader          { background: black; color: white; }
         .status-creator         { background: #245889; color: white; }
+
+        .leave-group-btn {
+            padding: 6px 12px;
+            background: white;
+            color: #c62828;
+            border: 2px solid #c62828;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+        .leave-group-btn:hover {
+            background: #c62828;
+            color: white;
+        }
 
         .vote-option {
             padding: 16px; margin-bottom: 12px;
@@ -547,7 +562,6 @@ if (!function_exists('statusClass')) {
         }
         .result-value { height: 100%; background: black; border-radius: 10px; }
 
-        /* 投票倒數 */
         .voting-countdown {
             padding: 14px 18px;
             margin-bottom: 18px;
@@ -558,9 +572,7 @@ if (!function_exists('statusClass')) {
             color: #765900;
             line-height: 1.6;
         }
-        .voting-countdown strong {
-            color: #222;
-        }
+        .voting-countdown strong { color: #222; }
 
         .group-switcher {
             padding: 20px 24px;
@@ -736,7 +748,9 @@ if (!function_exists('statusClass')) {
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
-        <?php if ($_GET['msg'] === 'created'): ?>
+        <?php if ($_GET['msg'] === 'accepted'): ?>
+            <div class="alert alert-success">Invitation accepted. You have joined the group.</div>
+        <?php elseif ($_GET['msg'] === 'created'): ?>
             <div class="alert alert-success">Group created successfully.</div>
         <?php elseif ($_GET['msg'] === 'invited'): ?>
             <div class="alert alert-success">Invitation sent.</div>
@@ -760,6 +774,12 @@ if (!function_exists('statusClass')) {
             <div class="alert alert-error">Only the group creator can send to supervisor.</div>
         <?php elseif ($_GET['msg'] === 'notwaiting'): ?>
             <div class="alert alert-error">The group is not in the correct state to send to supervisor.</div>
+        <?php elseif ($_GET['msg'] === 'left'): ?>
+            <div class="alert alert-success">You have left the group.</div>
+        <?php elseif ($_GET['msg'] === 'cantleave'): ?>
+            <div class="alert alert-error">You cannot leave the group at this stage.</div>
+        <?php elseif ($_GET['msg'] === 'creatorcannotleave'): ?>
+            <div class="alert alert-error">The group creator cannot leave the group.</div>
         <?php elseif ($_GET['msg'] === 'error'): ?>
             <div class="alert alert-error">Something went wrong. Please try again.</div>
         <?php endif; ?>
@@ -884,7 +904,6 @@ if (!function_exists('statusClass')) {
                 $memberCount  = count($groupMembers);
                 $maxMembers   = (int)$myGroup['max_members'];
 
-                // 計算 Pending 邀請數
                 $pendingCount = 0;
                 foreach ($invitations as $inv) {
                     if ($inv['status'] === 'Pending') {
@@ -1044,6 +1063,13 @@ if (!function_exists('statusClass')) {
                     <?php
                     $isThisCreator = ((int)$m['student_id'] === (int)$myGroup['creator_id']);
                     $isThisLeader  = ((int)$m['student_id'] === (int)$myGroup['leader_id']);
+                    $isMe          = ((int)$m['student_id'] === (int)$studentID);
+
+                    $canLeave = (
+                            $isMe
+                            && !$isThisCreator
+                            && in_array($myGroup['status'], array('Recruiting', 'Waiting_Send'), true)
+                    );
                     ?>
                     <div class="member-item">
                         <div>
@@ -1051,26 +1077,38 @@ if (!function_exists('statusClass')) {
                             <p>Student ID: <?php echo htmlspecialchars($m['student_number']); ?></p>
                         </div>
 
-                        <span class="member-status
-                            <?php
-                        if ($isThisCreator) {
-                            echo 'status-creator';
-                        } elseif ($isThisLeader) {
-                            echo 'status-leader';
-                        } else {
-                            echo 'status-accepted-member';
-                        }
-                        ?>">
-                            <?php
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span class="member-status
+                                <?php
                             if ($isThisCreator) {
-                                echo 'Creator';
+                                echo 'status-creator';
                             } elseif ($isThisLeader) {
-                                echo 'Leader';
+                                echo 'status-leader';
                             } else {
-                                echo 'Member';
+                                echo 'status-accepted-member';
                             }
-                            ?>
-                        </span>
+                            ?>">
+                                <?php
+                                if ($isThisCreator) {
+                                    echo 'Creator';
+                                } elseif ($isThisLeader) {
+                                    echo 'Leader';
+                                } else {
+                                    echo 'Member';
+                                }
+                                ?>
+                            </span>
+
+                            <?php if ($canLeave): ?>
+                                <button
+                                        type="button"
+                                        class="leave-group-btn"
+                                        onclick="confirmLeaveGroup(<?php echo (int)$myGroup['group_id']; ?>);"
+                                >
+                                    Leave
+                                </button>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endforeach; ?>
 
@@ -1081,6 +1119,7 @@ if (!function_exists('statusClass')) {
 
                 <?php if (!$isFullNow): ?>
 
+                    <!-- 1. 未滿員 -->
                     <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
                         Waiting for Members
                         (<?php echo count($groupMembers); ?> / <?php echo (int)$myGroup['max_members']; ?>)
@@ -1091,6 +1130,7 @@ if (!function_exists('statusClass')) {
 
                 <?php elseif ($myGroup['status'] === 'Waiting_Send' && $isCreator): ?>
 
+                    <!-- 2. 滿員 + 你係 creator → 顯示 Send 按鈕 -->
                     <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
                         🔒 Team Full — Ready to Submit
                     </button>
@@ -1108,6 +1148,7 @@ if (!function_exists('statusClass')) {
 
                 <?php elseif ($myGroup['status'] === 'Waiting_Send' && !$isCreator): ?>
 
+                    <!-- 3. 滿員 + 你唔係 creator → 等 -->
                     <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
                         🔒 Team Full — Waiting for Creator
                     </button>
@@ -1116,22 +1157,12 @@ if (!function_exists('statusClass')) {
                         Voting will start after that.
                     </p>
 
-                <?php elseif ($myGroup['status'] === 'Voting'): ?>
-
-                    <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
-                        🗳 Voting in Progress
-                    </button>
-                    <p class="muted" style="margin-top: 12px; font-size: 13px;">
-                        Please cast your vote for the group leader below.
-                    </p>
-
-                <?php elseif ($myGroup['status'] === 'Executing'): ?>
-
-                    <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
-                        ✓ Voting Complete — Team Executing
-                    </button>
-
                 <?php endif; ?>
+
+                <!--
+                    ⚠️ Voting / Executing 狀態完全冇顯示任何按鈕
+                    （撳完 Send to Supervisor 後按鈕消失）
+                -->
 
             </div>
 
@@ -1235,7 +1266,13 @@ if (!function_exists('statusClass')) {
 
 </main>
 
+<!-- Hidden form for leaving group -->
+<form id="leaveGroupForm" action="leave_group_process.php" method="post" style="display:none;">
+    <input type="hidden" name="groupID" id="leaveGroupID" value="">
+</form>
+
 <script>
+    // Auto-fill Student Name
     (function () {
         var inputId   = document.getElementById('inviteStudentNo');
         var inputName = document.getElementById('inviteStudentName');
@@ -1275,6 +1312,15 @@ if (!function_exists('statusClass')) {
             }, 300);
         });
     })();
+
+    // Leave Group（單次確認）
+    function confirmLeaveGroup(groupID) {
+        if (!confirm('Leave this group?\n\nAre you sure?')) {
+            return;
+        }
+        document.getElementById('leaveGroupID').value = groupID;
+        document.getElementById('leaveGroupForm').submit();
+    }
 </script>
 
 </body>

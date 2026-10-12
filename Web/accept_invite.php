@@ -232,5 +232,8 @@ mysqli_stmt_bind_param($stmt, "is", $userID, $link);
 mysqli_stmt_execute($stmt);
 mysqli_stmt_close($stmt);
 
-header('Location: student_notifications.php?msg=accepted');
+// =========================================================
+// 5. 跳去 Current Group（原本係 student_notifications.php）
+// =========================================================
+header('Location: student_create_group.php?msg=accepted&group_id=' . $groupID);
 exit;

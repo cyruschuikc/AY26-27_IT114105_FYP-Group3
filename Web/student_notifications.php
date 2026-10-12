@@ -50,8 +50,6 @@ if (isset($_GET['msg'])) {
 // =========================================================
 // Summary 卡片统计
 // =========================================================
-
-// All Notifications
 $totalNotifications = 0;
 $stmt = mysqli_prepare($conn, "SELECT COUNT(*) AS c FROM `notifications` WHERE user_id = ?");
 mysqli_stmt_bind_param($stmt, "i", $userID);
@@ -61,7 +59,6 @@ $rc = mysqli_fetch_assoc($rs);
 $totalNotifications = (int) $rc['c'];
 mysqli_stmt_close($stmt);
 
-// Task Alerts
 $taskNotifications = 0;
 $stmt = mysqli_prepare($conn, "
     SELECT COUNT(*) AS c
@@ -75,7 +72,6 @@ $rc = mysqli_fetch_assoc($rs);
 $taskNotifications = (int) $rc['c'];
 mysqli_stmt_close($stmt);
 
-// System Alerts
 $deadlineNotifications = 0;
 $stmt = mysqli_prepare($conn, "
     SELECT COUNT(*) AS c
@@ -188,7 +184,6 @@ if (!function_exists('typeIcon')) {
     }
 }
 
-// 从 link 抽 invitation ID
 if (!function_exists('extractInviteID')) {
     function extractInviteID($link) {
         if (empty($link)) return 0;
@@ -209,7 +204,6 @@ if (!function_exists('extractInviteID')) {
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
         body { min-height: 100vh; background: #f5f5f5; color: #222; }
 
-        /* Navbar */
         .navbar {
             width: 100%; padding: 15px 30px; background: black;
             display: flex; flex-direction: column; gap: 15px;
@@ -253,7 +247,6 @@ if (!function_exists('extractInviteID')) {
         .logout-link { color: #ff8888; }
         .logout-link:hover { color: #ff4444; }
 
-        /* Main */
         .main-content { width: 90%; max-width: 1200px; margin: 40px auto; }
 
         .page-heading {
@@ -264,7 +257,6 @@ if (!function_exists('extractInviteID')) {
         .page-heading h1 { margin-bottom: 10px; font-size: 35px; }
         .page-heading p { color: #666; font-size: 17px; line-height: 1.6; }
 
-        /* Alert */
         .alert {
             padding: 14px 18px; margin-bottom: 20px;
             border-radius: 8px; font-size: 14px;
@@ -273,7 +265,6 @@ if (!function_exists('extractInviteID')) {
         .alert-success { background: #eaf7ee; color: #176b2c; border-color: #2e9d4d; }
         .alert-error   { background: #fdeeee; color: #a21b1b; border-color: #d32f2f; }
 
-        /* Summary */
         .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
         .summary-card {
             min-height: 140px; padding: 24px;
@@ -286,7 +277,6 @@ if (!function_exists('extractInviteID')) {
         .summary-number { font-size: 38px; font-weight: bold; }
         .summary-description { margin-top: 7px; color: #777; font-size: 13px; }
 
-        /* Notification Section */
         .notification-section {
             padding: 28px; background: white; border-radius: 15px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
@@ -322,7 +312,6 @@ if (!function_exists('extractInviteID')) {
         }
         .mark-read-btn:hover { background: black; color: white; }
 
-        /* Tabs */
         .notification-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
 
         .tab-btn {
@@ -341,7 +330,6 @@ if (!function_exists('extractInviteID')) {
             background: black; color: white; border-color: black;
         }
 
-        /* Notification List */
         .notification-list { display: flex; flex-direction: column; gap: 14px; }
 
         .notification-item {
@@ -406,7 +394,6 @@ if (!function_exists('extractInviteID')) {
 
         .muted { color: #777; font-size: 14px; }
 
-        /* Note */
         .notification-note {
             padding: 18px; margin-top: 22px;
             background: #f7f7f7; border-left: 5px solid black;
@@ -414,10 +401,7 @@ if (!function_exists('extractInviteID')) {
             color: #666; font-size: 14px; line-height: 1.6;
         }
 
-        /* =========================================================
-           Modal (Invitation)
-        ========================================================= */
-
+        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -538,7 +522,6 @@ if (!function_exists('extractInviteID')) {
         }
         .modal-btn-reject:hover { background: #c62828; color: white; }
 
-        /* Responsive */
         @media (max-width: 950px) {
             .summary-grid { grid-template-columns: repeat(2, 1fr); }
             .section-header { align-items: flex-start; flex-direction: column; }
@@ -570,7 +553,6 @@ if (!function_exists('extractInviteID')) {
 
 <body>
 
-<!-- Top Navigation Bar -->
 <nav class="navbar">
 
     <div class="navbar-top">
@@ -603,7 +585,6 @@ if (!function_exists('extractInviteID')) {
 
 </nav>
 
-<!-- Main -->
 <main class="main-content">
 
     <section class="page-heading">
@@ -614,14 +595,12 @@ if (!function_exists('extractInviteID')) {
         </p>
     </section>
 
-    <!-- System message -->
     <?php if ($systemMsg !== ''): ?>
         <div class="alert <?php echo $msgType === 'success' ? 'alert-success' : 'alert-error'; ?>">
             <?php echo htmlspecialchars($systemMsg); ?>
         </div>
     <?php endif; ?>
 
-    <!-- Summary -->
     <section class="summary-grid">
 
         <div class="summary-card">
@@ -650,7 +629,6 @@ if (!function_exists('extractInviteID')) {
 
     </section>
 
-    <!-- Notification List -->
     <section class="notification-section">
 
         <div class="section-header">
@@ -676,7 +654,6 @@ if (!function_exists('extractInviteID')) {
 
         </div>
 
-        <!-- Tabs -->
         <div class="notification-tabs">
             <a href="student_notifications.php?filter=all"     class="tab-btn <?php echo $filter==='all'     ? 'active' : ''; ?>">All</a>
             <a href="student_notifications.php?filter=tasks"   class="tab-btn <?php echo $filter==='tasks'   ? 'active' : ''; ?>">Tasks</a>
@@ -694,7 +671,6 @@ if (!function_exists('extractInviteID')) {
             <?php foreach ($notifications as $n): ?>
 
                 <?php
-                // 是否邀请通知（link 指向 accept_invite.php）
                 $isInvite = ($n['type'] === 'team'
                         && !empty($n['link'])
                         && strpos($n['link'], 'accept_invite.php') === 0);
@@ -732,7 +708,6 @@ if (!function_exists('extractInviteID')) {
 
                         <?php if ($isInvite && $inviteID > 0): ?>
 
-                            <!-- 邀请通知 → 弹 Modal -->
                             <button
                                     type="button"
                                     class="notification-btn"
@@ -772,9 +747,6 @@ if (!function_exists('extractInviteID')) {
 
 </main>
 
-<!-- =========================================================
-     Invitation Modal
-========================================================== -->
 <div class="modal-overlay" id="inviteModal">
 
     <div class="modal-box">
@@ -819,7 +791,6 @@ if (!function_exists('extractInviteID')) {
 
 </div>
 
-<!-- JS -->
 <script>
     var currentInviteID = 0;
 
@@ -847,14 +818,12 @@ if (!function_exists('extractInviteID')) {
         }
     }
 
-    // 点遮罩关闭
     document.getElementById('inviteModal').addEventListener('click', function (e) {
         if (e.target === this) {
             closeInviteModal();
         }
     });
 
-    // 按 ESC 关闭
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             closeInviteModal();
