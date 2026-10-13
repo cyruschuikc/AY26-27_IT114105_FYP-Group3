@@ -15,7 +15,7 @@ android {
         minSdk = 32
         targetSdk = 36
         versionCode = 21
-        val previousGit = ""
+        val previousGit = "d92a8ec"
         val sk2Script = "d44ac18"
         val devScript = "4e606db"
         val sk1Script = devScript
