@@ -9,46 +9,83 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
 /** @var mysqli $conn */
 
+// 当前老师的 Teachers.id
+$teacherId = 0;
+if (isset($_SESSION['userID'])) {
+    $stmtT = mysqli_prepare($conn, "SELECT id FROM `teachers` WHERE user_id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmtT, "i", $_SESSION['userID']);
+    mysqli_stmt_execute($stmtT);
+    $rsT = mysqli_stmt_get_result($stmtT);
+    $rowT = mysqli_fetch_assoc($rsT);
+    mysqli_stmt_close($stmtT);
+    if ($rowT) { $teacherId = (int)$rowT['id']; }
+}
+
 
 // =========================================================
-// 1. 汇总数字
+// 汇总
 // =========================================================
 
 // Total Students
 $totalStudents = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Students`");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $totalStudents = (int)$rc['c']; mysqli_free_result($rs); }
-
-// Assigned to Teams（在 Group_Members 里的学生）
-$assignedStudents = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(DISTINCT student_id) AS c
-    FROM `Group_Members`
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(DISTINCT ce.student_id) AS c
+    FROM `course_enrollments` ce
+    INNER JOIN `projects` p ON p.course_id = ce.course_id
+    WHERE p.supervisor_id = ?
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $assignedStudents = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$totalStudents = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
-// Unassigned
+// Assigned
+$assignedStudents = 0;
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(DISTINCT ce.student_id) AS c
+    FROM `course_enrollments` ce
+    INNER JOIN `projects` p ON p.course_id = ce.course_id
+    INNER JOIN `group_members` gm ON gm.student_id = ce.student_id
+    WHERE p.supervisor_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$assignedStudents = (int)$rc['c'];
+mysqli_stmt_close($stmt);
+
 $unassignedStudents = $totalStudents - $assignedStudents;
 
-// At Risk（有 overdue 任务的学生）
+// At Risk
 $atRisk = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(DISTINCT assigned_to) AS c
-    FROM `Tasks`
-    WHERE status <> 'Completed'
-      AND due_date < CURDATE()
-      AND assigned_to IS NOT NULL
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(DISTINCT t.assigned_to) AS c
+    FROM `tasks` t
+    INNER JOIN `course_enrollments` ce ON ce.student_id = t.assigned_to
+    INNER JOIN `projects` p ON p.course_id = ce.course_id
+    WHERE p.supervisor_id = ?
+      AND t.status <> 'Completed'
+      AND t.due_date < CURDATE()
+      AND t.assigned_to IS NOT NULL
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $atRisk = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$atRisk = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 
 // =========================================================
-// 2. Assigned Students（已经在某个 Group 里的学生）
+// Assigned Students
 // =========================================================
 $assigned = array();
 
 $sql = "
-    SELECT
+    SELECT DISTINCT
         s.id                AS student_id,
         s.student_number,
         s.major,
@@ -56,53 +93,56 @@ $sql = "
         u.username          AS name,
         g.name              AS team_name,
         gm.role             AS team_role,
-        (SELECT COUNT(*) FROM `Tasks` t
+        (SELECT COUNT(*) FROM `tasks` t
             WHERE t.assigned_to = s.id
               AND t.status = 'Completed') AS done_tasks,
-        (SELECT COUNT(*) FROM `Tasks` t2
+        (SELECT COUNT(*) FROM `tasks` t2
             WHERE t2.assigned_to = s.id) AS total_tasks
-    FROM `Students` s
-    INNER JOIN `Users`          u  ON u.id = s.user_id
-    INNER JOIN `Group_Members`  gm ON gm.student_id = s.id
-    INNER JOIN `Groups`         g  ON g.id = gm.group_id
+    FROM `course_enrollments` ce
+    INNER JOIN `projects` p ON p.course_id = ce.course_id
+    INNER JOIN `students` s ON s.id = ce.student_id
+    INNER JOIN `users`    u ON u.id = s.user_id
+    INNER JOIN `group_members` gm ON gm.student_id = s.id
+    INNER JOIN `groups` g ON g.id = gm.group_id
+    WHERE p.supervisor_id = ?
     ORDER BY g.id, s.id
 ";
 
-$rs = mysqli_query($conn, $sql);
-if ($rs) {
-    while ($row = mysqli_fetch_assoc($rs)) {
-        $assigned[] = $row;
-    }
-    mysqli_free_result($rs);
-}
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $assigned[] = $row; }
+mysqli_stmt_close($stmt);
 
 
 // =========================================================
-// 3. Unassigned Students（不在任何 Group 里的学生）
+// Unassigned Students
 // =========================================================
 $unassigned = array();
 
 $sql = "
-    SELECT
+    SELECT DISTINCT
         s.id                AS student_id,
         s.student_number,
         s.major,
         s.grade_level,
         u.username          AS name
-    FROM `Students` s
-    INNER JOIN `Users` u ON u.id = s.user_id
-    WHERE s.id NOT IN (SELECT DISTINCT student_id FROM `Group_Members`)
+    FROM `course_enrollments` ce
+    INNER JOIN `projects` p ON p.course_id = ce.course_id
+    INNER JOIN `students` s ON s.id = ce.student_id
+    INNER JOIN `users`    u ON u.id = s.user_id
+    WHERE p.supervisor_id = ?
+      AND s.id NOT IN (SELECT DISTINCT student_id FROM `group_members`)
     ORDER BY s.id
 ";
 
-$rs = mysqli_query($conn, $sql);
-if ($rs) {
-    while ($row = mysqli_fetch_assoc($rs)) {
-        $unassigned[] = $row;
-    }
-    mysqli_free_result($rs);
-}
-
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $unassigned[] = $row; }
+mysqli_stmt_close($stmt);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -120,7 +160,7 @@ if ($rs) {
     <div class="content">
 
         <h1>Students</h1>
-        <p class="subtitle">All students under your supervision · <?php echo $totalStudents; ?> students</p>
+        <p class="subtitle">Students under your courses · <?php echo $totalStudents; ?> students</p>
 
         <!-- Summary -->
         <div class="summary-grid">
@@ -148,7 +188,7 @@ if ($rs) {
             <table>
                 <tr>
                     <th>Name</th>
-                    <th>Student ID</th>
+                    <th>Student Number</th>
                     <th>Class</th>
                     <th>Team</th>
                     <th>Role</th>
@@ -177,9 +217,7 @@ if ($rs) {
                                 <span class="muted">Member</span>
                             <?php endif; ?>
                         </td>
-                        <td>
-                            <?php echo (int)$s['done_tasks']; ?> / <?php echo (int)$s['total_tasks']; ?>
-                        </td>
+                        <td><?php echo (int)$s['done_tasks']; ?> / <?php echo (int)$s['total_tasks']; ?></td>
                         <td><a href="#" class="link">View</a></td>
                     </tr>
                 <?php endforeach; ?>
@@ -192,7 +230,7 @@ if ($rs) {
             <table>
                 <tr>
                     <th>Name</th>
-                    <th>Student ID</th>
+                    <th>Student Number</th>
                     <th>Class</th>
                     <th>Status</th>
                     <th></th>

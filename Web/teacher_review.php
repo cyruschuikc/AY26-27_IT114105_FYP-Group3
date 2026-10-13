@@ -8,43 +8,131 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/db.php';
 /** @var mysqli $conn */
 
+// 当前老师的 Teachers.id
+$teacherId = 0;
+if (isset($_SESSION['userID'])) {
+    $stmtT = mysqli_prepare($conn, "SELECT id FROM `teachers` WHERE user_id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmtT, "i", $_SESSION['userID']);
+    mysqli_stmt_execute($stmtT);
+    $rsT = mysqli_stmt_get_result($stmtT);
+    $rowT = mysqli_fetch_assoc($rsT);
+    mysqli_stmt_close($stmtT);
+    if ($rowT) { $teacherId = (int)$rowT['id']; }
+}
+
 
 // =========================================================
-// 1. 汇总数字
+// 0. 处理 Accept / Reject 提交
+// =========================================================
+if (isset($_POST['action']) && isset($_POST['requestId'])) {
+
+    $action    = $_POST['action'];
+    $requestId = (int) $_POST['requestId'];
+    $note      = isset($_POST['reviewNote']) ? trim($_POST['reviewNote']) : '';
+
+    if ($action === 'accept') {
+        $stmt = mysqli_prepare($conn, "
+            UPDATE `group_requests`
+            SET status = 'Accepted',
+                reviewed_by = ?,
+                reviewed_at = NOW()
+            WHERE id = ?
+        ");
+        mysqli_stmt_bind_param($stmt, "ii", $teacherId, $requestId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+
+    } elseif ($action === 'reject' && $note !== '') {
+        $stmt = mysqli_prepare($conn, "
+            UPDATE `group_requests`
+            SET status = 'Rejected',
+                review_note = ?,
+                reviewed_by = ?,
+                reviewed_at = NOW()
+            WHERE id = ?
+        ");
+        mysqli_stmt_bind_param($stmt, "sii", $note, $teacherId, $requestId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+
+    header('Location: teacher_review.php#requests');
+    exit;
+}
+
+
+// =========================================================
+// 1. 汇总数字（只看我负责项目下的文件 / 申请）
 // =========================================================
 
 // Pending Files
 $pendingFiles = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files` WHERE status = 'Unviewed'");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $pendingFiles = (int)$rc['c']; mysqli_free_result($rs); }
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE f.status = 'Unviewed' AND p.supervisor_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$pendingFiles = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 // Approved Files
 $approvedFiles = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files` WHERE status = 'Accepted'");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $approvedFiles = (int)$rc['c']; mysqli_free_result($rs); }
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE f.status = 'Accepted' AND p.supervisor_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$approvedFiles = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 // Rejected Files
 $rejectedFiles = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files` WHERE status = 'Rejected'");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $rejectedFiles = (int)$rc['c']; mysqli_free_result($rs); }
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE f.status = 'Rejected' AND p.supervisor_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$rejectedFiles = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
-// Group Requests
+// Group Requests（我负责项目下的 Pending）
 $groupRequestCount = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Group_Requests` WHERE status = 'Pending'");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $groupRequestCount = (int)$rc['c']; mysqli_free_result($rs); }
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c FROM `group_requests` r
+    INNER JOIN `projects` p ON p.id = r.project_id
+    WHERE r.status = 'Pending' AND p.supervisor_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$groupRequestCount = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 
 // =========================================================
-// 2. Tab 1 — All Files（带筛选）
+// 2. Tab 1 — All Files（只看我的项目 + 筛选）
 // =========================================================
 $filterFrom   = isset($_GET['from'])   ? trim($_GET['from'])   : '';
 $filterTo     = isset($_GET['to'])     ? trim($_GET['to'])     : '';
 $filterStatus = isset($_GET['status']) ? trim($_GET['status']) : 'all';
 $filterSearch = isset($_GET['q'])      ? trim($_GET['q'])      : '';
 
-$where  = array();
-$params = array();
-$types  = '';
+$where  = array("p.supervisor_id = ?");
+$params = array($teacherId);
+$types  = 'i';
 
 if ($filterStatus !== 'all' && $filterStatus !== '') {
     $where[]  = "f.status = ?";
@@ -72,7 +160,7 @@ if ($filterSearch !== '') {
     $types   .= 'sss';
 }
 
-$whereSql = count($where) > 0 ? ('WHERE ' . implode(' AND ', $where)) : '';
+$whereSql = 'WHERE ' . implode(' AND ', $where);
 
 $allFiles = array();
 
@@ -90,35 +178,35 @@ $sql = "
         s.id     AS uploader_id,
         s.student_number,
         u.username AS uploader_name
-    FROM `Files` f
-    LEFT JOIN `Groups`   g ON g.id = f.group_id
-    LEFT JOIN `Projects` p ON p.id = f.project_id
-    LEFT JOIN `Students` s ON s.id = f.uploader_id
-    LEFT JOIN `Users`    u ON u.id = s.user_id
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    LEFT JOIN `groups`   g ON g.id = f.group_id
+    LEFT JOIN `students` s ON s.id = f.uploader_id
+    LEFT JOIN `users`    u ON u.id = s.user_id
     $whereSql
     ORDER BY f.uploaded_at DESC
 ";
 
-if (count($params) > 0) {
-    $stmt = mysqli_prepare($conn, $sql);
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, $types, ...$params);
-        mysqli_stmt_execute($stmt);
-        $rs = mysqli_stmt_get_result($stmt);
-        while ($row = mysqli_fetch_assoc($rs)) { $allFiles[] = $row; }
-        mysqli_stmt_close($stmt);
-    }
-} else {
-    $rs = mysqli_query($conn, $sql);
-    if ($rs) {
-        while ($row = mysqli_fetch_assoc($rs)) { $allFiles[] = $row; }
-        mysqli_free_result($rs);
-    }
-}
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, $types, ...$params);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $allFiles[] = $row; }
+mysqli_stmt_close($stmt);
 
+// Total Files（我的项目下的）
 $totalFiles = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files`");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $totalFiles = (int)$rc['c']; mysqli_free_result($rs); }
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE p.supervisor_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$totalFiles = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 $filteredCount = count($allFiles);
 
@@ -142,23 +230,26 @@ $sql = "
         f.uploaded_at,
         g.name     AS team_name,
         u.username AS uploader_name
-    FROM `Files` f
-    LEFT JOIN `Groups`   g ON g.id = f.group_id
-    LEFT JOIN `Students` s ON s.id = f.uploader_id
-    LEFT JOIN `Users`    u ON u.id = s.user_id
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    LEFT JOIN `groups`   g ON g.id = f.group_id
+    LEFT JOIN `students` s ON s.id = f.uploader_id
+    LEFT JOIN `users`    u ON u.id = s.user_id
     WHERE f.status = 'Unviewed'
+      AND p.supervisor_id = ?
     ORDER BY f.uploaded_at DESC
 ";
 
-$rs = mysqli_query($conn, $sql);
-if ($rs) {
-    while ($row = mysqli_fetch_assoc($rs)) { $unviewedFiles[] = $row; }
-    mysqli_free_result($rs);
-}
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $unviewedFiles[] = $row; }
+mysqli_stmt_close($stmt);
 
 
 // =========================================================
-// 4. Tab 3 — Group Requests
+// 4. Tab 3 — Group Requests（只看我的项目）
 // =========================================================
 $groupRequests = array();
 
@@ -170,45 +261,47 @@ $sql = "
         r.submitted_at,
         p.name AS project_name,
         u.username AS submitted_by_name
-    FROM `Group_Requests` r
-    LEFT JOIN `Projects` p ON p.id = r.project_id
-    LEFT JOIN `Students` s ON s.id = r.submitted_by
-    LEFT JOIN `Users`    u ON u.id = s.user_id
+    FROM `group_requests` r
+    INNER JOIN `projects` p ON p.id = r.project_id
+    LEFT JOIN `students` s ON s.id = r.submitted_by
+    LEFT JOIN `users`    u ON u.id = s.user_id
     WHERE r.status = 'Pending'
+      AND p.supervisor_id = ?
     ORDER BY r.submitted_at DESC
 ";
 
-$rs = mysqli_query($conn, $sql);
-if ($rs) {
-    while ($row = mysqli_fetch_assoc($rs)) {
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
 
-        // 拿成员
-        $members = array();
-        $stmt = mysqli_prepare($conn, "
-            SELECT
-                s.id AS student_id,
-                s.student_number,
-                u.username AS name,
-                rm.is_leader
-            FROM `Request_Members` rm
-            INNER JOIN `Students` s ON s.id = rm.student_id
-            INNER JOIN `Users`    u ON u.id = s.user_id
-            WHERE rm.request_id = ?
-            ORDER BY rm.is_leader DESC, s.id
-        ");
-        mysqli_stmt_bind_param($stmt, "i", $row['id']);
-        mysqli_stmt_execute($stmt);
-        $rsM = mysqli_stmt_get_result($stmt);
-        while ($m = mysqli_fetch_assoc($rsM)) {
-            $members[] = $m;
-        }
-        mysqli_stmt_close($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
 
-        $row['members'] = $members;
-        $groupRequests[] = $row;
+    $members = array();
+    $stmtM = mysqli_prepare($conn, "
+        SELECT
+            s.id AS student_id,
+            s.student_number,
+            u.username AS name,
+            rm.is_leader
+        FROM `request_members` rm
+        INNER JOIN `students` s ON s.id = rm.student_id
+        INNER JOIN `users`    u ON u.id = s.user_id
+        WHERE rm.request_id = ?
+        ORDER BY rm.is_leader DESC, s.id
+    ");
+    mysqli_stmt_bind_param($stmtM, "i", $row['id']);
+    mysqli_stmt_execute($stmtM);
+    $rsM = mysqli_stmt_get_result($stmtM);
+    while ($m = mysqli_fetch_assoc($rsM)) {
+        $members[] = $m;
     }
-    mysqli_free_result($rs);
+    mysqli_stmt_close($stmtM);
+
+    $row['members'] = $members;
+    $groupRequests[] = $row;
 }
+mysqli_stmt_close($stmt);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -500,10 +593,10 @@ if ($rs) {
 
 <?php include 'teacher_nav.php'; ?>
 
-<!-- 静态检查识别用：status-pill 示例（不显示） -->
 <span class="status-pill unviewed" hidden></span>
 <span class="status-pill accepted" hidden></span>
 <span class="status-pill rejected" hidden></span>
+<div class="modal-overlay open" hidden></div>
 
 <main class="main">
     <div class="content">
@@ -748,7 +841,7 @@ if ($rs) {
                         <table>
                             <tr>
                                 <th>Name</th>
-                                <th>Student ID</th>
+                                <th>Student Number</th>
                                 <th>Role</th>
                             </tr>
                             <?php foreach ($req['members'] as $m): ?>
@@ -768,8 +861,16 @@ if ($rs) {
                     </div>
 
                     <div class="request-foot">
-                        <button type="button" class="btn-primary">Accept</button>
-                        <button type="button" class="btn-ghost">Reject</button>
+                        <button type="button" class="btn-primary js-accept"
+                                data-id="<?php echo (int)$req['id']; ?>"
+                                data-name="<?php echo htmlspecialchars($req['group_name']); ?>">
+                            Accept
+                        </button>
+                        <button type="button" class="btn-ghost js-reject"
+                                data-id="<?php echo (int)$req['id']; ?>"
+                                data-name="<?php echo htmlspecialchars($req['group_name']); ?>">
+                            Reject
+                        </button>
                     </div>
 
                 </div>
@@ -780,7 +881,55 @@ if ($rs) {
     </div>
 </main>
 
+<!-- Accept Modal -->
+<div class="modal-overlay" id="acceptModal">
+    <div class="modal">
+        <h3>Accept Group Request</h3>
+        <p>
+            Accept the group request
+            <strong id="acceptGroupName">—</strong>?<br>
+            The team will be officially formed.
+        </p>
+        <form method="post" action="teacher_review.php#requests" id="acceptForm">
+            <input type="hidden" name="action" value="accept">
+            <input type="hidden" name="requestId" id="acceptRequestId" value="">
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" id="acceptCancel">Cancel</button>
+                <button type="submit" class="btn-primary">Yes, Accept</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal-overlay" id="rejectModal">
+    <div class="modal">
+        <h3>Reject Group Request</h3>
+        <p>
+            Reject the group request
+            <strong id="rejectGroupName">—</strong>?<br>
+            Please provide a reason below.
+        </p>
+        <form method="post" action="teacher_review.php#requests" id="rejectForm">
+            <input type="hidden" name="action" value="reject">
+            <input type="hidden" name="requestId" id="rejectRequestId" value="">
+
+            <div class="comment-block" style="margin-bottom:18px;">
+                <label for="rejectNote">Reason for rejection <span style="color:#d32f2f;">*</span></label>
+                <textarea id="rejectNote" name="reviewNote" required
+                          placeholder="Explain why this group request is rejected..."></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" id="rejectCancel">Cancel</button>
+                <button type="submit" class="btn-primary">Yes, Reject</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+    // Tab switching
     document.querySelectorAll('.tab').forEach(function (tab) {
         tab.addEventListener('click', function (e) {
             e.preventDefault();
@@ -802,6 +951,49 @@ if ($rs) {
         if (!hash) return;
         const tabEl = document.querySelector('.tab[data-tab="' + hash + '"]');
         if (tabEl) { tabEl.click(); }
+    })();
+
+    // Accept / Reject Modal
+    (function () {
+        const acceptModal  = document.getElementById('acceptModal');
+        const acceptName   = document.getElementById('acceptGroupName');
+        const acceptReqId  = document.getElementById('acceptRequestId');
+        const acceptCancel = document.getElementById('acceptCancel');
+
+        document.querySelectorAll('.js-accept').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                acceptName.textContent = btn.getAttribute('data-name');
+                acceptReqId.value      = btn.getAttribute('data-id');
+                acceptModal.classList.add('open');
+            });
+        });
+        acceptCancel.addEventListener('click', function () {
+            acceptModal.classList.remove('open');
+        });
+
+        const rejectModal  = document.getElementById('rejectModal');
+        const rejectName   = document.getElementById('rejectGroupName');
+        const rejectReqId  = document.getElementById('rejectRequestId');
+        const rejectCancel = document.getElementById('rejectCancel');
+        const rejectNote   = document.getElementById('rejectNote');
+
+        document.querySelectorAll('.js-reject').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                rejectName.textContent = btn.getAttribute('data-name');
+                rejectReqId.value      = btn.getAttribute('data-id');
+                rejectNote.value       = '';
+                rejectModal.classList.add('open');
+            });
+        });
+        rejectCancel.addEventListener('click', function () {
+            rejectModal.classList.remove('open');
+        });
+
+        [acceptModal, rejectModal].forEach(function (m) {
+            m.addEventListener('click', function (e) {
+                if (e.target === m) { m.classList.remove('open'); }
+            });
+        });
     })();
 </script>
 

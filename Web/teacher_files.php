@@ -11,38 +11,86 @@ require_once __DIR__ . '/helpers.php';
 
 
 // =========================================================
-// 1. 汇总数字
+// 当前老师的 Teachers.id
+// =========================================================
+$teacherId = 0;
+if (isset($_SESSION['userID'])) {
+    $stmtT = mysqli_prepare($conn, "SELECT id FROM `teachers` WHERE user_id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmtT, "i", $_SESSION['userID']);
+    mysqli_stmt_execute($stmtT);
+    $rsT = mysqli_stmt_get_result($stmtT);
+    $rowT = mysqli_fetch_assoc($rsT);
+    mysqli_stmt_close($stmtT);
+    if ($rowT) { $teacherId = (int)$rowT['id']; }
+}
+
+
+// =========================================================
+// 1. 汇总数字（只看我负责项目的文件）
 // =========================================================
 
 // Total Files
 $totalFiles = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Files`");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $totalFiles = (int)$rc['c']; mysqli_free_result($rs); }
-
-// This Week（过去 7 天）
-$thisWeek = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(*) AS c FROM `Files`
-    WHERE uploaded_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE p.supervisor_id = ?
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $thisWeek = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$totalFiles = (int)$rc['c'];
+mysqli_stmt_close($stmt);
+
+// This Week
+$thisWeek = 0;
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE p.supervisor_id = ?
+      AND f.uploaded_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$thisWeek = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 // Teams Active（有文件的小组数）
 $teamsActive = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(DISTINCT group_id) AS c FROM `Files`
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(DISTINCT f.group_id) AS c
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE p.supervisor_id = ?
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $teamsActive = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$teamsActive = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
-// Storage Used（把 file_size 加起来 — 我们的 file_size 是字符串 "2.4 MB"，需要解析）
+// Storage Used
 $storageUsedBytes = 0;
-$rs = mysqli_query($conn, "SELECT file_size FROM `Files`");
-if ($rs) {
-    while ($row = mysqli_fetch_assoc($rs)) {
-        $storageUsedBytes += parseSizeToBytes($row['file_size']);
-    }
-    mysqli_free_result($rs);
+$stmt = mysqli_prepare($conn, "
+    SELECT f.file_size
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE p.supervisor_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $storageUsedBytes += parseSizeToBytes($row['file_size']);
 }
+mysqli_stmt_close($stmt);
+
 $storageUsed = formatBytes($storageUsedBytes);
 
 
@@ -59,23 +107,26 @@ $sql = "
         f.uploaded_at,
         g.name     AS team_name,
         u.username AS uploader_name
-    FROM `Files` f
-    LEFT JOIN `Groups`   g ON g.id = f.group_id
-    LEFT JOIN `Students` s ON s.id = f.uploader_id
-    LEFT JOIN `Users`    u ON u.id = s.user_id
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    LEFT JOIN `groups`   g ON g.id = f.group_id
+    LEFT JOIN `students` s ON s.id = f.uploader_id
+    LEFT JOIN `users`    u ON u.id = s.user_id
+    WHERE p.supervisor_id = ?
     ORDER BY f.uploaded_at DESC
     LIMIT 10
 ";
 
-$rs = mysqli_query($conn, $sql);
-if ($rs) {
-    while ($row = mysqli_fetch_assoc($rs)) { $recentUploads[] = $row; }
-    mysqli_free_result($rs);
-}
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $recentUploads[] = $row; }
+mysqli_stmt_close($stmt);
 
 
 // =========================================================
-// 3. Filter by Team（每个 team 的文件数 + 最近上传时间）
+// 3. Filter by Team（只看我负责项目下的组）
 // =========================================================
 $teamFiles = array();
 
@@ -85,18 +136,21 @@ $sql = "
         g.name         AS team_name,
         COUNT(f.id)    AS file_count,
         MAX(f.uploaded_at) AS last_upload
-    FROM `Groups` g
-    LEFT JOIN `Files` f ON f.group_id = g.id
+    FROM `groups` g
+    INNER JOIN `projects` p ON p.id = g.project_id
+    LEFT JOIN `files` f ON f.group_id = g.id
+    WHERE p.supervisor_id = ?
     GROUP BY g.id, g.name
     HAVING file_count > 0
     ORDER BY file_count DESC, g.id
 ";
 
-$rs = mysqli_query($conn, $sql);
-if ($rs) {
-    while ($row = mysqli_fetch_assoc($rs)) { $teamFiles[] = $row; }
-    mysqli_free_result($rs);
-}
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $teamFiles[] = $row; }
+mysqli_stmt_close($stmt);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -114,7 +168,7 @@ if ($rs) {
     <div class="content">
 
         <h1>Files</h1>
-        <p class="subtitle">All project files uploaded by your teams</p>
+        <p class="subtitle">Project files uploaded by your teams</p>
 
         <!-- Summary -->
         <div class="summary-grid">
