@@ -11,45 +11,72 @@ require_once __DIR__ . '/helpers.php';
 
 
 // =========================================================
+// 当前老师的 Teachers.id
+// =========================================================
+$teacherId = 0;
+if (isset($_SESSION['userID'])) {
+    $stmtT = mysqli_prepare($conn, "SELECT id FROM `teachers` WHERE user_id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmtT, "i", $_SESSION['userID']);
+    mysqli_stmt_execute($stmtT);
+    $rsT = mysqli_stmt_get_result($stmtT);
+    $rowT = mysqli_fetch_assoc($rsT);
+    mysqli_stmt_close($stmtT);
+    if ($rowT) { $teacherId = (int)$rowT['id']; }
+}
+
+
+// =========================================================
 // 1. 汇总数字
 // =========================================================
 
-// Total Students
+// My Students（我负责的项目所属课程下所有学生）
 $totalStudents = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Students`");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $totalStudents = (int)$rc['c']; mysqli_free_result($rs); }
-
-// Formed Teams
-$formedTeams = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(*) AS c
-    FROM `Groups`
-    WHERE status IN ('Voting','Executing','Completed')
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(DISTINCT ce.student_id) AS c
+    FROM `course_enrollments` ce
+    INNER JOIN `projects` p ON p.course_id = ce.course_id
+    WHERE p.supervisor_id = ?
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $formedTeams = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$totalStudents = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
-// Unassigned Students（不在任何 Group 里的学生）
-$unassigned = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(*) AS c
-    FROM `Students` s
-    WHERE s.id NOT IN (SELECT DISTINCT student_id FROM `Group_Members`)
-");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $unassigned = (int)$rc['c']; mysqli_free_result($rs); }
 
-// Past Due Tasks（未完成 + 已过期）
-$pastDue = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(*) AS c
-    FROM `Tasks`
-    WHERE status <> 'Completed'
-      AND due_date < CURDATE()
+// My Projects
+$myProjects = 0;
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c FROM `projects` WHERE supervisor_id = ?
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $pastDue = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$myProjects = (int)$rc['c'];
+mysqli_stmt_close($stmt);
+
+
+// Not Submitted（我负责的项目所属课程里，谁没交过文件）
+$notSubmitted = 0;
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(DISTINCT ce.student_id) AS c
+    FROM `course_enrollments` ce
+    INNER JOIN `projects` p ON p.course_id = ce.course_id
+    WHERE p.supervisor_id = ?
+      AND ce.student_id NOT IN (SELECT DISTINCT uploader_id FROM `files`)
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$notSubmitted = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 
 // =========================================================
-// 2. Teams 表格
+// 2. Teams（只看我负责项目下的组）
 // =========================================================
 $teams = array();
 
@@ -62,31 +89,33 @@ $sql = "
         g.max_members,
         p.name AS project_name,
         u.username AS leader_name,
-        (SELECT COUNT(*) FROM `Group_Members` gm WHERE gm.group_id = g.id) AS member_count,
-        (SELECT COUNT(*) FROM `Tasks` t
+        (SELECT COUNT(*) FROM `group_members` gm WHERE gm.group_id = g.id) AS member_count,
+        (SELECT COUNT(*) FROM `tasks` t
             WHERE t.group_id = g.id
               AND t.status <> 'Completed'
               AND t.due_date < CURDATE()) AS overdue_count,
-        (SELECT COUNT(*) FROM `Tasks` t2
+        (SELECT COUNT(*) FROM `tasks` t2
             WHERE t2.group_id = g.id
               AND t2.status = 'Completed') AS completed_tasks,
-        (SELECT COUNT(*) FROM `Tasks` t3
+        (SELECT COUNT(*) FROM `tasks` t3
             WHERE t3.group_id = g.id) AS total_tasks,
-        (SELECT MAX(a.created_at) FROM `Activities` a WHERE a.group_id = g.id) AS last_activity
-    FROM `Groups` g
-    LEFT JOIN `Projects` p ON p.id = g.project_id
-    LEFT JOIN `Students` s ON s.id = g.leader_id
-    LEFT JOIN `Users`    u ON u.id = s.user_id
+        (SELECT MAX(a.created_at) FROM `activities` a WHERE a.group_id = g.id) AS last_activity
+    FROM `groups` g
+    INNER JOIN `projects` p ON p.id = g.project_id
+    LEFT JOIN `students` s ON s.id = g.leader_id
+    LEFT JOIN `users`    u ON u.id = s.user_id
+    WHERE p.supervisor_id = ?
     ORDER BY g.id
 ";
 
-$rs = mysqli_query($conn, $sql);
-if ($rs) {
-    while ($row = mysqli_fetch_assoc($rs)) {
-        $teams[] = $row;
-    }
-    mysqli_free_result($rs);
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $teams[] = $row;
 }
+mysqli_stmt_close($stmt);
 
 
 // =========================================================
@@ -99,8 +128,8 @@ $sql = "
            a.detail,
            a.created_at,
            u.username AS actor_name
-    FROM `Activities` a
-    LEFT JOIN `Users` u ON u.id = a.actor_id
+    FROM `activities` a
+    LEFT JOIN `users` u ON u.id = a.actor_id
     ORDER BY a.created_at DESC
     LIMIT 5
 ";
@@ -112,7 +141,6 @@ if ($rs) {
     }
     mysqli_free_result($rs);
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -135,20 +163,16 @@ if ($rs) {
         <!-- Summary -->
         <div class="summary-grid">
             <div class="summary-item">
-                <div class="label">Total Students</div>
+                <div class="label">My Students</div>
                 <div class="value"><?php echo $totalStudents; ?></div>
             </div>
             <div class="summary-item">
-                <div class="label">Formed Teams</div>
-                <div class="value"><?php echo $formedTeams; ?></div>
+                <div class="label">My Projects</div>
+                <div class="value"><?php echo $myProjects; ?></div>
             </div>
             <div class="summary-item">
-                <div class="label">Unassigned</div>
-                <div class="value"><?php echo $unassigned; ?></div>
-            </div>
-            <div class="summary-item">
-                <div class="label">Past Due Tasks</div>
-                <div class="value"><?php echo $pastDue; ?></div>
+                <div class="label">Not Submitted</div>
+                <div class="value"><?php echo $notSubmitted; ?></div>
             </div>
         </div>
 
@@ -160,20 +184,20 @@ if ($rs) {
                 <div class="entry-icon">PRJ</div>
                 <div class="entry-title">Projects</div>
                 <div class="entry-desc">View all FYP projects under your supervision.</div>
-                <div class="entry-meta">View all</div>
+                <div class="entry-meta"><?php echo $myProjects; ?> projects</div>
             </a>
 
             <a href="teacher_teams.php" class="entry-card">
                 <div class="entry-icon">TEAM</div>
                 <div class="entry-title">Teams</div>
                 <div class="entry-desc">Manage teams, rosters, leaders and progress.</div>
-                <div class="entry-meta"><?php echo $formedTeams; ?> teams</div>
+                <div class="entry-meta"><?php echo count($teams); ?> teams</div>
             </a>
 
             <a href="teacher_students.php" class="entry-card">
                 <div class="entry-icon">STU</div>
                 <div class="entry-title">Students</div>
-                <div class="entry-desc">See all students, assigned or unassigned.</div>
+                <div class="entry-desc">See all students under your courses.</div>
                 <div class="entry-meta"><?php echo $totalStudents; ?> students</div>
             </a>
 
@@ -187,7 +211,7 @@ if ($rs) {
             <a href="teacher_files.php" class="entry-card">
                 <div class="entry-icon">FILE</div>
                 <div class="entry-title">Files</div>
-                <div class="entry-desc">Browse all files uploaded by your teams.</div>
+                <div class="entry-desc">Browse files uploaded by your project teams.</div>
                 <div class="entry-meta">View all</div>
             </a>
 
@@ -232,6 +256,7 @@ if ($rs) {
             <table>
                 <tr>
                     <th>Team Name</th>
+                    <th>Project</th>
                     <th>Leader</th>
                     <th>Members</th>
                     <th>Progress</th>
@@ -243,8 +268,8 @@ if ($rs) {
 
                 <?php if (count($teams) === 0): ?>
                     <tr>
-                        <td colspan="8" class="muted" style="text-align: center; padding: 30px;">
-                            No teams yet.
+                        <td colspan="9" class="muted" style="text-align: center; padding: 30px;">
+                            No teams under your supervision yet.
                         </td>
                     </tr>
                 <?php endif; ?>
@@ -252,13 +277,8 @@ if ($rs) {
                 <?php foreach ($teams as $t): ?>
                     <tr>
                         <td><?php echo htmlspecialchars($t['name']); ?></td>
-                        <td>
-                            <?php if (!empty($t['leader_name'])): ?>
-                                <?php echo htmlspecialchars($t['leader_name']); ?>
-                            <?php else: ?>
-                                <span class="muted">—</span>
-                            <?php endif; ?>
-                        </td>
+                        <td><?php echo htmlspecialchars($t['project_name']); ?></td>
+                        <td><?php echo htmlspecialchars($t['leader_name'] ?: '—'); ?></td>
                         <td>
                             <?php echo (int)$t['member_count']; ?> / <?php echo (int)$t['max_members']; ?>
                         </td>
@@ -269,9 +289,7 @@ if ($rs) {
                             echo $total > 0 ? ($done . ' / ' . $total) : '—';
                             ?>
                         </td>
-                        <td class="muted">
-                            <?php echo timeAgo($t['last_activity']); ?>
-                        </td>
+                        <td class="muted"><?php echo timeAgo($t['last_activity']); ?></td>
                         <td><span class="pill"><?php echo htmlspecialchars($t['status']); ?></span></td>
                         <td>
                             <?php if ((int)$t['overdue_count'] > 0): ?>

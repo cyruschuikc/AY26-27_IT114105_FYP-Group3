@@ -94,10 +94,24 @@ public class TaskActivity extends AppCompatActivity {
             finish();
         });
 
-        // ListView Item Click Listener
+        // ListView Item Click Listener -> Launch TaskDetailActivity
         lvTasks.setOnItemClickListener((parent, view, position, id) -> {
-            String selectedTask = (String) parent.getItemAtPosition(position);
-            Toast.makeText(TaskActivity.this, "Selected Task: " + selectedTask, Toast.LENGTH_SHORT).show();
+            String selectedItem = (String) parent.getItemAtPosition(position);
+
+            if (selectedItem == null || selectedItem.isEmpty()) {
+                return;
+            }
+
+            // Extract the task title from format: "Complete Project Proposal - High Priority (Completed)"
+            String taskTitle = selectedItem;
+            if (selectedItem.contains(" - ")) {
+                taskTitle = selectedItem.split(" - ")[0].trim();
+            }
+
+            // Launch TaskDetailActivity and pass the selected task title
+            Intent intent = new Intent(TaskActivity.this, TaskDetailActivity.class);
+            intent.putExtra("TASK_TITLE", taskTitle);
+            startActivity(intent);
         });
     }
 }

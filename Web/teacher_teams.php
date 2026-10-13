@@ -11,38 +11,87 @@ require_once __DIR__ . '/helpers.php';
 
 
 // =========================================================
-// 1. 汇总数字
+// 当前老师的 Teachers.id
+// =========================================================
+$teacherId = 0;
+if (isset($_SESSION['userID'])) {
+    $stmtT = mysqli_prepare($conn, "SELECT id FROM `teachers` WHERE user_id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmtT, "i", $_SESSION['userID']);
+    mysqli_stmt_execute($stmtT);
+    $rsT = mysqli_stmt_get_result($stmtT);
+    $rowT = mysqli_fetch_assoc($rsT);
+    mysqli_stmt_close($stmtT);
+    if ($rowT) { $teacherId = (int)$rowT['id']; }
+}
+
+
+// =========================================================
+// 1. 汇总数字（只看我负责项目下的组）
 // =========================================================
 
 // Total Teams
 $totalTeams = 0;
-$rs = mysqli_query($conn, "SELECT COUNT(*) AS c FROM `Groups`");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $totalTeams = (int)$rc['c']; mysqli_free_result($rs); }
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `groups` g
+    INNER JOIN `projects` p ON p.id = g.project_id
+    WHERE p.supervisor_id = ?
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$totalTeams = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 // Formed Teams
 $formedTeams = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(*) AS c FROM `Groups`
-    WHERE status IN ('Voting','Executing','Completed')
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `groups` g
+    INNER JOIN `projects` p ON p.id = g.project_id
+    WHERE p.supervisor_id = ?
+      AND g.status IN ('Voting','Executing','Completed')
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $formedTeams = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$formedTeams = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 // Recruiting
 $recruiting = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(*) AS c FROM `Groups`
-    WHERE status = 'Recruiting'
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `groups` g
+    INNER JOIN `projects` p ON p.id = g.project_id
+    WHERE p.supervisor_id = ?
+      AND g.status = 'Recruiting'
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $recruiting = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$recruiting = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
-// Past Due Tasks
+// Past Due Tasks（我负责项目下）
 $pastDue = 0;
-$rs = mysqli_query($conn, "
-    SELECT COUNT(*) AS c FROM `Tasks`
-    WHERE status <> 'Completed'
-      AND due_date < CURDATE()
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c
+    FROM `tasks` t
+    INNER JOIN `projects` p ON p.id = t.project_id
+    WHERE p.supervisor_id = ?
+      AND t.status <> 'Completed'
+      AND t.due_date < CURDATE()
 ");
-if ($rs) { $rc = mysqli_fetch_assoc($rs); $pastDue = (int)$rc['c']; mysqli_free_result($rs); }
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$pastDue = (int)$rc['c'];
+mysqli_stmt_close($stmt);
 
 
 // =========================================================
@@ -51,9 +100,9 @@ if ($rs) { $rc = mysqli_fetch_assoc($rs); $pastDue = (int)$rc['c']; mysqli_free_
 $search = isset($_GET['q'])      ? trim($_GET['q'])      : '';
 $status = isset($_GET['status']) ? trim($_GET['status']) : 'all';
 
-$where  = array();
-$params = array();
-$types  = '';
+$where  = array("p.supervisor_id = ?");
+$params = array($teacherId);
+$types  = 'i';
 
 if ($status !== 'all' && $status !== '') {
     $where[]  = "g.status = ?";
@@ -68,11 +117,11 @@ if ($search !== '') {
     $types   .= 'ss';
 }
 
-$whereSql = count($where) > 0 ? ('WHERE ' . implode(' AND ', $where)) : '';
+$whereSql = 'WHERE ' . implode(' AND ', $where);
 
 
 // =========================================================
-// 3. Teams 列表
+// 3. Teams 列表（只看我负责项目下的组）
 // =========================================================
 $teams = array();
 
@@ -85,48 +134,33 @@ $sql = "
         g.max_members,
         p.name AS project_name,
         u.username AS leader_name,
-        (SELECT COUNT(*) FROM `Group_Members` gm WHERE gm.group_id = g.id) AS member_count,
-        (SELECT COUNT(*) FROM `Tasks` t
+        (SELECT COUNT(*) FROM `group_members` gm WHERE gm.group_id = g.id) AS member_count,
+        (SELECT COUNT(*) FROM `tasks` t
             WHERE t.group_id = g.id
               AND t.status <> 'Completed'
               AND t.due_date < CURDATE()) AS overdue_count,
-        (SELECT COUNT(*) FROM `Tasks` t2
+        (SELECT COUNT(*) FROM `tasks` t2
             WHERE t2.group_id = g.id
               AND t2.status = 'Completed') AS completed_tasks,
-        (SELECT COUNT(*) FROM `Tasks` t3
+        (SELECT COUNT(*) FROM `tasks` t3
             WHERE t3.group_id = g.id) AS total_tasks,
-        (SELECT MAX(a.created_at) FROM `Activities` a WHERE a.group_id = g.id) AS last_activity
-    FROM `Groups` g
-    LEFT JOIN `Projects` p ON p.id = g.project_id
-    LEFT JOIN `Students` s ON s.id = g.leader_id
-    LEFT JOIN `Users`    u ON u.id = s.user_id
+        (SELECT MAX(a.created_at) FROM `activities` a WHERE a.group_id = g.id) AS last_activity
+    FROM `groups` g
+    INNER JOIN `projects` p ON p.id = g.project_id
+    LEFT JOIN `students` s ON s.id = g.leader_id
+    LEFT JOIN `users`    u ON u.id = s.user_id
     $whereSql
     ORDER BY g.id
 ";
 
-if (count($params) > 0) {
-    $stmt = mysqli_prepare($conn, $sql);
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, $types, ...$params);
-        mysqli_stmt_execute($stmt);
-        $rs = mysqli_stmt_get_result($stmt);
-        if ($rs) {
-            while ($row = mysqli_fetch_assoc($rs)) {
-                $teams[] = $row;
-            }
-        }
-        mysqli_stmt_close($stmt);
-    }
-} else {
-    $rs = mysqli_query($conn, $sql);
-    if ($rs) {
-        while ($row = mysqli_fetch_assoc($rs)) {
-            $teams[] = $row;
-        }
-        mysqli_free_result($rs);
-    }
+$stmt = mysqli_prepare($conn, $sql);
+mysqli_stmt_bind_param($stmt, $types, ...$params);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $teams[] = $row;
 }
-
+mysqli_stmt_close($stmt);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -144,7 +178,7 @@ if (count($params) > 0) {
     <div class="content">
 
         <h1>Teams</h1>
-        <p class="subtitle">All project teams under your supervision · 2026/27</p>
+        <p class="subtitle">Project teams under your supervision · 2026/27</p>
 
         <!-- Summary -->
         <div class="summary-grid">
@@ -225,25 +259,12 @@ if (count($params) > 0) {
                         </td>
                     </tr>
                 <?php endif; ?>
+
                 <?php foreach ($teams as $t): ?>
-                    <?php
-                    $projectName = isset($t['project_name']) && $t['project_name'] !== ''
-                            ? $t['project_name']
-                            : '—';
-                    $leaderName  = isset($t['leader_name']) && $t['leader_name'] !== ''
-                            ? $t['leader_name']
-                            : '';
-                    ?>
                     <tr>
                         <td><?php echo htmlspecialchars($t['name']); ?></td>
-                        <td><?php echo htmlspecialchars($projectName); ?></td>
-                        <td>
-                            <?php if ($leaderName !== ''): ?>
-                                <?php echo htmlspecialchars($leaderName); ?>
-                            <?php else: ?>
-                                <span class="muted">—</span>
-                            <?php endif; ?>
-                        </td>
+                        <td><?php echo htmlspecialchars($t['project_name'] ?: '—'); ?></td>
+                        <td><?php echo htmlspecialchars($t['leader_name'] ?: '—'); ?></td>
                         <td>
                             <?php echo (int)$t['member_count']; ?> / <?php echo (int)$t['max_members']; ?>
                         </td>

@@ -1,14 +1,13 @@
 -- phpMyAdmin SQL Dump
--- version 4.7.4
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- 主機: 127.0.0.1
--- 產生時間： 2026-10-12 18:49:06
--- 伺服器版本: 10.1.30-MariaDB
--- PHP 版本： 5.6.33
+-- 主机： 127.0.0.1
+-- 生成日期： 2026-10-13 11:35:43
+-- 服务器版本： 10.4.32-MariaDB
+-- PHP 版本： 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-SET AUTOCOMMIT = 0;
 START TRANSACTION;
 SET time_zone = "+00:00";
 
@@ -19,13 +18,13 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- 資料庫： `teambox`
+-- 数据库： `teambox`
 --
 
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `activities`
+-- 表的结构 `activities`
 --
 
 CREATE TABLE `activities` (
@@ -33,13 +32,13 @@ CREATE TABLE `activities` (
   `project_id` int(11) DEFAULT NULL,
   `group_id` int(11) DEFAULT NULL,
   `actor_id` int(11) NOT NULL,
-  `action` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `detail` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `action` varchar(100) NOT NULL,
+  `detail` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `activities`
+-- 转存表中的数据 `activities`
 --
 
 INSERT INTO `activities` (`id`, `project_id`, `group_id`, `actor_id`, `action`, `detail`, `created_at`) VALUES
@@ -68,21 +67,21 @@ INSERT INTO `activities` (`id`, `project_id`, `group_id`, `actor_id`, `action`, 
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `announcements`
+-- 表的结构 `announcements`
 --
 
 CREATE TABLE `announcements` (
   `id` int(11) NOT NULL,
   `teacher_id` int(11) NOT NULL,
-  `title` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(200) NOT NULL,
+  `message` text NOT NULL,
   `target_group_id` int(11) DEFAULT NULL,
   `target_project_id` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `announcements`
+-- 转存表中的数据 `announcements`
 --
 
 INSERT INTO `announcements` (`id`, `teacher_id`, `title`, `message`, `target_group_id`, `target_project_id`, `created_at`) VALUES
@@ -100,20 +99,34 @@ INSERT INTO `announcements` (`id`, `teacher_id`, `title`, `message`, `target_gro
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `courses`
+-- 表的结构 `announcement_targets`
+--
+
+CREATE TABLE `announcement_targets` (
+  `id` int(11) NOT NULL,
+  `announcement_id` int(11) NOT NULL,
+  `target_type` enum('course','group','student') NOT NULL,
+  `target_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `courses`
 --
 
 CREATE TABLE `courses` (
   `id` int(11) NOT NULL,
-  `code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(20) NOT NULL,
+  `name` varchar(150) NOT NULL,
   `teacher_id` int(11) NOT NULL,
-  `semester` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `semester` varchar(20) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `courses`
+-- 转存表中的数据 `courses`
 --
 
 INSERT INTO `courses` (`id`, `code`, `name`, `teacher_id`, `semester`, `created_at`) VALUES
@@ -127,18 +140,18 @@ INSERT INTO `courses` (`id`, `code`, `name`, `teacher_id`, `semester`, `created_
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `course_enrollments`
+-- 表的结构 `course_enrollments`
 --
 
 CREATE TABLE `course_enrollments` (
   `id` int(11) NOT NULL,
   `course_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
-  `enrolled_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `enrolled_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `course_enrollments`
+-- 转存表中的数据 `course_enrollments`
 --
 
 INSERT INTO `course_enrollments` (`id`, `course_id`, `student_id`, `enrolled_at`) VALUES
@@ -171,7 +184,7 @@ INSERT INTO `course_enrollments` (`id`, `course_id`, `student_id`, `enrolled_at`
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `files`
+-- 表的结构 `files`
 --
 
 CREATE TABLE `files` (
@@ -179,18 +192,18 @@ CREATE TABLE `files` (
   `project_id` int(11) NOT NULL,
   `group_id` int(11) NOT NULL,
   `uploader_id` int(11) NOT NULL,
-  `file_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `file_size` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `file_type` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` enum('Unviewed','Accepted','Rejected') COLLATE utf8mb4_unicode_ci DEFAULT 'Unviewed',
-  `uploaded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `file_name` varchar(255) NOT NULL,
+  `file_size` varchar(30) DEFAULT NULL,
+  `file_type` varchar(30) DEFAULT NULL,
+  `status` enum('Unviewed','Accepted','Rejected') DEFAULT 'Unviewed',
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `reviewed_by` int(11) DEFAULT NULL,
   `reviewed_at` datetime DEFAULT NULL,
-  `review_note` text COLLATE utf8mb4_unicode_ci
+  `review_note` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `files`
+-- 转存表中的数据 `files`
 --
 
 INSERT INTO `files` (`id`, `project_id`, `group_id`, `uploader_id`, `file_name`, `file_size`, `file_type`, `status`, `uploaded_at`, `reviewed_by`, `reviewed_at`, `review_note`) VALUES
@@ -222,24 +235,24 @@ INSERT INTO `files` (`id`, `project_id`, `group_id`, `uploader_id`, `file_name`,
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `groups`
+-- 表的结构 `groups`
 --
 
 CREATE TABLE `groups` (
   `id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
   `course_id` int(11) DEFAULT NULL,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) NOT NULL,
   `leader_id` int(11) DEFAULT NULL,
   `creator_id` int(11) DEFAULT NULL,
-  `max_members` int(11) DEFAULT '4',
-  `status` enum('Recruiting','Waiting_Send','Voting','Executing','Completed') COLLATE utf8mb4_unicode_ci DEFAULT 'Recruiting',
+  `max_members` int(11) DEFAULT 4,
+  `status` enum('Recruiting','Waiting_Send','Voting','Executing','Completed') DEFAULT 'Recruiting',
   `formed_at` datetime DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `groups`
+-- 转存表中的数据 `groups`
 --
 
 INSERT INTO `groups` (`id`, `project_id`, `course_id`, `name`, `leader_id`, `creator_id`, `max_members`, `status`, `formed_at`, `created_at`) VALUES
@@ -261,18 +274,18 @@ INSERT INTO `groups` (`id`, `project_id`, `course_id`, `name`, `leader_id`, `cre
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `group_members`
+-- 表的结构 `group_members`
 --
 
 CREATE TABLE `group_members` (
   `group_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
-  `role` enum('leader','member') COLLATE utf8mb4_unicode_ci DEFAULT 'member',
-  `joined_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `role` enum('leader','member') DEFAULT 'member',
+  `joined_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `group_members`
+-- 转存表中的数据 `group_members`
 --
 
 INSERT INTO `group_members` (`group_id`, `student_id`, `role`, `joined_at`) VALUES
@@ -323,32 +336,34 @@ INSERT INTO `group_members` (`group_id`, `student_id`, `role`, `joined_at`) VALU
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `group_requests`
+-- 表的结构 `group_requests`
 --
 
 CREATE TABLE `group_requests` (
   `id` int(11) NOT NULL,
-  `group_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `group_name` varchar(100) NOT NULL,
   `project_id` int(11) NOT NULL,
   `submitted_by` int(11) NOT NULL,
-  `status` enum('Pending','Accepted','Rejected') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
-  `review_note` text COLLATE utf8mb4_unicode_ci,
-  `submitted_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` enum('Pending','Accepted','Rejected') DEFAULT 'Pending',
+  `review_note` text DEFAULT NULL,
+  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `reviewed_at` datetime DEFAULT NULL,
   `reviewed_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `group_requests`
+-- 转存表中的数据 `group_requests`
 --
 
 INSERT INTO `group_requests` (`id`, `group_name`, `project_id`, `submitted_by`, `status`, `review_note`, `submitted_at`, `reviewed_at`, `reviewed_by`) VALUES
-(1, 'ABC', 4, 1, 'Accepted', NULL, '2026-10-09 11:09:13', NULL, NULL);
+(1, 'ABC', 4, 1, 'Accepted', NULL, '2026-10-09 11:09:13', NULL, NULL),
+(2, 'Team New', 1, 1, 'Pending', NULL, '2026-10-13 08:46:58', NULL, NULL),
+(3, 'Team Y', 1, 1, 'Pending', NULL, '2026-10-13 08:57:59', NULL, NULL);
 
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `invitations`
+-- 表的结构 `invitations`
 --
 
 CREATE TABLE `invitations` (
@@ -356,13 +371,13 @@ CREATE TABLE `invitations` (
   `group_id` int(11) NOT NULL,
   `inviter_id` int(11) NOT NULL,
   `invitee_id` int(11) NOT NULL,
-  `status` enum('Pending','Accepted','Rejected','Cancelled','Leave') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
-  `sent_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` enum('Pending','Accepted','Rejected','Cancelled','Leave') DEFAULT 'Pending',
+  `sent_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `responded_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `invitations`
+-- 转存表中的数据 `invitations`
 --
 
 INSERT INTO `invitations` (`id`, `group_id`, `inviter_id`, `invitee_id`, `status`, `sent_at`, `responded_at`) VALUES
@@ -382,7 +397,7 @@ INSERT INTO `invitations` (`id`, `group_id`, `inviter_id`, `invitee_id`, `status
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `leader_votes`
+-- 表的结构 `leader_votes`
 --
 
 CREATE TABLE `leader_votes` (
@@ -390,11 +405,11 @@ CREATE TABLE `leader_votes` (
   `group_id` int(11) NOT NULL,
   `voter_id` int(11) NOT NULL,
   `candidate_id` int(11) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `leader_votes`
+-- 转存表中的数据 `leader_votes`
 --
 
 INSERT INTO `leader_votes` (`id`, `group_id`, `voter_id`, `candidate_id`, `created_at`) VALUES
@@ -406,20 +421,20 @@ INSERT INTO `leader_votes` (`id`, `group_id`, `voter_id`, `candidate_id`, `creat
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `messages`
+-- 表的结构 `messages`
 --
 
 CREATE TABLE `messages` (
   `id` int(11) NOT NULL,
   `group_id` int(11) NOT NULL,
   `sender_id` int(11) NOT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci,
+  `content` text DEFAULT NULL,
   `attachment_id` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `messages`
+-- 转存表中的数据 `messages`
 --
 
 INSERT INTO `messages` (`id`, `group_id`, `sender_id`, `content`, `attachment_id`, `created_at`) VALUES
@@ -444,21 +459,21 @@ INSERT INTO `messages` (`id`, `group_id`, `sender_id`, `content`, `attachment_id
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `milestones`
+-- 表的结构 `milestones`
 --
 
 CREATE TABLE `milestones` (
   `id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
-  `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(150) NOT NULL,
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
-  `status` enum('Pending','In Progress','Completed') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
-  `progress` int(11) DEFAULT '0'
+  `status` enum('Pending','In Progress','Completed') DEFAULT 'Pending',
+  `progress` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `milestones`
+-- 转存表中的数据 `milestones`
 --
 
 INSERT INTO `milestones` (`id`, `project_id`, `name`, `start_date`, `end_date`, `status`, `progress`) VALUES
@@ -512,22 +527,22 @@ INSERT INTO `milestones` (`id`, `project_id`, `name`, `start_date`, `end_date`, 
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `notifications`
+-- 表的结构 `notifications`
 --
 
 CREATE TABLE `notifications` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `type` enum('task','file','team','project','system') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `title` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `message` text COLLATE utf8mb4_unicode_ci,
-  `link` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_read` tinyint(1) DEFAULT '0',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `type` enum('task','file','team','project','system') NOT NULL,
+  `title` varchar(200) NOT NULL,
+  `message` text DEFAULT NULL,
+  `link` varchar(255) DEFAULT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `notifications`
+-- 转存表中的数据 `notifications`
 --
 
 INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `link`, `is_read`, `created_at`) VALUES
@@ -578,24 +593,24 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `link`
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `projects`
+-- 表的结构 `projects`
 --
 
 CREATE TABLE `projects` (
   `id` int(11) NOT NULL,
-  `name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(150) NOT NULL,
+  `category` varchar(100) DEFAULT NULL,
   `course_id` int(11) DEFAULT NULL,
   `supervisor_id` int(11) NOT NULL,
   `period_start` date DEFAULT NULL,
   `period_end` date DEFAULT NULL,
-  `status` enum('Recruiting','Waiting_Send','Voting','Executing','Completed','Archived') COLLATE utf8mb4_unicode_ci DEFAULT 'Recruiting',
-  `progress` int(11) DEFAULT '0',
-  `description` text COLLATE utf8mb4_unicode_ci
+  `status` enum('Recruiting','Waiting_Send','Voting','Executing','Completed','Archived') DEFAULT 'Recruiting',
+  `progress` int(11) DEFAULT 0,
+  `description` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `projects`
+-- 转存表中的数据 `projects`
 --
 
 INSERT INTO `projects` (`id`, `name`, `category`, `course_id`, `supervisor_id`, `period_start`, `period_end`, `status`, `progress`, `description`) VALUES
@@ -614,31 +629,45 @@ INSERT INTO `projects` (`id`, `name`, `category`, `course_id`, `supervisor_id`, 
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `request_members`
+-- 表的结构 `request_members`
 --
 
 CREATE TABLE `request_members` (
   `request_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
-  `is_leader` tinyint(1) DEFAULT '0'
+  `is_leader` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 转存表中的数据 `request_members`
+--
+
+INSERT INTO `request_members` (`request_id`, `student_id`, `is_leader`) VALUES
+(2, 8, 1),
+(2, 9, 0),
+(2, 10, 0),
+(2, 11, 0),
+(3, 1, 1),
+(3, 5, 0),
+(3, 6, 0),
+(3, 7, 0);
 
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `students`
+-- 表的结构 `students`
 --
 
 CREATE TABLE `students` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `student_number` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `major` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `student_number` varchar(20) NOT NULL,
+  `major` varchar(100) DEFAULT NULL,
   `grade_level` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `students`
+-- 转存表中的数据 `students`
 --
 
 INSERT INTO `students` (`id`, `user_id`, `student_number`, `major`, `grade_level`) VALUES
@@ -671,26 +700,26 @@ INSERT INTO `students` (`id`, `user_id`, `student_number`, `major`, `grade_level
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `tasks`
+-- 表的结构 `tasks`
 --
 
 CREATE TABLE `tasks` (
   `id` int(11) NOT NULL,
   `project_id` int(11) NOT NULL,
   `group_id` int(11) NOT NULL,
-  `title` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `title` varchar(200) NOT NULL,
+  `description` text DEFAULT NULL,
   `assigned_to` int(11) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
-  `status` enum('Pending','In Progress','Completed') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
-  `priority` enum('Low','Medium','High') COLLATE utf8mb4_unicode_ci DEFAULT 'Medium',
+  `status` enum('Pending','In Progress','Completed') DEFAULT 'Pending',
+  `priority` enum('Low','Medium','High') DEFAULT 'Medium',
   `due_date` date DEFAULT NULL,
   `completed_at` datetime DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `tasks`
+-- 转存表中的数据 `tasks`
 --
 
 INSERT INTO `tasks` (`id`, `project_id`, `group_id`, `title`, `description`, `assigned_to`, `created_by`, `status`, `priority`, `due_date`, `completed_at`, `created_at`) VALUES
@@ -715,20 +744,20 @@ INSERT INTO `tasks` (`id`, `project_id`, `group_id`, `title`, `description`, `as
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `teachers`
+-- 表的结构 `teachers`
 --
 
 CREATE TABLE `teachers` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `teacher_code` varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `teacher_code` varchar(6) NOT NULL,
   `hire_date` date DEFAULT NULL,
-  `department` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `title` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+  `department` varchar(100) DEFAULT NULL,
+  `title` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `teachers`
+-- 转存表中的数据 `teachers`
 --
 
 INSERT INTO `teachers` (`id`, `user_id`, `teacher_code`, `hire_date`, `department`, `title`) VALUES
@@ -741,17 +770,17 @@ INSERT INTO `teachers` (`id`, `user_id`, `teacher_code`, `hire_date`, `departmen
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `teacher_student`
+-- 表的结构 `teacher_student`
 --
 
 CREATE TABLE `teacher_student` (
   `teacher_id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
-  `assigned_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `assigned_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `teacher_student`
+-- 转存表中的数据 `teacher_student`
 --
 
 INSERT INTO `teacher_student` (`teacher_id`, `student_id`, `assigned_at`) VALUES
@@ -784,20 +813,20 @@ INSERT INTO `teacher_student` (`teacher_id`, `student_id`, `assigned_at`) VALUES
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `users`
+-- 表的结构 `users`
 --
 
 CREATE TABLE `users` (
   `id` int(11) NOT NULL,
-  `username` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `role` enum('teacher','student','admin') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `username` varchar(100) NOT NULL,
+  `email` varchar(150) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `role` enum('teacher','student','admin') NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- 資料表的匯出資料 `users`
+-- 转存表中的数据 `users`
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `role`, `created_at`) VALUES
@@ -833,11 +862,11 @@ INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `role`, `create
 (30, 'ZHAO Wei', '260222218@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58');
 
 --
--- 已匯出資料表的索引
+-- 转储表的索引
 --
 
 --
--- 資料表索引 `activities`
+-- 表的索引 `activities`
 --
 ALTER TABLE `activities`
   ADD PRIMARY KEY (`id`),
@@ -846,7 +875,7 @@ ALTER TABLE `activities`
   ADD KEY `actor_id` (`actor_id`);
 
 --
--- 資料表索引 `announcements`
+-- 表的索引 `announcements`
 --
 ALTER TABLE `announcements`
   ADD PRIMARY KEY (`id`),
@@ -855,7 +884,15 @@ ALTER TABLE `announcements`
   ADD KEY `target_project_id` (`target_project_id`);
 
 --
--- 資料表索引 `courses`
+-- 表的索引 `announcement_targets`
+--
+ALTER TABLE `announcement_targets`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ann` (`announcement_id`),
+  ADD KEY `idx_target` (`target_type`,`target_id`);
+
+--
+-- 表的索引 `courses`
 --
 ALTER TABLE `courses`
   ADD PRIMARY KEY (`id`),
@@ -863,7 +900,7 @@ ALTER TABLE `courses`
   ADD KEY `teacher_id` (`teacher_id`);
 
 --
--- 資料表索引 `course_enrollments`
+-- 表的索引 `course_enrollments`
 --
 ALTER TABLE `course_enrollments`
   ADD PRIMARY KEY (`id`),
@@ -871,7 +908,7 @@ ALTER TABLE `course_enrollments`
   ADD KEY `student_id` (`student_id`);
 
 --
--- 資料表索引 `files`
+-- 表的索引 `files`
 --
 ALTER TABLE `files`
   ADD PRIMARY KEY (`id`),
@@ -881,7 +918,7 @@ ALTER TABLE `files`
   ADD KEY `reviewed_by` (`reviewed_by`);
 
 --
--- 資料表索引 `groups`
+-- 表的索引 `groups`
 --
 ALTER TABLE `groups`
   ADD PRIMARY KEY (`id`),
@@ -891,14 +928,14 @@ ALTER TABLE `groups`
   ADD KEY `creator_id` (`creator_id`);
 
 --
--- 資料表索引 `group_members`
+-- 表的索引 `group_members`
 --
 ALTER TABLE `group_members`
   ADD PRIMARY KEY (`group_id`,`student_id`),
   ADD KEY `student_id` (`student_id`);
 
 --
--- 資料表索引 `group_requests`
+-- 表的索引 `group_requests`
 --
 ALTER TABLE `group_requests`
   ADD PRIMARY KEY (`id`),
@@ -907,7 +944,7 @@ ALTER TABLE `group_requests`
   ADD KEY `reviewed_by` (`reviewed_by`);
 
 --
--- 資料表索引 `invitations`
+-- 表的索引 `invitations`
 --
 ALTER TABLE `invitations`
   ADD PRIMARY KEY (`id`),
@@ -916,7 +953,7 @@ ALTER TABLE `invitations`
   ADD KEY `invitee_id` (`invitee_id`);
 
 --
--- 資料表索引 `leader_votes`
+-- 表的索引 `leader_votes`
 --
 ALTER TABLE `leader_votes`
   ADD PRIMARY KEY (`id`),
@@ -925,7 +962,7 @@ ALTER TABLE `leader_votes`
   ADD KEY `candidate_id` (`candidate_id`);
 
 --
--- 資料表索引 `messages`
+-- 表的索引 `messages`
 --
 ALTER TABLE `messages`
   ADD PRIMARY KEY (`id`),
@@ -934,21 +971,21 @@ ALTER TABLE `messages`
   ADD KEY `attachment_id` (`attachment_id`);
 
 --
--- 資料表索引 `milestones`
+-- 表的索引 `milestones`
 --
 ALTER TABLE `milestones`
   ADD PRIMARY KEY (`id`),
   ADD KEY `project_id` (`project_id`);
 
 --
--- 資料表索引 `notifications`
+-- 表的索引 `notifications`
 --
 ALTER TABLE `notifications`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`);
 
 --
--- 資料表索引 `projects`
+-- 表的索引 `projects`
 --
 ALTER TABLE `projects`
   ADD PRIMARY KEY (`id`),
@@ -956,14 +993,14 @@ ALTER TABLE `projects`
   ADD KEY `course_id` (`course_id`);
 
 --
--- 資料表索引 `request_members`
+-- 表的索引 `request_members`
 --
 ALTER TABLE `request_members`
   ADD PRIMARY KEY (`request_id`,`student_id`),
   ADD KEY `student_id` (`student_id`);
 
 --
--- 資料表索引 `students`
+-- 表的索引 `students`
 --
 ALTER TABLE `students`
   ADD PRIMARY KEY (`id`),
@@ -971,7 +1008,7 @@ ALTER TABLE `students`
   ADD UNIQUE KEY `student_number` (`student_number`);
 
 --
--- 資料表索引 `tasks`
+-- 表的索引 `tasks`
 --
 ALTER TABLE `tasks`
   ADD PRIMARY KEY (`id`),
@@ -981,7 +1018,7 @@ ALTER TABLE `tasks`
   ADD KEY `created_by` (`created_by`);
 
 --
--- 資料表索引 `teachers`
+-- 表的索引 `teachers`
 --
 ALTER TABLE `teachers`
   ADD PRIMARY KEY (`id`),
@@ -989,131 +1026,137 @@ ALTER TABLE `teachers`
   ADD UNIQUE KEY `teacher_code` (`teacher_code`);
 
 --
--- 資料表索引 `teacher_student`
+-- 表的索引 `teacher_student`
 --
 ALTER TABLE `teacher_student`
   ADD PRIMARY KEY (`teacher_id`,`student_id`),
   ADD KEY `student_id` (`student_id`);
 
 --
--- 資料表索引 `users`
+-- 表的索引 `users`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`);
 
 --
--- 在匯出的資料表使用 AUTO_INCREMENT
+-- 在导出的表使用AUTO_INCREMENT
 --
 
 --
--- 使用資料表 AUTO_INCREMENT `activities`
+-- 使用表AUTO_INCREMENT `activities`
 --
 ALTER TABLE `activities`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
--- 使用資料表 AUTO_INCREMENT `announcements`
+-- 使用表AUTO_INCREMENT `announcements`
 --
 ALTER TABLE `announcements`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
--- 使用資料表 AUTO_INCREMENT `courses`
+-- 使用表AUTO_INCREMENT `announcement_targets`
+--
+ALTER TABLE `announcement_targets`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- 使用表AUTO_INCREMENT `courses`
 --
 ALTER TABLE `courses`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
--- 使用資料表 AUTO_INCREMENT `course_enrollments`
+-- 使用表AUTO_INCREMENT `course_enrollments`
 --
 ALTER TABLE `course_enrollments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
--- 使用資料表 AUTO_INCREMENT `files`
+-- 使用表AUTO_INCREMENT `files`
 --
 ALTER TABLE `files`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
--- 使用資料表 AUTO_INCREMENT `groups`
+-- 使用表AUTO_INCREMENT `groups`
 --
 ALTER TABLE `groups`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
--- 使用資料表 AUTO_INCREMENT `group_requests`
+-- 使用表AUTO_INCREMENT `group_requests`
 --
 ALTER TABLE `group_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- 使用資料表 AUTO_INCREMENT `invitations`
+-- 使用表AUTO_INCREMENT `invitations`
 --
 ALTER TABLE `invitations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
--- 使用資料表 AUTO_INCREMENT `leader_votes`
+-- 使用表AUTO_INCREMENT `leader_votes`
 --
 ALTER TABLE `leader_votes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
--- 使用資料表 AUTO_INCREMENT `messages`
+-- 使用表AUTO_INCREMENT `messages`
 --
 ALTER TABLE `messages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
--- 使用資料表 AUTO_INCREMENT `milestones`
+-- 使用表AUTO_INCREMENT `milestones`
 --
 ALTER TABLE `milestones`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
--- 使用資料表 AUTO_INCREMENT `notifications`
+-- 使用表AUTO_INCREMENT `notifications`
 --
 ALTER TABLE `notifications`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
 
 --
--- 使用資料表 AUTO_INCREMENT `projects`
+-- 使用表AUTO_INCREMENT `projects`
 --
 ALTER TABLE `projects`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
--- 使用資料表 AUTO_INCREMENT `students`
+-- 使用表AUTO_INCREMENT `students`
 --
 ALTER TABLE `students`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
--- 使用資料表 AUTO_INCREMENT `tasks`
+-- 使用表AUTO_INCREMENT `tasks`
 --
 ALTER TABLE `tasks`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
--- 使用資料表 AUTO_INCREMENT `teachers`
+-- 使用表AUTO_INCREMENT `teachers`
 --
 ALTER TABLE `teachers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- 使用資料表 AUTO_INCREMENT `users`
+-- 使用表AUTO_INCREMENT `users`
 --
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
--- 已匯出資料表的限制(Constraint)
+-- 限制导出的表
 --
 
 --
--- 資料表的 Constraints `activities`
+-- 限制表 `activities`
 --
 ALTER TABLE `activities`
   ADD CONSTRAINT `activities_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
@@ -1121,7 +1164,7 @@ ALTER TABLE `activities`
   ADD CONSTRAINT `activities_ibfk_3` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `announcements`
+-- 限制表 `announcements`
 --
 ALTER TABLE `announcements`
   ADD CONSTRAINT `announcements_ibfk_1` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE,
@@ -1129,20 +1172,26 @@ ALTER TABLE `announcements`
   ADD CONSTRAINT `announcements_ibfk_3` FOREIGN KEY (`target_project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL;
 
 --
--- 資料表的 Constraints `courses`
+-- 限制表 `announcement_targets`
+--
+ALTER TABLE `announcement_targets`
+  ADD CONSTRAINT `announcement_targets_ibfk_1` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`) ON DELETE CASCADE;
+
+--
+-- 限制表 `courses`
 --
 ALTER TABLE `courses`
   ADD CONSTRAINT `courses_ibfk_1` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `course_enrollments`
+-- 限制表 `course_enrollments`
 --
 ALTER TABLE `course_enrollments`
   ADD CONSTRAINT `course_enrollments_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `course_enrollments_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `files`
+-- 限制表 `files`
 --
 ALTER TABLE `files`
   ADD CONSTRAINT `files_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
@@ -1151,7 +1200,7 @@ ALTER TABLE `files`
   ADD CONSTRAINT `files_ibfk_4` FOREIGN KEY (`reviewed_by`) REFERENCES `teachers` (`id`) ON DELETE SET NULL;
 
 --
--- 資料表的 Constraints `groups`
+-- 限制表 `groups`
 --
 ALTER TABLE `groups`
   ADD CONSTRAINT `groups_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
@@ -1160,14 +1209,14 @@ ALTER TABLE `groups`
   ADD CONSTRAINT `groups_ibfk_creator` FOREIGN KEY (`creator_id`) REFERENCES `students` (`id`) ON DELETE SET NULL;
 
 --
--- 資料表的 Constraints `group_members`
+-- 限制表 `group_members`
 --
 ALTER TABLE `group_members`
   ADD CONSTRAINT `group_members_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `group_members_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `group_requests`
+-- 限制表 `group_requests`
 --
 ALTER TABLE `group_requests`
   ADD CONSTRAINT `group_requests_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
@@ -1175,7 +1224,7 @@ ALTER TABLE `group_requests`
   ADD CONSTRAINT `group_requests_ibfk_3` FOREIGN KEY (`reviewed_by`) REFERENCES `teachers` (`id`) ON DELETE SET NULL;
 
 --
--- 資料表的 Constraints `invitations`
+-- 限制表 `invitations`
 --
 ALTER TABLE `invitations`
   ADD CONSTRAINT `invitations_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
@@ -1183,7 +1232,7 @@ ALTER TABLE `invitations`
   ADD CONSTRAINT `invitations_ibfk_3` FOREIGN KEY (`invitee_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `leader_votes`
+-- 限制表 `leader_votes`
 --
 ALTER TABLE `leader_votes`
   ADD CONSTRAINT `leader_votes_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
@@ -1191,7 +1240,7 @@ ALTER TABLE `leader_votes`
   ADD CONSTRAINT `leader_votes_ibfk_3` FOREIGN KEY (`candidate_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `messages`
+-- 限制表 `messages`
 --
 ALTER TABLE `messages`
   ADD CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
@@ -1199,39 +1248,39 @@ ALTER TABLE `messages`
   ADD CONSTRAINT `messages_ibfk_3` FOREIGN KEY (`attachment_id`) REFERENCES `files` (`id`) ON DELETE SET NULL;
 
 --
--- 資料表的 Constraints `milestones`
+-- 限制表 `milestones`
 --
 ALTER TABLE `milestones`
   ADD CONSTRAINT `milestones_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `notifications`
+-- 限制表 `notifications`
 --
 ALTER TABLE `notifications`
   ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `projects`
+-- 限制表 `projects`
 --
 ALTER TABLE `projects`
   ADD CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`supervisor_id`) REFERENCES `teachers` (`id`),
   ADD CONSTRAINT `projects_ibfk_2` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON DELETE SET NULL;
 
 --
--- 資料表的 Constraints `request_members`
+-- 限制表 `request_members`
 --
 ALTER TABLE `request_members`
   ADD CONSTRAINT `request_members_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `group_requests` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `request_members_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `students`
+-- 限制表 `students`
 --
 ALTER TABLE `students`
   ADD CONSTRAINT `students_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `tasks`
+-- 限制表 `tasks`
 --
 ALTER TABLE `tasks`
   ADD CONSTRAINT `tasks_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
@@ -1240,13 +1289,13 @@ ALTER TABLE `tasks`
   ADD CONSTRAINT `tasks_ibfk_4` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`);
 
 --
--- 資料表的 Constraints `teachers`
+-- 限制表 `teachers`
 --
 ALTER TABLE `teachers`
   ADD CONSTRAINT `teachers_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
--- 資料表的 Constraints `teacher_student`
+-- 限制表 `teacher_student`
 --
 ALTER TABLE `teacher_student`
   ADD CONSTRAINT `teacher_student_ibfk_1` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`) ON DELETE CASCADE,

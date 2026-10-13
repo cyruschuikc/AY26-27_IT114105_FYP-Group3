@@ -48,11 +48,11 @@ public class StuHomeActivity extends AppCompatActivity {
             return insets;
         });
 
-        // CRITICAL: Set the Toolbar as the ActionBar so the options menu can render
+        // Set the Toolbar as the ActionBar so the options menu can render
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        extractIntentData();            // Extract Intent Extras passed from MainActivity
+        extractIntentData();            // Extract Intent Extras passed from previous activity
         initViews();                    // Initialize UI components
         initDatabase();                 // Initialize database via dbDefinder package
         setupQuickAccessListeners();    // Setup quick access action button click listeners
@@ -78,7 +78,7 @@ public class StuHomeActivity extends AppCompatActivity {
 
             Log.d(TAG, "Logged in User: " + currentUsername + " | Role: " + userRole);
         }
-        if (currentUsername == null) {
+        if (currentUsername == null || currentUsername.isEmpty()) {
             currentUsername = "Student";
         }
     }
@@ -110,9 +110,8 @@ public class StuHomeActivity extends AppCompatActivity {
     }
 
     private void loadDashboardMetrics() {
-        // Query database context for active projects or updates
+        // 1. Query active projects dynamically from adapter
         String projectData = databaseAccessor.getData("ALL_PROJECTS");
-
         int activeProjectCount = 0;
         if (projectData != null && !projectData.contains("No matching records found")) {
             String[] lines = projectData.split("\n");
@@ -122,27 +121,41 @@ public class StuHomeActivity extends AppCompatActivity {
                 }
             }
         }
+        if (activeProjectCount == 0) activeProjectCount = 2; // Fallback default
 
-        // Fallback if count is 0
-        if (activeProjectCount == 0) {
-            activeProjectCount = 2;
+        // 2. Query tasks dynamically from adapter
+        String taskData = databaseAccessor.getData("tasks");
+        int totalTasksCount = 0;
+        int completedTasksCount = 0;
+        if (taskData != null && !taskData.contains("No matching records found")) {
+            String[] lines = taskData.split("\n");
+            for (String line : lines) {
+                if (!line.trim().isEmpty()) {
+                    totalTasksCount++;
+                    if (line.contains("Completed")) {
+                        completedTasksCount++;
+                    }
+                }
+            }
+        }
+        if (totalTasksCount == 0) {
+            totalTasksCount = 4;
+            completedTasksCount = 2;
         }
 
-        // Set the dynamic count to your Active Projects card text view
+        // Update UI metric views
         tvActiveProjects.setText(String.valueOf(activeProjectCount));
-        tvNotifications.setText("3");
-        tvAssignedTasks.setText("4");
-        tvCompletedTasks.setText("2");
+        tvNotifications.setText("3"); // Or query notifications count if table accessor exists
+        tvAssignedTasks.setText(String.valueOf(totalTasksCount));
+        tvCompletedTasks.setText(String.valueOf(completedTasksCount));
 
-        // Progress bar setup
-        int completedCount = 2;
-        int totalTasksCount = 6;
-        int progressPercent = (int) (((float) completedCount / totalTasksCount) * 100);
+        // Calculate and display progress bar percentage
+        int progressPercent = totalTasksCount > 0 ? (int) (((float) completedTasksCount / totalTasksCount) * 100) : 0;
 
         progressBar.setMax(100);
         progressBar.setProgress(progressPercent);
         tvProgressPercentage.setText(progressPercent + "%");
-        tvProgressText.setText(completedCount + " of " + totalTasksCount + " project tasks have been completed.");
+        tvProgressText.setText(completedTasksCount + " of " + totalTasksCount + " project tasks have been completed.");
     }
 
     private void setupQuickAccessListeners() {
@@ -181,7 +194,6 @@ public class StuHomeActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu resource XML
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu_stu_home_activity, menu);
         return true;
