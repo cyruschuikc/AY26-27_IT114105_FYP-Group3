@@ -1,11 +1,15 @@
 <?php
 session_start();
 
- if (!isset($_SESSION['studentID'])) {
-    header('Location: student_login.php');
-     exit;
+require_once __DIR__ . '/db.php';
+/** @var mysqli $conn */
+
+if (!isset($_SESSION['userID'])) {
+    header('Location: login.php');
+    exit;
 }
 
+$userID = (int) $_SESSION['userID'];
 ?>
 <!DOCTYPE html>
 <html lang="en">

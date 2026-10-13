@@ -260,8 +260,13 @@ if ($myGroup) {
 }
 
 // =========================================================
-// 6.5 投票截止時間
+// 6.5 總票數 + 投票截止時間
 // =========================================================
+$totalVotes = 0;
+foreach ($voteResults as $vr) {
+    $totalVotes += (int)$vr['vote_count'];
+}
+
 $votingDeadline = null;
 
 if ($myGroup && $myGroup['status'] === 'Voting') {
@@ -280,6 +285,31 @@ if ($myGroup && $myGroup['status'] === 'Voting') {
         $votingDeadline = date('d M Y, H:i', $deadline);
     }
 }
+
+// =========================================================
+// 6.6 查自己投咗邊個
+// =========================================================
+$myVoteCandidateID = 0;
+
+if ($myGroup) {
+    $stmt = mysqli_prepare($conn, "
+        SELECT candidate_id
+        FROM `leader_votes`
+        WHERE group_id = ? AND voter_id = ?
+        LIMIT 1
+    ");
+    mysqli_stmt_bind_param($stmt, "ii", $myGroup['group_id'], $studentID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rowMyVote = mysqli_fetch_assoc($rs);
+    mysqli_stmt_close($stmt);
+
+    if ($rowMyVote) {
+        $myVoteCandidateID = (int)$rowMyVote['candidate_id'];
+    }
+}
+
+$hasVoted = ($myVoteCandidateID > 0);
 
 // =========================================================
 // 7. Helper functions
@@ -387,12 +417,6 @@ if (!function_exists('statusClass')) {
         }
         .page-heading h1 { margin-bottom: 10px; font-size: 35px; }
         .page-heading p { color: #666; font-size: 17px; line-height: 1.6; }
-
-        .info-note {
-            padding: 16px 20px; margin-bottom: 25px;
-            background: #f7f7f7; border-left: 5px solid black; border-radius: 8px;
-            color: #555; font-size: 14px; line-height: 1.6;
-        }
 
         .alert { padding: 14px 18px; margin-bottom: 20px; border-radius: 8px; font-size: 14px; border-left: 4px solid; }
         .alert-success { background: #eaf7ee; color: #176b2c; border-color: #2e9d4d; }
@@ -536,6 +560,9 @@ if (!function_exists('statusClass')) {
             color: white;
         }
 
+        /* =========================================================
+           Vote Option
+        ========================================================= */
         .vote-option {
             padding: 16px; margin-bottom: 12px;
             background: #fafafa; border: 2px solid #dddddd; border-radius: 10px;
@@ -543,11 +570,92 @@ if (!function_exists('statusClass')) {
             cursor: pointer; transition: 0.3s;
         }
         .vote-option:hover { border-color: black; background: white; }
-        .vote-option input[type="radio"] { width: 20px; height: 20px; accent-color: black; cursor: pointer; }
         .vote-option-info { flex: 1; }
         .vote-option-info h3 { font-size: 16px; margin-bottom: 4px; }
         .vote-option-info p { color: #777; font-size: 13px; }
 
+        /* 自訂 radio */
+        .vote-option input[type="radio"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #999;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            flex-shrink: 0;
+            background: white;
+            transition: 0.2s;
+        }
+
+        .vote-option input[type="radio"]:checked {
+            border-color: black;
+            background: white;
+        }
+
+        .vote-option input[type="radio"]:checked::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: black;
+            border-radius: 50%;
+        }
+
+        /* 已投票 → 全部 disabled（灰 + 淡） */
+        .vote-option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .vote-option.disabled input[type="radio"] {
+            border-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .vote-option.disabled input[type="radio"]:checked {
+            border-color: #999;
+            background: white;
+        }
+
+        .vote-option.disabled input[type="radio"]:checked::after {
+            background: #999;
+        }
+
+        /* 已投票：你投嗰個 → 黑邊框 + 黑 radio + 黑字 */
+        .vote-option.my-vote {
+            opacity: 1;
+            border-color: black;
+            border-width: 3px;
+            background: white;
+            cursor: not-allowed;
+        }
+
+        .vote-option.my-vote input[type="radio"] {
+            border-color: black !important;
+            background: white !important;
+            opacity: 1 !important;
+            cursor: not-allowed;
+        }
+
+        .vote-option.my-vote input[type="radio"]:checked::after {
+            background: black !important;
+        }
+
+        /* 已投嗰個：文字全部黑色 */
+        .vote-option.my-vote .vote-option-info h3,
+        .vote-option.my-vote .vote-option-info p {
+            color: black !important;
+        }
+
+        /* =========================================================
+           Vote Result
+        ========================================================= */
         .result-item { padding: 14px 0; border-bottom: 1px solid #eeeeee; }
         .result-item:last-child { border-bottom: none; }
         .result-header {
@@ -737,15 +845,6 @@ if (!function_exists('statusClass')) {
             to your supervisor once it is full. Voting starts after that.
         </p>
     </section>
-
-    <div class="info-note">
-        <strong>How it works:</strong>
-        1. Create Group form &nbsp;→&nbsp;
-        2. Invite classmates &nbsp;→&nbsp;
-        3. Group fills to full (auto-locked) &nbsp;→&nbsp;
-        4. Group creator sends it to the supervisor &nbsp;→&nbsp;
-        5. Voting for group leader starts (48-hour window).
-    </div>
 
     <?php if (isset($_GET['msg'])): ?>
         <?php if ($_GET['msg'] === 'accepted'): ?>
@@ -974,7 +1073,7 @@ if (!function_exists('statusClass')) {
                         <div class="form-group">
                             <label for="inviteStudentName">Student Name</label>
                             <input type="text" id="inviteStudentName" name="inviteStudentName"
-                                   placeholder="<?php echo $canInvite ? '(auto-filled)' : 'Locked'; ?>"
+                                   placeholder=""
                                    class="readonly-input"
                                    readonly
                                    disabled>
@@ -1119,7 +1218,6 @@ if (!function_exists('statusClass')) {
 
                 <?php if (!$isFullNow): ?>
 
-                    <!-- 1. 未滿員 -->
                     <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
                         Waiting for Members
                         (<?php echo count($groupMembers); ?> / <?php echo (int)$myGroup['max_members']; ?>)
@@ -1130,7 +1228,6 @@ if (!function_exists('statusClass')) {
 
                 <?php elseif ($myGroup['status'] === 'Waiting_Send' && $isCreator): ?>
 
-                    <!-- 2. 滿員 + 你係 creator → 顯示 Send 按鈕 -->
                     <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
                         🔒 Team Full — Ready to Submit
                     </button>
@@ -1148,7 +1245,6 @@ if (!function_exists('statusClass')) {
 
                 <?php elseif ($myGroup['status'] === 'Waiting_Send' && !$isCreator): ?>
 
-                    <!-- 3. 滿員 + 你唔係 creator → 等 -->
                     <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
                         🔒 Team Full — Waiting for Creator
                     </button>
@@ -1159,25 +1255,36 @@ if (!function_exists('statusClass')) {
 
                 <?php endif; ?>
 
-                <!--
-                    ⚠️ Voting / Executing 狀態完全冇顯示任何按鈕
-                    （撳完 Send to Supervisor 後按鈕消失）
-                -->
-
             </div>
 
         </section>
 
-        <!-- Voting -->
-        <?php if ($myGroup['status'] === 'Voting' || $myGroup['status'] === 'Executing' || count($voteResults) > 0): ?>
+        <!-- =========================================================
+             Vote Group Leader + Vote Result（並排）
+        ========================================================= -->
+        <?php
+        $hasVoteForm   = ($myGroup['status'] === 'Voting');
+        $hasVoteResult = ($hasVoted && $totalVotes > 0);
+        $boxCount      = ($hasVoteForm ? 1 : 0) + ($hasVoteResult ? 1 : 0);
 
-            <section class="section-grid">
+        $gridCols = '1fr';
+        if ($boxCount === 2) {
+            $gridCols = '1fr 1fr';
+        }
+        ?>
 
-                <div class="content-box">
+        <?php if ($boxCount > 0): ?>
 
-                    <h2>Vote Group Leader</h2>
+            <section class="section-grid" style="grid-template-columns: <?php echo $gridCols; ?>;">
 
-                    <?php if ($myGroup['status'] === 'Voting'): ?>
+                <?php if ($hasVoteForm): ?>
+
+                    <!-- =========================================================
+                         Vote Group Leader
+                    ========================================================= -->
+                    <div class="content-box">
+
+                        <h2>Vote Group Leader</h2>
 
                         <?php if ($votingDeadline): ?>
                             <div class="voting-countdown">
@@ -1205,9 +1312,12 @@ if (!function_exists('statusClass')) {
                             <input type="hidden" name="groupID" value="<?php echo (int)$myGroup['group_id']; ?>">
 
                             <?php foreach ($groupMembers as $m): ?>
-                                <label class="vote-option">
+                                <?php $isMyVote = ((int)$m['student_id'] === $myVoteCandidateID); ?>
+                                <label class="vote-option <?php echo $hasVoted ? 'disabled' : ''; ?> <?php echo $isMyVote ? 'my-vote' : ''; ?>">
                                     <input type="radio" name="candidateID"
-                                           value="<?php echo (int)$m['student_id']; ?>" required>
+                                           value="<?php echo (int)$m['student_id']; ?>"
+                                            <?php echo $isMyVote ? 'checked' : ''; ?>
+                                            <?php echo $hasVoted ? 'disabled' : 'required'; ?>>
 
                                     <div class="vote-option-info">
                                         <h3><?php echo htmlspecialchars($m['username']); ?></h3>
@@ -1216,30 +1326,27 @@ if (!function_exists('statusClass')) {
                                 </label>
                             <?php endforeach; ?>
 
-                            <button type="submit" class="primary-btn" style="margin-top: 10px;">
-                                Submit My Vote
-                            </button>
+                            <?php if (!$hasVoted): ?>
+                                <button type="submit" class="primary-btn" style="margin-top: 10px;">
+                                    Submit My Vote
+                                </button>
+                            <?php endif; ?>
 
                         </form>
-                    <?php else: ?>
-                        <p class="muted">Voting has ended.</p>
-                    <?php endif; ?>
 
-                </div>
+                    </div>
 
-                <div class="content-box">
+                <?php endif; ?>
 
-                    <h2>Vote Result</h2>
+                <?php if ($hasVoteResult): ?>
 
-                    <?php if (count($voteResults) === 0): ?>
-                        <p class="muted">No votes yet.</p>
-                    <?php else: ?>
-                        <?php
-                        $totalVotes = 0;
-                        foreach ($voteResults as $vr) {
-                            $totalVotes += (int)$vr['vote_count'];
-                        }
-                        ?>
+                    <!-- =========================================================
+                         Vote Result
+                    ========================================================= -->
+                    <div class="content-box">
+
+                        <h2>Vote Result</h2>
+
                         <?php foreach ($voteResults as $vr): ?>
                             <?php
                             $pct = $totalVotes > 0 ? round($vr['vote_count'] / $totalVotes * 100) : 0;
@@ -1254,9 +1361,10 @@ if (!function_exists('statusClass')) {
                                 </div>
                             </div>
                         <?php endforeach; ?>
-                    <?php endif; ?>
 
-                </div>
+                    </div>
+
+                <?php endif; ?>
 
             </section>
 
