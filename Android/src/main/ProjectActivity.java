@@ -88,8 +88,22 @@ public class ProjectActivity extends AppCompatActivity {
         });
 
         lvProjects.setOnItemClickListener((parent, view, position, id) -> {
-            String selectedProject = (String) parent.getItemAtPosition(position);
-            Toast.makeText(ProjectActivity.this, "Selected: " + selectedProject, Toast.LENGTH_SHORT).show();
+            String selectedItem = (String) parent.getItemAtPosition(position);
+
+            if (selectedItem.equals("No projects found in database.")) {
+                return;
+            }
+
+            // Extract project name from format: "TeamBox - Software Engineering (Executing, 60%)"
+            String projectName = selectedItem;
+            if (selectedItem.contains(" - ")) {
+                projectName = selectedItem.split(" - ")[0].trim();
+            }
+
+            // Launch ProjectDetailActivity and pass the selected project name
+            Intent intent = new Intent(ProjectActivity.this, ProjectDetailActivity.class);
+            intent.putExtra("PROJECT_NAME", projectName);
+            startActivity(intent);
         });
     }
 }

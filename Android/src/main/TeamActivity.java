@@ -31,23 +31,15 @@ public class TeamActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_team);
 
-        // Apply system bar insets for edge-to-edge support
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
-        // Initialize UI components
         initViews();
-
-        // Initialize database accessor using dbDefinder pattern
         initDatabase();
-
-        // Load team members and user roles into the ListView
         loadTeamData();
-
-        // Setup button click listeners
         setupListeners();
     }
 
@@ -62,21 +54,19 @@ public class TeamActivity extends AppCompatActivity {
     }
 
     private void loadTeamData() {
-        // Query users table from database for team members (e.g., student and teacher roles)
-        String teamResult = databaseAccessor.getData("student");
+        // Query groups/teams from database
+        String teamResult = databaseAccessor.getData("teams");
 
         ArrayList<String> teamList = new ArrayList<>();
         if (teamResult != null && !teamResult.contains("No matching records found")) {
             String[] lines = teamResult.split("\n");
             teamList.addAll(Arrays.asList(lines));
         } else {
-            // Fallback seed items based on project context
-            teamList.add("User: CHAN Ho Yin | Email: 260222111@stu.vtc.edu.hk | Role: student");
-            teamList.add("User: CHUI Ka Chun | Email: 260222112@stu.vtc.edu.hk | Role: student");
-            teamList.add("User: Esther Yuen | Email: wyyuen@vtc.edu.hk | Role: teacher");
+            teamList.add("Team 01 - Executing (Leader: CHAN Ho Yin)");
+            teamList.add("Team 02 - Voting (Leader: Prof. Rebecca Lam)");
+            teamList.add("Team ABC - Executing (Leader: CHAN Ho Yin)");
         }
 
-        // Bind data to ListView using an ArrayAdapter
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_list_item_1,
@@ -86,25 +76,35 @@ public class TeamActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        // Back Button: Return to Student Home Activity
         btBack.setOnClickListener(v -> {
             Intent intent = new Intent(TeamActivity.this, StuHomeActivity.class);
             startActivity(intent);
             finish();
         });
 
-        // + New Team Member Button Action
         btNewTeam.setOnClickListener(v -> {
-            Toast.makeText(TeamActivity.this, "Add New Team Member clicked", Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(TeamActivity.this, MemberInviteActivity.class);
+            Intent intent = new Intent(TeamActivity.this, CreateTeamActivity.class);
             startActivity(intent);
             finish();
         });
 
-        // ListView Item Click Listener
         lvTeams.setOnItemClickListener((parent, view, position, id) -> {
-            String selectedMember = (String) parent.getItemAtPosition(position);
-            Toast.makeText(TeamActivity.this, "Selected Member: " + selectedMember, Toast.LENGTH_SHORT).show();
+            String selectedItem = (String) parent.getItemAtPosition(position);
+
+            if (selectedItem == null || selectedItem.isEmpty()) {
+                return;
+            }
+
+            // Extract team name safely from format: "Team 01 - Executing..."
+            String teamName = selectedItem;
+            if (selectedItem.contains(" - ")) {
+                teamName = selectedItem.split(" - ")[0].trim();
+            }
+
+            // Launch TeamViewActivity and pass the selected team name
+            Intent intent = new Intent(TeamActivity.this, TeamViewActivity.class);
+            intent.putExtra("TEAM_NAME", teamName);
+            startActivity(intent);
         });
     }
 }
