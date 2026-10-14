@@ -12,7 +12,7 @@ if (!isset($_SESSION['userID'])) {
 $userID = (int) $_SESSION['userID'];
 
 // =========================================================
-// 未读数（给铃铛用）
+// 未讀數（鈴檔用）
 // =========================================================
 $unreadNotifications = 0;
 
@@ -29,7 +29,7 @@ $unreadNotifications = (int) $rc['c'];
 mysqli_stmt_close($stmt);
 
 // =========================================================
-// 系统提示（?msg=）
+// 系統提示（?msg=）
 // =========================================================
 $systemMsg = '';
 $msgType   = '';
@@ -48,7 +48,7 @@ if (isset($_GET['msg'])) {
 }
 
 // =========================================================
-// Summary 卡片统计
+// Summary 卡片統計
 // =========================================================
 $totalNotifications = 0;
 $stmt = mysqli_prepare($conn, "SELECT COUNT(*) AS c FROM `notifications` WHERE user_id = ?");
@@ -61,8 +61,7 @@ mysqli_stmt_close($stmt);
 
 $taskNotifications = 0;
 $stmt = mysqli_prepare($conn, "
-    SELECT COUNT(*) AS c
-    FROM `notifications`
+    SELECT COUNT(*) AS c FROM `notifications`
     WHERE user_id = ? AND type = 'task'
 ");
 mysqli_stmt_bind_param($stmt, "i", $userID);
@@ -74,8 +73,7 @@ mysqli_stmt_close($stmt);
 
 $deadlineNotifications = 0;
 $stmt = mysqli_prepare($conn, "
-    SELECT COUNT(*) AS c
-    FROM `notifications`
+    SELECT COUNT(*) AS c FROM `notifications`
     WHERE user_id = ? AND type = 'system'
 ");
 mysqli_stmt_bind_param($stmt, "i", $userID);
@@ -86,7 +84,7 @@ $deadlineNotifications = (int) $rc['c'];
 mysqli_stmt_close($stmt);
 
 // =========================================================
-// 通知列表（带 filter）
+// 通知列表（帶 filter）
 // =========================================================
 $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
 
@@ -299,10 +297,7 @@ if (!function_exists('extractInviteID')) {
         .filter-select:focus { border-color: black; }
 
         .mark-read-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-
+            display: inline-flex; align-items: center; justify-content: center;
             min-width: 155px; height: 43px; padding: 0 14px;
             background: white; color: black;
             border: 2px solid black; border-radius: 8px;
@@ -320,9 +315,7 @@ if (!function_exists('extractInviteID')) {
             border: 1px solid #bbbbbb; border-radius: 20px;
             font-size: 14px;
             text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-flex; align-items: center; justify-content: center;
             transition: 0.3s;
         }
         .tab-btn:hover,
@@ -368,10 +361,7 @@ if (!function_exists('extractInviteID')) {
         }
 
         .notification-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-
+            display: inline-flex; align-items: center; justify-content: center;
             min-width: 130px; height: 38px; padding: 0 12px;
             background: white; color: black;
             border: 2px solid black; border-radius: 7px;
@@ -403,33 +393,17 @@ if (!function_exists('extractInviteID')) {
 
         /* Modal */
         .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.55);
-
-            display: none;
-            justify-content: center;
-            align-items: center;
-
-            padding: 20px;
-            z-index: 1000;
-
-            overflow-y: auto;
+            display: none; justify-content: center; align-items: center;
+            padding: 20px; z-index: 1000; overflow-y: auto;
         }
-
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
 
         .modal-box {
-            width: 100%;
-            max-width: 460px;
-
-            background: white;
-            border-radius: 15px;
+            width: 100%; max-width: 480px;
+            background: white; border-radius: 15px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-
             animation: modalFadeIn 0.25s ease;
         }
 
@@ -441,38 +415,19 @@ if (!function_exists('extractInviteID')) {
         .modal-header {
             padding: 22px 28px;
             border-bottom: 2px solid #eeeeee;
-
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: flex; justify-content: space-between; align-items: center;
         }
-
         .modal-header h2 { font-size: 22px; }
 
         .modal-close {
             width: 38px; height: 38px;
-
-            background: white;
-            color: #555;
-            border: 2px solid #cccccc;
-            border-radius: 8px;
-
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
+            background: white; color: #555;
+            border: 2px solid #cccccc; border-radius: 8px;
+            font-size: 20px; font-weight: bold; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
             transition: 0.3s;
         }
-
-        .modal-close:hover {
-            background: #c62828;
-            color: white;
-            border-color: #c62828;
-        }
+        .modal-close:hover { background: #c62828; color: white; border-color: #c62828; }
 
         .modal-body {
             padding: 28px;
@@ -480,44 +435,63 @@ if (!function_exists('extractInviteID')) {
             line-height: 1.6;
             color: #444;
         }
+        .modal-body .muted { margin-top: 10px; color: #777; font-size: 14px; }
 
-        .modal-body .muted {
-            margin-top: 10px;
-            color: #777;
+        /* =========================================================
+           Invitation Details Box（新）
+           ========================================================= */
+        .invite-details {
+            margin-top: 16px;
+            padding: 14px 16px;
+            background: #f7f8fa;
+            border-radius: 10px;
+            border: 1px solid #e6e8eb;
+        }
+
+        .invite-detail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 0;
             font-size: 14px;
+            border-bottom: 1px solid #eef0f3;
+        }
+        .invite-detail-row:last-child { border-bottom: none; }
+
+        .invite-detail-label {
+            color: #6b6f78;
+            font-weight: 500;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .invite-detail-value {
+            color: #2c2f36;
+            font-weight: 600;
+            text-align: right;
+            word-break: break-word;
         }
 
         .modal-footer {
             padding: 20px 28px;
             border-top: 2px solid #eeeeee;
-
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
+            display: flex; justify-content: flex-end; gap: 12px;
         }
 
         .modal-btn {
-            min-width: 120px;
-            height: 46px;
-            padding: 0 18px;
-
+            min-width: 120px; height: 46px; padding: 0 18px;
             border-radius: 8px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
+            font-size: 15px; font-weight: bold;
+            cursor: pointer; transition: 0.3s;
         }
-
         .modal-btn-agree {
-            background: black;
-            color: white;
+            background: black; color: white;
             border: 2px solid black;
         }
         .modal-btn-agree:hover { background: #333; }
 
         .modal-btn-reject {
-            background: white;
-            color: #c62828;
+            background: white; color: #c62828;
             border: 2px solid #c62828;
         }
         .modal-btn-reject:hover { background: #c62828; color: white; }
@@ -554,7 +528,6 @@ if (!function_exists('extractInviteID')) {
 <body>
 
 <nav class="navbar">
-
     <div class="navbar-top">
         <div class="logo-area">
             <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
@@ -563,7 +536,6 @@ if (!function_exists('extractInviteID')) {
 
         <a href="student_notifications.php" class="bell-link" title="Notifications">
             <img src="bell.png" alt="Notifications">
-
             <?php if ($unreadNotifications > 0): ?>
                 <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
             <?php endif; ?>
@@ -582,7 +554,6 @@ if (!function_exists('extractInviteID')) {
         <a href="student_profile.php" class="nav-link">Profile</a>
         <a href="logout.php" class="nav-link logout-link">Log Out</a>
     </div>
-
 </nav>
 
 <main class="main-content">
@@ -602,41 +573,34 @@ if (!function_exists('extractInviteID')) {
     <?php endif; ?>
 
     <section class="summary-grid">
-
         <div class="summary-card">
             <h2>All Notifications</h2>
             <p class="summary-number"><?php echo $totalNotifications; ?></p>
             <p class="summary-description">Total notifications received</p>
         </div>
-
         <div class="summary-card">
             <h2>Unread</h2>
             <p class="summary-number"><?php echo $unreadNotifications; ?></p>
             <p class="summary-description">Notifications not yet read</p>
         </div>
-
         <div class="summary-card">
             <h2>Task Alerts</h2>
             <p class="summary-number"><?php echo $taskNotifications; ?></p>
             <p class="summary-description">Task assignments and reminders</p>
         </div>
-
         <div class="summary-card">
             <h2>System Alerts</h2>
             <p class="summary-number"><?php echo $deadlineNotifications; ?></p>
             <p class="summary-description">System and deadline alerts</p>
         </div>
-
     </section>
 
     <section class="notification-section">
 
         <div class="section-header">
-
             <h2>Recent Notifications</h2>
 
             <div class="header-actions">
-
                 <form method="get" action="student_notifications.php" style="margin:0;">
                     <select name="filter" class="filter-select" onchange="this.form.submit()">
                         <option value="all"     <?php echo $filter==='all'     ? 'selected' : ''; ?>>All Notifications</option>
@@ -649,9 +613,7 @@ if (!function_exists('extractInviteID')) {
                 </form>
 
                 <a href="mark_all_read.php" class="mark-read-btn">Mark All as Read</a>
-
             </div>
-
         </div>
 
         <div class="notification-tabs">
@@ -669,7 +631,6 @@ if (!function_exists('extractInviteID')) {
             <?php endif; ?>
 
             <?php foreach ($notifications as $n): ?>
-
                 <?php
                 $isInvite = ($n['type'] === 'team'
                         && !empty($n['link'])
@@ -685,9 +646,7 @@ if (!function_exists('extractInviteID')) {
                     </div>
 
                     <div class="notification-content">
-
                         <h3><?php echo htmlspecialchars($n['title']); ?></h3>
-
                         <p><?php echo htmlspecialchars($n['message']); ?></p>
 
                         <span class="notification-type <?php echo typeClass($n['type']); ?>">
@@ -697,17 +656,14 @@ if (!function_exists('extractInviteID')) {
                         <span class="notification-time">
                             <?php echo htmlspecialchars(timeAgo($n['created_at'])); ?>
                         </span>
-
                     </div>
 
                     <div class="notification-actions">
-
                         <?php if ((int)$n['is_read'] === 0): ?>
                             <span class="unread-dot" title="Unread"></span>
                         <?php endif; ?>
 
                         <?php if ($isInvite && $inviteID > 0): ?>
-
                             <button
                                     type="button"
                                     class="notification-btn"
@@ -715,25 +671,18 @@ if (!function_exists('extractInviteID')) {
                             >
                                 View Invitation
                             </button>
-
                         <?php elseif (!empty($n['link'])): ?>
-
                             <a href="<?php echo htmlspecialchars($n['link']); ?>" class="notification-btn">
                                 Open
                             </a>
-
                         <?php else: ?>
-
                             <a href="student_notifications.php" class="notification-btn">
                                 View
                             </a>
-
                         <?php endif; ?>
-
                     </div>
 
                 </article>
-
             <?php endforeach; ?>
 
         </div>
@@ -747,42 +696,50 @@ if (!function_exists('extractInviteID')) {
 
 </main>
 
+<!-- =========================================================
+     Invitation Modal（顯示 Project / Group / Course / Invited by）
+     ========================================================= -->
 <div class="modal-overlay" id="inviteModal">
 
     <div class="modal-box">
 
         <div class="modal-header">
             <h2>Group Invitation</h2>
-            <button
-                    type="button"
-                    class="modal-close"
-                    onclick="closeInviteModal();"
-            >
-                ✕
-            </button>
+            <button type="button" class="modal-close" onclick="closeInviteModal();">✕</button>
         </div>
 
         <div class="modal-body">
             <p>Do you want to join this group?</p>
-            <p class="muted">
+
+            <div class="invite-details">
+                <div class="invite-detail-row">
+                    <span class="invite-detail-label">Project</span>
+                    <span class="invite-detail-value" id="inviteProject">—</span>
+                </div>
+                <div class="invite-detail-row">
+                    <span class="invite-detail-label">Group</span>
+                    <span class="invite-detail-value" id="inviteGroup">—</span>
+                </div>
+                <div class="invite-detail-row">
+                    <span class="invite-detail-label">Course</span>
+                    <span class="invite-detail-value" id="inviteCourse">—</span>
+                </div>
+                <div class="invite-detail-row">
+                    <span class="invite-detail-label">Invited by</span>
+                    <span class="invite-detail-value" id="inviteInviter">—</span>
+                </div>
+            </div>
+
+            <p class="muted" style="margin-top: 16px;">
                 Click <strong>Agree</strong> to join, or <strong>Reject</strong> to decline.
             </p>
         </div>
 
         <div class="modal-footer">
-            <button
-                    type="button"
-                    class="modal-btn modal-btn-reject"
-                    onclick="rejectInvitation();"
-            >
+            <button type="button" class="modal-btn modal-btn-reject" onclick="rejectInvitation();">
                 Reject
             </button>
-
-            <button
-                    type="button"
-                    class="modal-btn modal-btn-agree"
-                    onclick="agreeInvitation();"
-            >
+            <button type="button" class="modal-btn modal-btn-agree" onclick="agreeInvitation();">
                 Agree
             </button>
         </div>
@@ -798,6 +755,47 @@ if (!function_exists('extractInviteID')) {
         currentInviteID = inviteID;
         document.getElementById('inviteModal').classList.add('active');
         document.body.style.overflow = 'hidden';
+
+        // Reset fields
+        document.getElementById('inviteProject').textContent = 'Loading...';
+        document.getElementById('inviteGroup').textContent   = 'Loading...';
+        document.getElementById('inviteCourse').textContent  = 'Loading...';
+        document.getElementById('inviteInviter').textContent = 'Loading...';
+
+        // Fetch invite details
+        fetch('get_invite_details.php?id=' + inviteID)
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.error) {
+                    document.getElementById('inviteProject').textContent = '—';
+                    document.getElementById('inviteGroup').textContent   = '—';
+                    document.getElementById('inviteCourse').textContent  = '—';
+                    document.getElementById('inviteInviter').textContent = '—';
+                    return;
+                }
+
+                document.getElementById('inviteProject').textContent =
+                    data.project_name || '—';
+
+                document.getElementById('inviteGroup').textContent =
+                    data.group_name || '—';
+
+                if (data.course_code || data.course_name) {
+                    document.getElementById('inviteCourse').textContent =
+                        (data.course_code ? data.course_code + ' - ' : '') + (data.course_name || '');
+                } else {
+                    document.getElementById('inviteCourse').textContent = '—';
+                }
+
+                document.getElementById('inviteInviter').textContent =
+                    data.inviter_name || '—';
+            })
+            .catch(function () {
+                document.getElementById('inviteProject').textContent = '—';
+                document.getElementById('inviteGroup').textContent   = '—';
+                document.getElementById('inviteCourse').textContent  = '—';
+                document.getElementById('inviteInviter').textContent = '—';
+            });
     }
 
     function closeInviteModal() {
