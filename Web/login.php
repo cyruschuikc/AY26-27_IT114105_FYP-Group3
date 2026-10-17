@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// 已登录 → 直接跳转
+// 已登入 → 直接跳轉
 if (isset($_SESSION['role'])) {
     if ($_SESSION['role'] === 'teacher') {
         header('Location: teacher_index.php');
@@ -79,14 +79,28 @@ if (isset($_POST['userId'])) {
                 if ($password !== $rc['password_hash']) {
                     $error = 'Invalid User ID or password.';
                 } else {
+
+                    // 设置 session
                     $_SESSION['userID']   = $rc['id'];
                     $_SESSION['username'] = $rc['username'];
                     $_SESSION['email']    = $rc['email'];
                     $_SESSION['role']     = $rc['role'];
 
+                    // =========================================================
+                    // 更新 last_active_at（在線狀態）
+                    // =========================================================
+                    $stmtActive = mysqli_prepare($conn, "UPDATE `users` SET `last_active_at` = NOW() WHERE id = ?");
+                    if ($stmtActive) {
+                        $activeUserID = (int) $rc['id'];
+                        mysqli_stmt_bind_param($stmtActive, "i", $activeUserID);
+                        mysqli_stmt_execute($stmtActive);
+                        mysqli_stmt_close($stmtActive);
+                    }
+
                     mysqli_free_result($rs);
                     mysqli_stmt_close($stmt);
 
+                    // 跳轉
                     if ($rc['role'] === 'teacher') {
                         header('Location: teacher_index.php');
                     } else {
