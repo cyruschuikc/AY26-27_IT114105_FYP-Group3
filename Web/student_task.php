@@ -126,6 +126,10 @@ if (isset($_GET['msg'])) {
             $flashMsg  = 'File uploaded successfully.';
             $flashType = 'success';
             break;
+        case 'deleted':
+            $flashMsg  = 'File deleted successfully.';
+            $flashType = 'success';
+            break;
         case 'nofile':
             $flashMsg  = 'Please select a file to upload.';
             $flashType = 'error';
@@ -139,7 +143,7 @@ if (isset($_GET['msg'])) {
             $flashType = 'error';
             break;
         case 'error':
-            $flashMsg  = 'Something went wrong.';
+            $flashMsg  = 'You are not allowed to perform this action.';
             $flashType = 'error';
             break;
     }
@@ -158,7 +162,6 @@ if (isset($_POST['createTask']) && $myGroup) {
     $deadline    = trim(isset($_POST['taskDeadline'])    ? $_POST['taskDeadline']    : '');
     $priority    = trim(isset($_POST['taskPriority'])    ? $_POST['taskPriority']    : 'Medium');
 
-    // assignedTo = 'self' → 用自己 studentID
     if ($assignedTo === 'self') {
         $assignedToID = $studentID;
     } else {
@@ -171,7 +174,6 @@ if (isset($_POST['createTask']) && $myGroup) {
     } elseif (!in_array($priority, array('Low', 'Medium', 'High'), true)) {
         $priority = 'Medium';
     } else {
-        // 檢查 assigned_to 係唔係同組成員
         $validAssignee = false;
 
         $stmt = mysqli_prepare($conn, "
@@ -205,9 +207,6 @@ if (isset($_POST['createTask']) && $myGroup) {
             );
 
             if (mysqli_stmt_execute($stmt)) {
-                $newTaskID = (int) mysqli_insert_id($conn);
-
-                // 寫 activity
                 $stmt2 = mysqli_prepare($conn, "
                     INSERT INTO `activities` (project_id, group_id, actor_id, action, detail)
                     VALUES (?, ?, ?, 'created', ?)
@@ -217,7 +216,6 @@ if (isset($_POST['createTask']) && $myGroup) {
                 mysqli_stmt_execute($stmt2);
                 mysqli_stmt_close($stmt2);
 
-                // 通知被指派者（如果唔係自己）
                 if ($assignedToID !== $studentID) {
                     $stmt3 = mysqli_prepare($conn, "
                         SELECT user_id FROM `students` WHERE id = ? LIMIT 1
@@ -324,17 +322,16 @@ if (isset($_POST['logContribution']) && $myGroup) {
 }
 
 // =========================================================
-// 7. 拎 group 資料（members / tasks / contributions / task files / progress）
+// 7. 拎 group 資料
 // =========================================================
 $groupMembers    = array();
 $groupTasks      = array();
 $myContributions = array();
-$taskFiles       = array();   // task_id => [files]
+$taskFiles       = array();
 $progress        = array('total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'pct' => 0);
 
 if ($myGroup) {
 
-    // -------- 7.1 Members --------
     $stmt = mysqli_prepare($conn, "
         SELECT
             s.id            AS student_id,
@@ -355,7 +352,6 @@ if ($myGroup) {
     }
     mysqli_stmt_close($stmt);
 
-    // -------- 7.2 Tasks --------
     $stmt = mysqli_prepare($conn, "
         SELECT
             t.id,
@@ -399,7 +395,6 @@ if ($myGroup) {
         $progress['pct'] = (int) round($progress['completed'] / $progress['total'] * 100);
     }
 
-    // -------- 7.3 Task Files（每個 task 嘅 attached files）--------
     if (count($groupTasks) > 0) {
         $taskIds = array();
         foreach ($groupTasks as $t) {
@@ -418,6 +413,7 @@ if ($myGroup) {
                 f.file_type,
                 f.uploaded_at,
                 f.status,
+                f.uploader_id,
                 u.username AS uploader_name
             FROM `files` f
             LEFT JOIN `students` s ON s.id = f.uploader_id
@@ -436,7 +432,6 @@ if ($myGroup) {
         mysqli_stmt_close($stmt);
     }
 
-    // -------- 7.4 My Contributions --------
     $stmt = mysqli_prepare($conn, "
         SELECT id, title, type, notes, contribution_date, created_at
         FROM `contributions`
@@ -573,7 +568,6 @@ if (!function_exists('timeAgo')) {
         .create-task-btn:hover { background: #333; }
         .create-task-btn:active { transform: scale(0.98); }
 
-        /* Group switcher */
         .group-switcher {
             padding: 20px 24px; margin-bottom: 25px;
             background: white; border-radius: 15px;
@@ -590,7 +584,6 @@ if (!function_exists('timeAgo')) {
         }
         .group-switcher select:focus { border-color: black; }
 
-        /* Empty state */
         .empty-state {
             padding: 60px 40px; background: white;
             border-radius: 15px; border-left: 6px solid black;
@@ -609,7 +602,6 @@ if (!function_exists('timeAgo')) {
         }
         .empty-state .create-group-btn:hover { background: #333; }
 
-        /* Alert */
         .alert {
             padding: 14px 18px; margin-bottom: 20px;
             border-radius: 8px; font-size: 14px;
@@ -618,7 +610,6 @@ if (!function_exists('timeAgo')) {
         .alert-success { background: #eaf7ee; color: #176b2c; border-color: #2e9d4d; }
         .alert-error   { background: #fdeeee; color: #a21b1b; border-color: #d32f2f; }
 
-        /* Summary */
         .summary-grid {
             display: grid; grid-template-columns: repeat(4, 1fr);
             gap: 20px; margin-bottom: 25px;
@@ -634,7 +625,6 @@ if (!function_exists('timeAgo')) {
         .summary-number { color: black; font-size: 38px; font-weight: bold; }
         .summary-description { margin-top: 7px; color: #777; font-size: 13px; }
 
-        /* Log Contribution */
         .log-contribution-section {
             padding: 28px; margin-bottom: 25px;
             background: white; border-radius: 15px;
@@ -655,7 +645,6 @@ if (!function_exists('timeAgo')) {
             font-size: 11px; font-weight: bold;
         }
 
-        /* Form */
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
         .form-group { margin-bottom: 19px; }
         .form-group label {
@@ -694,7 +683,6 @@ if (!function_exists('timeAgo')) {
         }
         .submit-btn:hover { background: #333; }
 
-        /* Task section */
         .task-section {
             padding: 28px; margin-bottom: 25px;
             background: white; border-radius: 15px;
@@ -747,9 +735,6 @@ if (!function_exists('timeAgo')) {
         .priority-medium { background: #fff1c2; color: #765900; }
         .priority-low    { background: #e5f0ff; color: #245889; }
 
-        /* =========================================================
-           Task Files（新）
-           ========================================================= */
         .task-files {
             margin-top: 18px;
             padding: 16px;
@@ -838,9 +823,55 @@ if (!function_exists('timeAgo')) {
         .file-link:hover { text-decoration: underline; }
         .file-meta { color: #8b8f98; font-size: 12px; white-space: nowrap; }
 
+        .file-actions-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .file-download-link {
+            display: inline-block;
+            padding: 4px 10px;
+            background: white;
+            color: black;
+            border: 1.5px solid black;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: 0.2s;
+        }
+        .file-download-link:hover {
+            background: black;
+            color: white;
+        }
+
+        .file-delete-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: white;
+            color: #c62828;
+            border: 1.5px solid #c62828;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: bold;
+            line-height: 1;
+            cursor: pointer;
+            transition: 0.2s;
+            padding-bottom: 3px;
+        }
+        .file-delete-btn:hover {
+            background: #c62828;
+            color: white;
+        }
+
         .muted.small { font-size: 12px; color: #8b8f98; }
 
-        /* My progress */
         .my-progress {
             margin-top: 18px; padding: 16px;
             background: white;
@@ -860,7 +891,6 @@ if (!function_exists('timeAgo')) {
         .progress-btn.active-progress  { background: #fff1c2; color: #765900; border-color: #e0c060; }
         .progress-btn.active-completed { background: #d9f5df; color: #176b2c; border-color: #8bc79a; }
 
-        /* Team progress */
         .team-progress-section {
             padding: 28px; background: white;
             border-radius: 15px; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
@@ -883,7 +913,6 @@ if (!function_exists('timeAgo')) {
         .progress-value { height: 100%; background: black; border-radius: 10px; }
         .progress-note { margin-top: 12px; color: #777; font-size: 14px; }
 
-        /* Contributions list */
         .contrib-item {
             padding: 14px 0; border-bottom: 1px solid #eeeeee;
             display: flex; justify-content: space-between; gap: 16px;
@@ -898,7 +927,6 @@ if (!function_exists('timeAgo')) {
             white-space: nowrap;
         }
 
-        /* Modal */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.55);
@@ -969,6 +997,7 @@ if (!function_exists('timeAgo')) {
             .group-switcher select { min-width: 100%; }
             .task-files-head { flex-direction: column; align-items: flex-start; }
             .upload-btn { width: 100%; }
+            .file-actions-wrap { width: 100%; justify-content: flex-end; }
         }
     </style>
 </head>
@@ -1081,7 +1110,6 @@ if (!function_exists('timeAgo')) {
         </div>
     <?php endif; ?>
 
-        <!-- Summary -->
         <section class="summary-grid">
             <div class="summary-card">
                 <h2>Total Tasks</h2>
@@ -1105,7 +1133,6 @@ if (!function_exists('timeAgo')) {
             </div>
         </section>
 
-        <!-- Log My Contribution -->
         <section class="log-contribution-section">
             <h2>
                 Log My Contribution
@@ -1184,7 +1211,6 @@ if (!function_exists('timeAgo')) {
             <?php endif; ?>
         </section>
 
-        <!-- Task List -->
         <section class="task-section">
             <div class="section-heading">
                 <h2>Assigned Task List</h2>
@@ -1216,7 +1242,12 @@ if (!function_exists('timeAgo')) {
                         <div class="task-details">
                             <div class="detail-box">
                                 <h4>Assigned To</h4>
-                                <p><?php echo htmlspecialchars($t['owner_name'] ?: '—'); ?></p>
+                                <p>
+                                    <?php echo htmlspecialchars($t['owner_name'] ?: '—'); ?>
+                                    <?php if ($isMyTask): ?>
+                                        <span style="color:#176b2c; font-weight:600;">(you)</span>
+                                    <?php endif; ?>
+                                </p>
                             </div>
                             <div class="detail-box">
                                 <h4>Created By</h4>
@@ -1234,7 +1265,6 @@ if (!function_exists('timeAgo')) {
                             </div>
                         </div>
 
-                        <!-- ===== Task Files ===== -->
                         <div class="task-files">
                             <div class="task-files-head">
                                 <h4>
@@ -1244,20 +1274,24 @@ if (!function_exists('timeAgo')) {
                                     <?php endif; ?>
                                 </h4>
 
-                                <form method="post"
-                                      action="upload_task_file.php"
-                                      enctype="multipart/form-data"
-                                      class="upload-form">
-                                    <input type="hidden" name="taskID"  value="<?php echo $taskId; ?>">
-                                    <input type="hidden" name="groupID" value="<?php echo $activeGroupID; ?>">
+                                <?php if ($isMyTask): ?>
+                                    <form method="post"
+                                          action="upload_task_file.php"
+                                          enctype="multipart/form-data"
+                                          class="upload-form">
+                                        <input type="hidden" name="taskID"  value="<?php echo $taskId; ?>">
+                                        <input type="hidden" name="groupID" value="<?php echo $activeGroupID; ?>">
 
-                                    <label class="upload-btn">
-                                        + Upload File
-                                        <input type="file" name="taskFile"
-                                               onchange="this.form.submit()"
-                                               accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.txt,.zip,.fig,.sql,.ipynb">
-                                    </label>
-                                </form>
+                                        <label class="upload-btn">
+                                            + Upload File
+                                            <input type="file" name="taskFile"
+                                                   onchange="this.form.submit()"
+                                                   accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.txt,.zip,.fig,.sql,.ipynb">
+                                        </label>
+                                    </form>
+                                <?php else: ?>
+
+                                <?php endif; ?>
                             </div>
 
                             <?php if ($fileCount === 0): ?>
@@ -1268,7 +1302,9 @@ if (!function_exists('timeAgo')) {
                                         <li>
                                             <span class="file-type"><?php echo htmlspecialchars($f['file_type']); ?></span>
                                             <span class="file-name">
-                                                <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="file-link">
+                                                <a href="open_file.php?id=<?php echo (int)$f['id']; ?>"
+                                                   target="_blank"
+                                                   class="file-link">
                                                     <?php echo htmlspecialchars($f['file_name']); ?>
                                                 </a>
                                             </span>
@@ -1277,6 +1313,24 @@ if (!function_exists('timeAgo')) {
                                                 <?php echo htmlspecialchars($f['uploader_name']); ?> ·
                                                 <?php echo timeAgo($f['uploaded_at']); ?>
                                             </span>
+
+                                            <div class="file-actions-wrap">
+                                                <a href="download_file.php?id=<?php echo (int)$f['id']; ?>"
+                                                   class="file-download-link"
+                                                   title="Download file">
+                                                    ⬇ Download
+                                                </a>
+
+                                                <?php if ((int)$f['uploader_id'] === $studentID || $isLeader): ?>
+                                                    <form method="post" action="delete_task_file.php" style="margin:0;"
+                                                          onsubmit="return confirm('Are you sure you want to delete this file?');">
+                                                        <input type="hidden" name="fileID" value="<?php echo (int)$f['id']; ?>">
+                                                        <input type="hidden" name="groupID" value="<?php echo $activeGroupID; ?>">
+                                                        <input type="hidden" name="taskID" value="<?php echo $taskId; ?>">
+                                                        <button type="submit" class="file-delete-btn" title="Delete file">−</button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </div>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
@@ -1314,7 +1368,6 @@ if (!function_exists('timeAgo')) {
             </div>
         </section>
 
-        <!-- Team Progress -->
         <section class="team-progress-section">
             <h2>Team Progress</h2>
 

@@ -17,7 +17,6 @@ if ($fileID === 0) {
     exit('Invalid file ID.');
 }
 
-// 取 student_id / teacher_id
 $studentID = 0;
 $teacherID = 0;
 
@@ -37,7 +36,6 @@ $rc = mysqli_fetch_assoc($rs);
 mysqli_stmt_close($stmt);
 if ($rc) $teacherID = (int)$rc['id'];
 
-// 取 file
 $stmt = mysqli_prepare($conn, "
     SELECT id, file_name, stored_name, file_type, project_id, group_id, uploader_id
     FROM `files` WHERE id = ? LIMIT 1
@@ -53,7 +51,6 @@ if (!$file) {
     exit('File not found.');
 }
 
-// 權限
 $allowed = false;
 
 if ($studentID > 0 && !empty($file['group_id'])) {
@@ -87,7 +84,6 @@ if (!$allowed) {
     exit('You do not have permission to open this file.');
 }
 
-// 搵實體檔案
 $realPath = '';
 if (!empty($file['stored_name'])) {
     $candidate = __DIR__ . '/uploads/chat_files/' . $file['stored_name'];
@@ -98,10 +94,12 @@ if (!empty($file['stored_name'])) {
 
 if ($realPath === '' || !is_file($realPath)) {
     http_response_code(404);
-    exit('File is missing on the server.');
+
+    // 方便除錯：把 stored_name 印出來
+    $debugStored = !empty($file['stored_name']) ? $file['stored_name'] : '(empty)';
+    exit('File is missing on the server. (stored_name: ' . htmlspecialchars($debugStored) . ')');
 }
 
-// MIME
 $ext = strtolower(pathinfo($file['file_name'], PATHINFO_EXTENSION));
 
 $mimeTypes = array(

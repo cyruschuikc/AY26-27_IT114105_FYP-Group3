@@ -32,7 +32,7 @@ if (!function_exists('random_bytes')) {
 }
 
 if (!isset($conn) || !$conn) {
-    die('Database connection not available. Check db.php.');
+    die('資料庫連線失敗，請檢查 db.php。');
 }
 
 if (!isset($_SESSION['userID'])) {
@@ -42,7 +42,9 @@ if (!isset($_SESSION['userID'])) {
 
 $userID = (int) $_SESSION['userID'];
 
+// =========================================================
 // 取 student_id
+// =========================================================
 $stmt = mysqli_prepare($conn, "
     SELECT s.id AS student_id
     FROM `students` s
@@ -70,21 +72,27 @@ if ($taskID === 0 || $groupID === 0) {
     exit;
 }
 
-// 確認 task 屬於呢個 group，而且自己係該 group 成員
+// =========================================================
+// 確認 task 屬於此 group，而且自己係該 task 的負責人
+// =========================================================
 $stmt = mysqli_prepare($conn, "
     SELECT t.id, t.project_id, t.group_id, t.title
     FROM `tasks` t
     INNER JOIN `group_members` gm ON gm.group_id = t.group_id
-    WHERE t.id = ? AND t.group_id = ? AND gm.student_id = ?
+    WHERE t.id = ?
+      AND t.group_id = ?
+      AND gm.student_id = ?
+      AND t.assigned_to = ?
     LIMIT 1
 ");
-mysqli_stmt_bind_param($stmt, "iii", $taskID, $groupID, $studentID);
+mysqli_stmt_bind_param($stmt, "iiii", $taskID, $groupID, $studentID, $studentID);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 $task = mysqli_fetch_assoc($rs);
 mysqli_stmt_close($stmt);
 
 if (!$task) {
+    // 不是組員 or 不是負責人 → 拒絕
     header('Location: student_task.php?group_id=' . $groupID . '&msg=error');
     exit;
 }
@@ -113,13 +121,14 @@ if (!in_array($ext, $allowedExt, true)) {
     exit;
 }
 
-// 上傳目錄
-$uploadDir = __DIR__ . '/uploads/task_files/';
+// =========================================================
+// 上傳目錄（統一用 uploads/chat_files/）
+// =========================================================
+$uploadDir = __DIR__ . '/uploads/chat_files/';
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0777, true);
 }
 
-// 隨機檔名（random_bytes 已經有 fallback，兼容 PHP 5.x）
 $storedName = 'task' . $taskID . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
 $targetPath = $uploadDir . $storedName;
 
@@ -140,18 +149,21 @@ if (!function_exists('formatBytes')) {
 $sizeText = formatBytes($fileSize);
 $fileType = strtoupper($ext);
 
-// INSERT 到 files
+// =========================================================
+// INSERT 到 files（記得寫入 stored_name！）
+// =========================================================
 $stmt = mysqli_prepare($conn, "
     INSERT INTO `files`
-        (project_id, group_id, task_id, uploader_id, file_name, file_size, file_type, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'Unviewed')
+        (project_id, group_id, task_id, uploader_id,
+         file_name, stored_name, file_size, file_type, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Unviewed')
 ");
 $projectId = (int) $task['project_id'];
 
 mysqli_stmt_bind_param(
-    $stmt, "iiiisss",
+    $stmt, "iiiissss",
     $projectId, $groupID, $taskID, $studentID,
-    $origName, $sizeText, $fileType
+    $origName, $storedName, $sizeText, $fileType
 );
 
 if (!mysqli_stmt_execute($stmt)) {

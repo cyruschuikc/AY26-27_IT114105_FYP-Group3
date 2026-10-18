@@ -162,7 +162,6 @@ if ($dmStudentID > 0 && $myGroup) {
 if ($myGroup) {
 
     if ($dmStudentID > 0) {
-        // DM 模式：標記該 group 入面自己 ↔ 對方嘅最新 message
         $stmt = mysqli_prepare($conn, "
             SELECT MAX(id) AS max_id
             FROM `messages`
@@ -179,7 +178,6 @@ if ($myGroup) {
                 $dmStudentID, $studentID
         );
     } else {
-        // 群聊模式：標記該 group 嘅群聊訊息
         $stmt = mysqli_prepare($conn, "
             SELECT MAX(id) AS max_id
             FROM `messages`
@@ -218,7 +216,6 @@ if (count($myGroups) > 0) {
     foreach ($myGroups as $g) {
         $gid = (int)$g['group_id'];
 
-        // 拎自己喺呢個 group 嘅 last_read_message_id
         $stmt = mysqli_prepare($conn, "
             SELECT last_read_message_id
             FROM `message_reads`
@@ -233,7 +230,6 @@ if (count($myGroups) > 0) {
 
         $lastRead = $rowRead ? (int)$rowRead['last_read_message_id'] : 0;
 
-        // 群聊未讀（recipient_id IS NULL，sender 唔係自己）
         $stmt = mysqli_prepare($conn, "
             SELECT COUNT(*) AS c
             FROM `messages`
@@ -250,7 +246,6 @@ if (count($myGroups) > 0) {
 
         $unreadByGroup[$gid] = (int)$rc['c'];
 
-        // DM 未讀（recipient_id = 自己，sender 唔係自己）
         $stmt = mysqli_prepare($conn, "
             SELECT sender_id, COUNT(*) AS c
             FROM `messages`
@@ -322,44 +317,44 @@ if (isset($_POST['sendMessage']) && $myGroup) {
             $sizeText = formatBytes($fileSize);
             $fileType = strtoupper($ext);
 
-            $stmt = mysqli_prepare($conn, "
-                INSERT INTO `files`
-                    (project_id, group_id, task_id, uploader_id, file_name, file_size, file_type, status)
-                VALUES (?, ?, NULL, ?, ?, ?, ?, 'Unviewed')
-            ");
-            $projectId = (int) $myGroup['project_id'];
+            // =========================================================
+            // 【修正】先產生 storedName，搬移後一次 INSERT 寫入
+            // =========================================================
+            $storedName = 'chat' . $activeGroupID . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
 
-            mysqli_stmt_bind_param(
-                    $stmt, "iiisss",
-                    $projectId, $activeGroupID, $studentID,
-                    $origName, $sizeText, $fileType
-            );
+            $uploadDir = __DIR__ . '/uploads/chat_files/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
 
-            if (mysqli_stmt_execute($stmt)) {
-                $attachmentID = (int) mysqli_insert_id($conn);
-                mysqli_stmt_close($stmt);
+            $targetPath = $uploadDir . $storedName;
 
-                $uploadDir = __DIR__ . '/uploads/chat_files/';
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0777, true);
-                }
-
-                $storedName = 'chat' . $activeGroupID . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
-                $targetPath = $uploadDir . $storedName;
-
-                if (move_uploaded_file($tmpPath, $targetPath)) {
-                    $stmt2 = mysqli_prepare($conn, "
-                        UPDATE `files` SET `stored_name` = ? WHERE `id` = ?
-                    ");
-                    mysqli_stmt_bind_param($stmt2, "si", $storedName, $attachmentID);
-                    mysqli_stmt_execute($stmt2);
-                    mysqli_stmt_close($stmt2);
-                }
-
-            } else {
-                $flashMsg  = 'Failed to save file: ' . mysqli_error($conn);
+            if (!move_uploaded_file($tmpPath, $targetPath)) {
+                $flashMsg  = 'Failed to save uploaded file.';
                 $flashType = 'error';
-                if ($stmt) mysqli_stmt_close($stmt);
+            } else {
+                $stmt = mysqli_prepare($conn, "
+                    INSERT INTO `files`
+                        (project_id, group_id, task_id, uploader_id,
+                         file_name, stored_name, file_size, file_type, status)
+                    VALUES (?, ?, NULL, ?, ?, ?, ?, ?, 'Unviewed')
+                ");
+                $projectId = (int) $myGroup['project_id'];
+
+                mysqli_stmt_bind_param(
+                        $stmt, "iiissss",
+                        $projectId, $activeGroupID, $studentID,
+                        $origName, $storedName, $sizeText, $fileType
+                );
+
+                if (mysqli_stmt_execute($stmt)) {
+                    $attachmentID = (int) mysqli_insert_id($conn);
+                } else {
+                    $flashMsg  = 'Failed to save file: ' . mysqli_error($conn);
+                    $flashType = 'error';
+                    @unlink($targetPath);
+                }
+                mysqli_stmt_close($stmt);
             }
         }
     }
@@ -408,7 +403,6 @@ $allMembers   = array();
 
 if ($myGroup) {
 
-    // -------- 6.1 Active group 嘅成員（連在線狀態） --------
     $stmt = mysqli_prepare($conn, "
         SELECT
             s.id            AS student_id,
@@ -431,7 +425,6 @@ if ($myGroup) {
     }
     mysqli_stmt_close($stmt);
 
-    // -------- 6.2 所有 group 嘅成員（去重 + 所屬 group 名單） --------
     if (count($myGroups) > 0) {
         $groupIds = array();
         foreach ($myGroups as $g) {
@@ -468,7 +461,6 @@ if ($myGroup) {
         mysqli_stmt_close($stmt);
     }
 
-    // -------- 6.3 Messages（依 DM / 群聊過濾） --------
     if ($dmStudentID > 0) {
         $stmt = mysqli_prepare($conn, "
             SELECT
@@ -652,9 +644,6 @@ if (!function_exists('initials')) {
             grid-template-rows: 100%;
         }
 
-        /* =========================================================
-           Sidebar
-           ========================================================= */
         .member-sidebar {
             background: #f7f7f7;
             border-right: 1px solid #dddddd;
@@ -677,7 +666,6 @@ if (!function_exists('initials')) {
         }
         .sidebar-heading p { color: #8b8f98; font-size: 12px; }
 
-        /* Group 列表 */
         .group-list {
             padding: 10px 12px;
             max-height: 180px;
@@ -750,7 +738,6 @@ if (!function_exists('initials')) {
             color: #cccccc;
         }
 
-        /* 成員列表 */
         .member-list {
             padding: 10px 12px;
             overflow-y: auto;
@@ -809,7 +796,6 @@ if (!function_exists('initials')) {
             background: #999999;
         }
 
-        /* 未讀紅圈 */
         .unread-badge {
             display: inline-flex;
             align-items: center;
@@ -834,7 +820,6 @@ if (!function_exists('initials')) {
             color: #d93025;
         }
 
-        /* Chat Area */
         .chat-area {
             min-width: 0;
             min-height: 0;
@@ -1400,12 +1385,8 @@ if (!function_exists('initials')) {
 
         <section class="chat-container">
 
-            <!-- =========================================================
-                 Sidebar（Group 列表 + 去重成員 + 未讀紅圈）
-                 ========================================================= -->
             <aside class="member-sidebar">
 
-                <!-- Group 列表 -->
                 <div class="sidebar-heading">
                     <h2>My Groups</h2>
                     <p><?php echo count($myGroups); ?> group<?php echo count($myGroups) > 1 ? 's' : ''; ?></p>
@@ -1432,7 +1413,6 @@ if (!function_exists('initials')) {
                     <?php endforeach; ?>
                 </div>
 
-                <!-- 成員列表（下面顯示所屬 group + 未讀 DM 紅圈） -->
                 <div class="member-list">
                     <?php foreach ($allMembers as $m): ?>
                         <?php if ((int)$m['student_id'] === $studentID) continue; ?>
@@ -1464,9 +1444,6 @@ if (!function_exists('initials')) {
 
             </aside>
 
-            <!-- =========================================================
-                 Chat Area
-                 ========================================================= -->
             <div class="chat-area">
 
                 <header class="chat-header">

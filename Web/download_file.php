@@ -90,7 +90,10 @@ if (!empty($file['stored_name'])) {
 
 if ($realPath === '' || !is_file($realPath)) {
     http_response_code(404);
-    exit('File is missing on the server.');
+
+    // 方便除錯：把 stored_name 印出來
+    $debugStored = !empty($file['stored_name']) ? $file['stored_name'] : '(empty)';
+    exit('File is missing on the server. (stored_name: ' . htmlspecialchars($debugStored) . ')');
 }
 
 $downloadName = str_replace(array("\r", "\n"), '', $file['file_name']);
