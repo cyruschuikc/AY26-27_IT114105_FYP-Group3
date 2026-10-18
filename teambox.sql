@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機: 127.0.0.1
--- 產生時間： 2026-10-16 18:36:29
+-- 產生時間： 2026-10-17 18:30:52
 -- 伺服器版本: 10.1.30-MariaDB
 -- PHP 版本： 5.6.33
 
@@ -62,8 +62,10 @@ INSERT INTO `activities` (`id`, `project_id`, `group_id`, `actor_id`, `action`, 
 (17, 8, 9, 27, 'uploaded', 'uploaded Dashboard_Wireframe.fig', '2026-10-07 11:11:59'),
 (18, 1, 1, 6, 'created', 'created Task \"Create System Interface\"', '2026-10-07 11:11:59'),
 (19, 5, 5, 2, 'reviewed', 'rejected API_Design.pdf', '2026-10-07 11:11:59'),
-(20, 1, 1, 6, 'created', 'created task \"ABC\"', '2026-10-16 16:23:16'),
-(21, 1, 1, 6, 'uploaded', 'uploaded m5VTKNRPuOW-dKWmPvBmdxsc7uru4XT4jvUAMY71ADE.jpg to task \"Create System Interface\"', '2026-10-16 16:31:13');
+(22, 1, 1, 7, 'uploaded', '上傳了共享檔案 bell.png', '2026-10-17 15:51:19'),
+(23, 1, 1, 7, 'uploaded', 'uploaded shared file \"bell\"', '2026-10-17 16:01:13'),
+(24, 1, 1, 7, 'uploaded', 'uploaded shared file \"bell\"', '2026-10-17 16:02:51'),
+(25, 1, 1, 7, 'uploaded', 'uploaded shared file \"TeamBox_logo_black\"', '2026-10-17 16:12:02');
 
 -- --------------------------------------------------------
 
@@ -212,6 +214,9 @@ CREATE TABLE `files` (
   `task_id` int(11) DEFAULT NULL,
   `uploader_id` int(11) NOT NULL,
   `file_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `stored_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `file_size` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `file_type` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` enum('Unviewed','Accepted','Rejected') COLLATE utf8mb4_unicode_ci DEFAULT 'Unviewed',
@@ -225,32 +230,35 @@ CREATE TABLE `files` (
 -- 資料表的匯出資料 `files`
 --
 
-INSERT INTO `files` (`id`, `project_id`, `group_id`, `task_id`, `uploader_id`, `file_name`, `file_size`, `file_type`, `status`, `uploaded_at`, `reviewed_by`, `reviewed_at`, `review_note`) VALUES
-(1, 1, 1, NULL, 1, 'Proposal_v2.docx', '2.4 MB', 'DOCX', 'Unviewed', '2026-10-04 02:42:00', NULL, NULL, NULL),
-(2, 1, 1, NULL, 3, 'Requirement_Analysis.pdf', '1.8 MB', 'PDF', 'Accepted', '2026-10-03 07:20:00', 1, '2026-10-04 09:00:00', 'Looks good.'),
-(3, 1, 1, NULL, 4, 'UI_Wireframe.fig', '5.1 MB', 'FIG', 'Unviewed', '2026-10-02 01:15:00', NULL, NULL, NULL),
-(4, 1, 1, NULL, 1, 'Sprint_Plan_Oct.xlsx', '180 KB', 'XLSX', 'Accepted', '2026-09-25 09:45:00', 1, '2026-09-26 09:00:00', 'OK.'),
-(5, 1, 1, NULL, 1, 'Kickoff_Notes.docx', '120 KB', 'DOCX', 'Accepted', '2026-09-10 01:00:00', 1, '2026-09-10 12:00:00', 'OK.'),
-(6, 1, 1, NULL, 2, 'Brainstorm.png', '780 KB', 'PNG', 'Accepted', '2026-09-12 06:00:00', 1, '2026-09-12 16:00:00', 'OK.'),
-(7, 1, 2, NULL, 3, 'Database_Schema.sql', '120 KB', 'SQL', 'Accepted', '2026-10-01 03:00:00', 1, '2026-10-01 15:00:00', 'Approved.'),
-(8, 1, 2, NULL, 2, 'API_Spec.pdf', '890 KB', 'PDF', 'Rejected', '2026-09-30 08:30:00', 1, '2026-10-01 10:00:00', 'Missing authentication section.'),
-(9, 1, 2, NULL, 3, 'ER_Diagram.png', '1.1 MB', 'PNG', 'Accepted', '2026-09-15 02:00:00', 1, '2026-09-15 14:00:00', 'Nice.'),
-(10, 2, 3, NULL, 6, 'Meeting_Minutes_2026-09-28.docx', '240 KB', 'DOCX', 'Accepted', '2026-09-28 06:00:00', 1, '2026-09-28 16:00:00', 'OK.'),
-(11, 2, 3, NULL, 7, 'Budget_Plan.xlsx', '310 KB', 'XLSX', 'Rejected', '2026-09-26 02:00:00', 1, '2026-09-27 09:00:00', 'Numbers do not match the proposal.'),
-(12, 2, 3, NULL, 8, 'Research_Notes.pdf', '1.1 MB', 'PDF', 'Unviewed', '2026-09-22 05:10:00', NULL, NULL, NULL),
-(13, 4, 4, NULL, 8, 'SRS_v1.docx', '3.1 MB', 'DOCX', 'Accepted', '2026-10-05 01:30:00', 2, '2026-10-05 14:00:00', 'Looks good.'),
-(14, 4, 4, NULL, 9, 'SeatMap_Mockup.png', '1.2 MB', 'PNG', 'Unviewed', '2026-10-06 03:15:00', NULL, NULL, NULL),
-(15, 4, 4, NULL, 10, 'API_Design.pdf', '880 KB', 'PDF', 'Rejected', '2026-10-06 07:00:00', 2, '2026-10-07 09:00:00', 'Please add error handling.'),
-(16, 5, 5, NULL, 9, 'Menu_Schema.sql', '95 KB', 'SQL', 'Accepted', '2026-10-02 02:00:00', 2, '2026-10-02 16:00:00', 'Approved.'),
-(17, 5, 5, NULL, 12, 'Payment_Flow.pdf', '1.4 MB', 'PDF', 'Unviewed', '2026-10-05 00:45:00', NULL, NULL, NULL),
-(18, 5, 5, NULL, 13, 'Order_Tracking.fig', '2.0 MB', 'FIG', 'Unviewed', '2026-10-06 01:20:00', NULL, NULL, NULL),
-(19, 6, 6, NULL, 13, 'Dataset_Description.pdf', '1.5 MB', 'PDF', 'Accepted', '2026-09-30 06:00:00', 3, '2026-10-01 09:00:00', 'Good.'),
-(20, 6, 6, NULL, 15, 'Baseline_Model.ipynb', '2.8 MB', 'IPYNB', 'Unviewed', '2026-10-06 08:40:00', NULL, NULL, NULL),
-(21, 6, 6, NULL, 16, 'Prompt_Templates.txt', '45 KB', 'TXT', 'Unviewed', '2026-10-07 02:00:00', NULL, NULL, NULL),
-(22, 8, 9, NULL, 20, 'Company_List.xlsx', '420 KB', 'XLSX', 'Accepted', '2026-10-05 03:00:00', 4, '2026-10-05 15:30:00', 'Verified.'),
-(23, 8, 9, NULL, 21, 'Matching_Algo.pdf', '950 KB', 'PDF', 'Unviewed', '2026-10-07 05:00:00', NULL, NULL, NULL),
-(24, 8, 9, NULL, 22, 'Dashboard_Wireframe.fig', '3.5 MB', 'FIG', 'Unviewed', '2026-10-07 06:30:00', NULL, NULL, NULL),
-(25, 1, 1, 3, 1, 'm5VTKNRPuOW-dKWmPvBmdxsc7uru4XT4jvUAMY71ADE.jpg', '232.4 KB', 'JPG', 'Unviewed', '2026-10-16 16:31:13', NULL, NULL, NULL);
+INSERT INTO `files` (`id`, `project_id`, `group_id`, `task_id`, `uploader_id`, `file_name`, `display_name`, `notes`, `stored_name`, `file_size`, `file_type`, `status`, `uploaded_at`, `reviewed_by`, `reviewed_at`, `review_note`) VALUES
+(1, 1, 1, NULL, 1, 'Proposal_v2.docx', NULL, NULL, NULL, '2.4 MB', 'DOCX', 'Unviewed', '2026-10-04 02:42:00', NULL, NULL, NULL),
+(2, 1, 1, NULL, 3, 'Requirement_Analysis.pdf', NULL, NULL, NULL, '1.8 MB', 'PDF', 'Accepted', '2026-10-03 07:20:00', 1, '2026-10-04 09:00:00', 'Looks good.'),
+(3, 1, 1, NULL, 4, 'UI_Wireframe.fig', NULL, NULL, NULL, '5.1 MB', 'FIG', 'Unviewed', '2026-10-02 01:15:00', NULL, NULL, NULL),
+(4, 1, 1, NULL, 1, 'Sprint_Plan_Oct.xlsx', NULL, NULL, NULL, '180 KB', 'XLSX', 'Accepted', '2026-09-25 09:45:00', 1, '2026-09-26 09:00:00', 'OK.'),
+(5, 1, 1, NULL, 1, 'Kickoff_Notes.docx', NULL, NULL, NULL, '120 KB', 'DOCX', 'Accepted', '2026-09-10 01:00:00', 1, '2026-09-10 12:00:00', 'OK.'),
+(6, 1, 1, NULL, 2, 'Brainstorm.png', NULL, NULL, NULL, '780 KB', 'PNG', 'Accepted', '2026-09-12 06:00:00', 1, '2026-09-12 16:00:00', 'OK.'),
+(7, 1, 2, NULL, 3, 'Database_Schema.sql', NULL, NULL, NULL, '120 KB', 'SQL', 'Accepted', '2026-10-01 03:00:00', 1, '2026-10-01 15:00:00', 'Approved.'),
+(8, 1, 2, NULL, 2, 'API_Spec.pdf', NULL, NULL, NULL, '890 KB', 'PDF', 'Rejected', '2026-09-30 08:30:00', 1, '2026-10-01 10:00:00', 'Missing authentication section.'),
+(9, 1, 2, NULL, 3, 'ER_Diagram.png', NULL, NULL, NULL, '1.1 MB', 'PNG', 'Accepted', '2026-09-15 02:00:00', 1, '2026-09-15 14:00:00', 'Nice.'),
+(10, 2, 3, NULL, 6, 'Meeting_Minutes_2026-09-28.docx', NULL, NULL, NULL, '240 KB', 'DOCX', 'Accepted', '2026-09-28 06:00:00', 1, '2026-09-28 16:00:00', 'OK.'),
+(11, 2, 3, NULL, 7, 'Budget_Plan.xlsx', NULL, NULL, NULL, '310 KB', 'XLSX', 'Rejected', '2026-09-26 02:00:00', 1, '2026-09-27 09:00:00', 'Numbers do not match the proposal.'),
+(12, 2, 3, NULL, 8, 'Research_Notes.pdf', NULL, NULL, NULL, '1.1 MB', 'PDF', 'Unviewed', '2026-09-22 05:10:00', NULL, NULL, NULL),
+(13, 4, 4, NULL, 8, 'SRS_v1.docx', NULL, NULL, NULL, '3.1 MB', 'DOCX', 'Accepted', '2026-10-05 01:30:00', 2, '2026-10-05 14:00:00', 'Looks good.'),
+(14, 4, 4, NULL, 9, 'SeatMap_Mockup.png', NULL, NULL, NULL, '1.2 MB', 'PNG', 'Unviewed', '2026-10-06 03:15:00', NULL, NULL, NULL),
+(15, 4, 4, NULL, 10, 'API_Design.pdf', NULL, NULL, NULL, '880 KB', 'PDF', 'Rejected', '2026-10-06 07:00:00', 2, '2026-10-07 09:00:00', 'Please add error handling.'),
+(16, 5, 5, NULL, 9, 'Menu_Schema.sql', NULL, NULL, NULL, '95 KB', 'SQL', 'Accepted', '2026-10-02 02:00:00', 2, '2026-10-02 16:00:00', 'Approved.'),
+(17, 5, 5, NULL, 12, 'Payment_Flow.pdf', NULL, NULL, NULL, '1.4 MB', 'PDF', 'Unviewed', '2026-10-05 00:45:00', NULL, NULL, NULL),
+(18, 5, 5, NULL, 13, 'Order_Tracking.fig', NULL, NULL, NULL, '2.0 MB', 'FIG', 'Unviewed', '2026-10-06 01:20:00', NULL, NULL, NULL),
+(19, 6, 6, NULL, 13, 'Dataset_Description.pdf', NULL, NULL, NULL, '1.5 MB', 'PDF', 'Accepted', '2026-09-30 06:00:00', 3, '2026-10-01 09:00:00', 'Good.'),
+(20, 6, 6, NULL, 15, 'Baseline_Model.ipynb', NULL, NULL, NULL, '2.8 MB', 'IPYNB', 'Unviewed', '2026-10-06 08:40:00', NULL, NULL, NULL),
+(21, 6, 6, NULL, 16, 'Prompt_Templates.txt', NULL, NULL, NULL, '45 KB', 'TXT', 'Unviewed', '2026-10-07 02:00:00', NULL, NULL, NULL),
+(22, 8, 9, NULL, 20, 'Company_List.xlsx', NULL, NULL, NULL, '420 KB', 'XLSX', 'Accepted', '2026-10-05 03:00:00', 4, '2026-10-05 15:30:00', 'Verified.'),
+(23, 8, 9, NULL, 21, 'Matching_Algo.pdf', NULL, NULL, NULL, '950 KB', 'PDF', 'Unviewed', '2026-10-07 05:00:00', NULL, NULL, NULL),
+(24, 8, 9, NULL, 22, 'Dashboard_Wireframe.fig', NULL, NULL, NULL, '3.5 MB', 'FIG', 'Unviewed', '2026-10-07 06:30:00', NULL, NULL, NULL),
+(31, 1, 1, NULL, 2, 'bell.png', NULL, NULL, 'shared1_1792252279_afd51251.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-17 15:51:19', NULL, NULL, NULL),
+(32, 1, 1, NULL, 2, 'bell.png', 'bell', 'ABC', 'shared1_1792252873_0d29b20b.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-17 16:01:13', NULL, NULL, NULL),
+(33, 1, 1, NULL, 2, 'bell.png', 'bell', NULL, 'shared1_1792252971_219da567.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-17 16:02:51', NULL, NULL, NULL),
+(34, 1, 1, NULL, 2, 'TeamBox_logo_black.png', 'TeamBox_logo_black', NULL, 'shared1_1792253522_dd9eb8d2.png', '553.4 KB', 'PNG', 'Unviewed', '2026-10-17 16:12:02', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -285,9 +293,7 @@ INSERT INTO `groups` (`id`, `project_id`, `course_id`, `name`, `leader_id`, `cre
 (7, 6, 1, 'Team 07', 17, 17, 4, 'Voting', NULL, '2026-10-07 11:11:58'),
 (8, 7, 1, 'Team 08', 18, 18, 4, 'Recruiting', NULL, '2026-10-07 11:11:58'),
 (9, 8, 1, 'Team 09', 20, 23, 4, 'Executing', '2026-09-17 09:00:00', '2026-10-07 11:11:58'),
-(10, 9, 1, 'Team 10', 22, 22, 4, 'Recruiting', NULL, '2026-10-07 11:11:58'),
-(15, 6, 1, 'ABC', NULL, 1, 2, 'Waiting_Send', NULL, '2026-10-14 11:04:44'),
-(16, 6, 1, 'ABC', NULL, 1, 3, 'Recruiting', NULL, '2026-10-14 12:26:12');
+(10, 9, 1, 'Team 10', 22, 22, 4, 'Recruiting', NULL, '2026-10-07 11:11:58');
 
 -- --------------------------------------------------------
 
@@ -337,10 +343,7 @@ INSERT INTO `group_members` (`group_id`, `student_id`, `role`, `joined_at`) VALU
 (9, 22, 'member', '2026-10-07 11:11:58'),
 (9, 23, 'member', '2026-10-07 11:11:58'),
 (10, 22, 'leader', '2026-10-07 11:11:58'),
-(10, 23, 'member', '2026-10-07 11:11:58'),
-(15, 1, 'member', '2026-10-14 11:04:44'),
-(15, 2, 'member', '2026-10-14 11:05:18'),
-(16, 1, 'member', '2026-10-14 12:26:12');
+(10, 23, 'member', '2026-10-07 11:11:58');
 
 -- --------------------------------------------------------
 
@@ -376,14 +379,6 @@ CREATE TABLE `invitations` (
   `responded_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- 資料表的匯出資料 `invitations`
---
-
-INSERT INTO `invitations` (`id`, `group_id`, `inviter_id`, `invitee_id`, `status`, `sent_at`, `responded_at`) VALUES
-(13, 15, 1, 2, 'Accepted', '2026-10-14 11:05:01', '2026-10-14 19:05:18'),
-(14, 16, 1, 2, 'Pending', '2026-10-14 12:26:26', NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -408,6 +403,7 @@ CREATE TABLE `messages` (
   `id` int(11) NOT NULL,
   `group_id` int(11) NOT NULL,
   `sender_id` int(11) NOT NULL,
+  `recipient_id` int(11) DEFAULT NULL,
   `content` text COLLATE utf8mb4_unicode_ci,
   `attachment_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -417,24 +413,47 @@ CREATE TABLE `messages` (
 -- 資料表的匯出資料 `messages`
 --
 
-INSERT INTO `messages` (`id`, `group_id`, `sender_id`, `content`, `attachment_id`, `created_at`) VALUES
-(1, 1, 1, 'Please update your assigned task progress before the team meeting.', NULL, '2026-10-07 11:11:59'),
-(2, 1, 3, 'I have completed the student login page and I am currently developing the student dashboard.', NULL, '2026-10-07 11:11:59'),
-(3, 1, 2, 'I have uploaded the latest project proposal to the shared files page.', NULL, '2026-10-07 11:11:59'),
-(4, 1, 4, 'What time will the next team meeting begin?', NULL, '2026-10-07 11:11:59'),
-(5, 1, 1, 'The meeting will begin at 3:30 PM today. Please prepare your current progress and questions.', NULL, '2026-10-07 11:11:59'),
-(6, 4, 8, 'Hi team, let us start the SRS document today.', NULL, '2026-10-07 11:11:59'),
-(7, 4, 9, 'OK. I will draft the introduction section.', NULL, '2026-10-07 11:11:59'),
-(8, 4, 10, 'I will work on the functional requirements.', NULL, '2026-10-07 11:11:59'),
-(9, 5, 9, 'Payment integration is tricky. Any ideas?', NULL, '2026-10-07 11:11:59'),
-(10, 5, 12, 'Let us use Stripe test mode first.', NULL, '2026-10-07 11:11:59'),
-(11, 5, 13, 'Agreed. I will set up a sandbox account.', NULL, '2026-10-07 11:11:59'),
-(12, 6, 13, 'Baseline model accuracy is 78%.', NULL, '2026-10-07 11:11:59'),
-(13, 6, 15, 'Can we try a bigger transformer model?', NULL, '2026-10-07 11:11:59'),
-(14, 6, 16, 'Yes, I will test it this week.', NULL, '2026-10-07 11:11:59'),
-(15, 9, 20, 'Company list is ready. Please review.', NULL, '2026-10-07 11:11:59'),
-(16, 9, 21, 'Matching algorithm draft done. Testing now.', NULL, '2026-10-07 11:11:59'),
-(17, 9, 22, 'Dashboard wireframe uploaded.', NULL, '2026-10-07 11:11:59');
+INSERT INTO `messages` (`id`, `group_id`, `sender_id`, `recipient_id`, `content`, `attachment_id`, `created_at`) VALUES
+(1, 1, 1, NULL, 'Please update your assigned task progress before the team meeting.', NULL, '2026-10-07 11:11:59'),
+(2, 1, 3, NULL, 'I have completed the student login page and I am currently developing the student dashboard.', NULL, '2026-10-07 11:11:59'),
+(3, 1, 2, NULL, 'I have uploaded the latest project proposal to the shared files page.', NULL, '2026-10-07 11:11:59'),
+(4, 1, 4, NULL, 'What time will the next team meeting begin?', NULL, '2026-10-07 11:11:59'),
+(5, 1, 1, NULL, 'The meeting will begin at 3:30 PM today. Please prepare your current progress and questions.', NULL, '2026-10-07 11:11:59'),
+(6, 4, 8, NULL, 'Hi team, let us start the SRS document today.', NULL, '2026-10-07 11:11:59'),
+(7, 4, 9, NULL, 'OK. I will draft the introduction section.', NULL, '2026-10-07 11:11:59'),
+(8, 4, 10, NULL, 'I will work on the functional requirements.', NULL, '2026-10-07 11:11:59'),
+(9, 5, 9, NULL, 'Payment integration is tricky. Any ideas?', NULL, '2026-10-07 11:11:59'),
+(10, 5, 12, NULL, 'Let us use Stripe test mode first.', NULL, '2026-10-07 11:11:59'),
+(11, 5, 13, NULL, 'Agreed. I will set up a sandbox account.', NULL, '2026-10-07 11:11:59'),
+(12, 6, 13, NULL, 'Baseline model accuracy is 78%.', NULL, '2026-10-07 11:11:59'),
+(13, 6, 15, NULL, 'Can we try a bigger transformer model?', NULL, '2026-10-07 11:11:59'),
+(14, 6, 16, NULL, 'Yes, I will test it this week.', NULL, '2026-10-07 11:11:59'),
+(15, 9, 20, NULL, 'Company list is ready. Please review.', NULL, '2026-10-07 11:11:59'),
+(16, 9, 21, NULL, 'Matching algorithm draft done. Testing now.', NULL, '2026-10-07 11:11:59'),
+(17, 9, 22, NULL, 'Dashboard wireframe uploaded.', NULL, '2026-10-07 11:11:59'),
+(28, 1, 1, NULL, 'hiiiiiii', NULL, '2026-10-17 15:35:35');
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `message_reads`
+--
+
+CREATE TABLE `message_reads` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `group_id` int(11) NOT NULL,
+  `last_read_message_id` int(11) DEFAULT '0',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 資料表的匯出資料 `message_reads`
+--
+
+INSERT INTO `message_reads` (`id`, `user_id`, `group_id`, `last_read_message_id`, `updated_at`) VALUES
+(1, 6, 1, 28, '2026-10-17 15:35:35'),
+(4, 7, 1, 28, '2026-10-17 15:36:03');
 
 -- --------------------------------------------------------
 
@@ -536,12 +555,7 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `link`
 (8, 20, 'team', 'New Group Message', 'A new message was posted in Team 06.', 'student_chat.php', 0, '2026-10-07 11:11:59'),
 (9, 25, 'file', 'File Approved', 'Your \"Company_List.xlsx\" was approved.', 'student_files.php', 0, '2026-10-07 11:11:59'),
 (10, 26, 'task', 'New Task Assigned', 'You have been assigned \"Matching Algorithm\".', 'student_task.php', 0, '2026-10-07 11:11:59'),
-(11, 27, 'team', 'New Group Message', 'A new message was posted in Team 09.', 'student_chat.php', 0, '2026-10-07 11:11:59'),
-(44, 7, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"ABC\".', 'accept_invite.php?id=13', 1, '2026-10-14 11:05:01'),
-(45, 6, 'team', 'Team Full', 'Your group \"ABC\" is now full. Waiting for the group creator to send it to the supervisor before voting starts.', 'student_create_group.php?group_id=15', 0, '2026-10-14 11:05:18'),
-(46, 7, 'team', 'Team Full', 'Your group \"ABC\" is now full. Waiting for the group creator to send it to the supervisor before voting starts.', 'student_create_group.php?group_id=15', 0, '2026-10-14 11:05:18'),
-(47, 7, 'team', 'Group Invitation', 'CHAN Ho Yin invited you to join group \"ABC\".', 'accept_invite.php?id=14', 0, '2026-10-14 12:26:26'),
-(48, 7, 'task', 'New Task Assigned', 'You have been assigned \"ABC\".', 'student_task.php?group_id=1', 0, '2026-10-16 16:23:16');
+(11, 27, 'team', 'New Group Message', 'A new message was posted in Team 09.', 'student_chat.php', 0, '2026-10-07 11:11:59');
 
 -- --------------------------------------------------------
 
@@ -678,8 +692,7 @@ INSERT INTO `tasks` (`id`, `project_id`, `group_id`, `title`, `description`, `as
 (14, 6, 6, 'Prompt Engineering', 'Design prompt templates.', 16, 18, 'Pending', 'Medium', '2026-11-10', NULL, '2026-10-07 11:11:59'),
 (15, 8, 9, 'Company Database', 'Collect company data.', 20, 22, 'Completed', 'Medium', '2026-10-05', NULL, '2026-10-07 11:11:59'),
 (16, 8, 9, 'Matching Algorithm', 'Build matching algorithm.', 21, 22, 'In Progress', 'High', '2026-10-28', NULL, '2026-10-07 11:11:59'),
-(17, 8, 9, 'Frontend Dashboard', 'Build student dashboard.', 22, 22, 'Pending', 'Medium', '2026-11-15', NULL, '2026-10-07 11:11:59'),
-(18, 1, 1, 'ABC', 'ABC', 2, 6, 'Pending', 'High', '2026-10-22', NULL, '2026-10-16 16:23:16');
+(17, 8, 9, 'Frontend Dashboard', 'Build student dashboard.', 22, 22, 'Pending', 'Medium', '2026-11-15', NULL, '2026-10-07 11:11:59');
 
 -- --------------------------------------------------------
 
@@ -762,6 +775,7 @@ CREATE TABLE `users` (
   `email` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
   `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `role` enum('teacher','student','admin') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_active_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -769,37 +783,37 @@ CREATE TABLE `users` (
 -- 資料表的匯出資料 `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `role`, `created_at`) VALUES
-(1, 'Esther Yuen', 'wyyuen@vtc.edu.hk', '12345', 'teacher', '2026-10-07 11:11:58'),
-(2, 'Dr. Alan Ho', 'alanho@vtc.edu.hk', '12345', 'teacher', '2026-10-07 11:11:58'),
-(3, 'Prof. Rebecca Lam', 'rebeccalam@vtc.edu.hk', '12345', 'teacher', '2026-10-07 11:11:58'),
-(4, 'Dr. Vincent Ng', 'vincentng@vtc.edu.hk', '12345', 'teacher', '2026-10-07 11:11:58'),
-(5, 'Ms. Karen Tsang', 'karentsang@vtc.edu.hk', '12345', 'teacher', '2026-10-07 11:11:58'),
-(6, 'CHAN Ho Yin', '260222111@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(7, 'CHUI Ka Chun', '260222112@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(8, 'LAI Ka-Yu Savio', '260222113@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(9, 'MIAO Tung', '260222114@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(10, 'WONG Mei Ling', '260222115@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(11, 'LEE Chun Kit', '260222116@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(12, 'NG Wing Yan', '260222117@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(13, 'TAM Chi Hang', '260222201@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(14, 'HO Wing Sze', '260222202@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(15, 'LAM Ka Ho', '260222203@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(16, 'YIP Man Yee', '260222204@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(17, 'SO Chun Ming', '260222205@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(18, 'CHEUNG Ka Yan', '260222206@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(19, 'CHU Ho Yin', '260222207@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(20, 'FUNG Wing Chi', '260222208@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(21, 'KWOK Chi Wai', '260222209@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(22, 'LEUNG Mei Mei', '260222210@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(23, 'MAK Ho Cheung', '260222211@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(24, 'NGAI Ka Wai', '260222212@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(25, 'POON Yuen Ting', '260222213@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(26, 'SIU Chun Hei', '260222214@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(27, 'TSE Wing Lam', '260222215@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(28, 'WU Ka Man', '260222216@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(29, 'YIU Ho Kwan', '260222217@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58'),
-(30, 'ZHAO Wei', '260222218@stu.vtc.edu.hk', '12345', 'student', '2026-10-07 11:11:58');
+INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `role`, `last_active_at`, `created_at`) VALUES
+(1, 'Esther Yuen', 'wyyuen@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
+(2, 'Dr. Alan Ho', 'alanho@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
+(3, 'Prof. Rebecca Lam', 'rebeccalam@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
+(4, 'Dr. Vincent Ng', 'vincentng@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
+(5, 'Ms. Karen Tsang', 'karentsang@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
+(6, 'CHAN Ho Yin', '260222111@stu.vtc.edu.hk', '12345', 'student', '2026-10-17 23:35:35', '2026-10-07 11:11:58'),
+(7, 'CHUI Ka Chun', '260222112@stu.vtc.edu.hk', '12345', 'student', '2026-10-18 00:29:08', '2026-10-07 11:11:58'),
+(8, 'LAI Ka-Yu Savio', '260222113@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(9, 'MIAO Tung', '260222114@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(10, 'WONG Mei Ling', '260222115@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(11, 'LEE Chun Kit', '260222116@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(12, 'NG Wing Yan', '260222117@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(13, 'TAM Chi Hang', '260222201@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(14, 'HO Wing Sze', '260222202@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(15, 'LAM Ka Ho', '260222203@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(16, 'YIP Man Yee', '260222204@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(17, 'SO Chun Ming', '260222205@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(18, 'CHEUNG Ka Yan', '260222206@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(19, 'CHU Ho Yin', '260222207@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(20, 'FUNG Wing Chi', '260222208@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(21, 'KWOK Chi Wai', '260222209@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(22, 'LEUNG Mei Mei', '260222210@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(23, 'MAK Ho Cheung', '260222211@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(24, 'NGAI Ka Wai', '260222212@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(25, 'POON Yuen Ting', '260222213@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(26, 'SIU Chun Hei', '260222214@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(27, 'TSE Wing Lam', '260222215@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(28, 'WU Ka Man', '260222216@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(29, 'YIU Ho Kwan', '260222217@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
+(30, 'ZHAO Wei', '260222218@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58');
 
 --
 -- 已匯出資料表的索引
@@ -917,7 +931,16 @@ ALTER TABLE `messages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `group_id` (`group_id`),
   ADD KEY `sender_id` (`sender_id`),
-  ADD KEY `attachment_id` (`attachment_id`);
+  ADD KEY `attachment_id` (`attachment_id`),
+  ADD KEY `recipient_id` (`recipient_id`);
+
+--
+-- 資料表索引 `message_reads`
+--
+ALTER TABLE `message_reads`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_read` (`user_id`,`group_id`),
+  ADD KEY `group_id` (`group_id`);
 
 --
 -- 資料表索引 `milestones`
@@ -996,7 +1019,7 @@ ALTER TABLE `users`
 -- 使用資料表 AUTO_INCREMENT `activities`
 --
 ALTER TABLE `activities`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- 使用資料表 AUTO_INCREMENT `announcements`
@@ -1032,7 +1055,7 @@ ALTER TABLE `course_enrollments`
 -- 使用資料表 AUTO_INCREMENT `files`
 --
 ALTER TABLE `files`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- 使用資料表 AUTO_INCREMENT `groups`
@@ -1062,7 +1085,13 @@ ALTER TABLE `leader_votes`
 -- 使用資料表 AUTO_INCREMENT `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+
+--
+-- 使用資料表 AUTO_INCREMENT `message_reads`
+--
+ALTER TABLE `message_reads`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- 使用資料表 AUTO_INCREMENT `milestones`
@@ -1208,7 +1237,15 @@ ALTER TABLE `leader_votes`
 ALTER TABLE `messages`
   ADD CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `messages_ibfk_2` FOREIGN KEY (`sender_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `messages_ibfk_3` FOREIGN KEY (`attachment_id`) REFERENCES `files` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `messages_ibfk_3` FOREIGN KEY (`attachment_id`) REFERENCES `files` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `messages_ibfk_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
+
+--
+-- 資料表的 Constraints `message_reads`
+--
+ALTER TABLE `message_reads`
+  ADD CONSTRAINT `message_reads_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `message_reads_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE;
 
 --
 -- 資料表的 Constraints `milestones`
