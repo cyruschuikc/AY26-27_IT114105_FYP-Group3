@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機: 127.0.0.1
--- 產生時間： 2026-10-17 18:30:52
+-- 產生時間： 2026-10-19 07:12:44
 -- 伺服器版本: 10.1.30-MariaDB
 -- PHP 版本： 5.6.33
 
@@ -65,7 +65,21 @@ INSERT INTO `activities` (`id`, `project_id`, `group_id`, `actor_id`, `action`, 
 (22, 1, 1, 7, 'uploaded', '上傳了共享檔案 bell.png', '2026-10-17 15:51:19'),
 (23, 1, 1, 7, 'uploaded', 'uploaded shared file \"bell\"', '2026-10-17 16:01:13'),
 (24, 1, 1, 7, 'uploaded', 'uploaded shared file \"bell\"', '2026-10-17 16:02:51'),
-(25, 1, 1, 7, 'uploaded', 'uploaded shared file \"TeamBox_logo_black\"', '2026-10-17 16:12:02');
+(25, 1, 1, 7, 'uploaded', 'uploaded shared file \"TeamBox_logo_black\"', '2026-10-17 16:12:02'),
+(26, 1, 1, 6, 'created', 'created task \"ABC\"', '2026-10-18 10:57:54'),
+(27, 1, 1, 6, 'created', 'created task \"GFHJK\"', '2026-10-18 10:58:17'),
+(28, 1, 1, 6, 'created', 'created task \"GFHJK\"', '2026-10-18 11:07:46'),
+(29, 1, 1, 6, 'uploaded', 'uploaded bell.png to task \"Complete Project Proposal\"', '2026-10-18 11:10:27'),
+(30, 1, 1, 6, 'uploaded', 'uploaded bell.png to task \"Complete Project Proposal\"', '2026-10-18 11:34:37'),
+(31, 1, 1, 6, 'deleted', 'deleted task file \"bell.png\"', '2026-10-18 11:43:36'),
+(32, 1, 1, 6, 'deleted', 'deleted task file \"bell.png\"', '2026-10-18 11:43:41'),
+(33, 1, 1, 6, 'uploaded', 'uploaded bell (2).png to task \"Complete Project Proposal\"', '2026-10-18 12:00:54'),
+(34, 1, 1, 6, 'deleted', 'deleted task file \"bell (2).png\"', '2026-10-18 12:01:00'),
+(35, 1, 1, 6, 'uploaded', 'uploaded bell (2).png to task \"Complete Project Proposal\"', '2026-10-19 04:25:27'),
+(36, 1, 1, 6, 'created', 'created task \"ABC\"', '2026-10-19 04:35:08'),
+(37, 1, 1, 7, 'uploaded', 'uploaded bell (2).png to task \"ABC\"', '2026-10-19 04:35:49'),
+(38, 1, 1, 7, 'uploaded', 'uploaded bell.png to task \"ABC\"', '2026-10-19 04:37:43'),
+(39, 1, 1, 7, 'uploaded', 'uploaded bell.png to task \"GFHJK\"', '2026-10-19 04:45:27');
 
 -- --------------------------------------------------------
 
@@ -129,6 +143,15 @@ CREATE TABLE `contributions` (
   `contribution_date` date DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 資料表的匯出資料 `contributions`
+--
+
+INSERT INTO `contributions` (`id`, `group_id`, `student_id`, `title`, `type`, `notes`, `contribution_date`, `created_at`) VALUES
+(2, 1, 2, 'Completed task: 21', 'Development', 'Auto-recorded when task \"ABC\" was completed.', '2026-10-19', '2026-10-19 04:37:51'),
+(3, 1, 2, 'Completed task: 18', 'Development', 'Auto-recorded when task \"ABC\" was completed.', '2026-10-19', '2026-10-19 04:41:08'),
+(4, 1, 2, 'Completed task: 20', 'Development', 'Auto-recorded when task \"GFHJK\" was confirmed by the assigner.', '2026-10-19', '2026-10-19 04:51:54');
 
 -- --------------------------------------------------------
 
@@ -258,7 +281,11 @@ INSERT INTO `files` (`id`, `project_id`, `group_id`, `task_id`, `uploader_id`, `
 (31, 1, 1, NULL, 2, 'bell.png', NULL, NULL, 'shared1_1792252279_afd51251.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-17 15:51:19', NULL, NULL, NULL),
 (32, 1, 1, NULL, 2, 'bell.png', 'bell', 'ABC', 'shared1_1792252873_0d29b20b.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-17 16:01:13', NULL, NULL, NULL),
 (33, 1, 1, NULL, 2, 'bell.png', 'bell', NULL, 'shared1_1792252971_219da567.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-17 16:02:51', NULL, NULL, NULL),
-(34, 1, 1, NULL, 2, 'TeamBox_logo_black.png', 'TeamBox_logo_black', NULL, 'shared1_1792253522_dd9eb8d2.png', '553.4 KB', 'PNG', 'Unviewed', '2026-10-17 16:12:02', NULL, NULL, NULL);
+(34, 1, 1, NULL, 2, 'TeamBox_logo_black.png', 'TeamBox_logo_black', NULL, 'shared1_1792253522_dd9eb8d2.png', '553.4 KB', 'PNG', 'Unviewed', '2026-10-17 16:12:02', NULL, NULL, NULL),
+(35, 1, 1, 1, 1, 'bell (2).png', NULL, NULL, 'task1_1792383927_368bee70.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-19 04:25:27', NULL, NULL, NULL),
+(36, 1, 1, 18, 2, 'bell (2).png', NULL, NULL, 'task18_1792384549_b8309e13.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-19 04:35:49', NULL, NULL, NULL),
+(37, 1, 1, 21, 2, 'bell.png', NULL, NULL, 'task21_1792384663_4e35bb69.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-19 04:37:43', NULL, NULL, NULL),
+(38, 1, 1, 20, 2, 'bell.png', NULL, NULL, 'task20_1792385127_f5825b7a.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-19 04:45:27', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -555,7 +582,13 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `link`
 (8, 20, 'team', 'New Group Message', 'A new message was posted in Team 06.', 'student_chat.php', 0, '2026-10-07 11:11:59'),
 (9, 25, 'file', 'File Approved', 'Your \"Company_List.xlsx\" was approved.', 'student_files.php', 0, '2026-10-07 11:11:59'),
 (10, 26, 'task', 'New Task Assigned', 'You have been assigned \"Matching Algorithm\".', 'student_task.php', 0, '2026-10-07 11:11:59'),
-(11, 27, 'team', 'New Group Message', 'A new message was posted in Team 09.', 'student_chat.php', 0, '2026-10-07 11:11:59');
+(11, 27, 'team', 'New Group Message', 'A new message was posted in Team 09.', 'student_chat.php', 0, '2026-10-07 11:11:59'),
+(12, 7, 'task', 'New Task Assigned', 'You have been assigned \"ABC\".', 'student_task.php?group_id=1', 0, '2026-10-18 10:57:54'),
+(13, 7, 'task', 'New Task Assigned', 'You have been assigned \"GFHJK\".', 'student_task.php?group_id=1', 0, '2026-10-18 10:58:17'),
+(14, 7, 'task', 'New Task Assigned', 'You have been assigned \"GFHJK\".', 'student_task.php?group_id=1', 0, '2026-10-18 11:07:46'),
+(15, 7, 'task', 'New Task Assigned', 'You have been assigned \"ABC\".', 'student_task.php?group_id=1', 0, '2026-10-19 04:35:08'),
+(16, 6, 'task', 'Task Completed - Needs Confirmation', 'The assignee marked \"GFHJK\" as completed. Please confirm.', 'student_task.php?group_id=1', 0, '2026-10-19 04:51:32'),
+(17, 7, 'task', 'Task Confirmed', 'Your task \"GFHJK\" has been confirmed. +10 contribution points.', 'student_task.php?group_id=1', 0, '2026-10-19 04:51:54');
 
 -- --------------------------------------------------------
 
@@ -664,7 +697,7 @@ CREATE TABLE `tasks` (
   `description` text COLLATE utf8mb4_unicode_ci,
   `assigned_to` int(11) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
-  `status` enum('Pending','In Progress','Completed') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
+  `status` enum('Pending','In Progress','Waiting_Confirm','Completed') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
   `priority` enum('Low','Medium','High') COLLATE utf8mb4_unicode_ci DEFAULT 'Medium',
   `due_date` date DEFAULT NULL,
   `completed_at` datetime DEFAULT NULL,
@@ -692,7 +725,11 @@ INSERT INTO `tasks` (`id`, `project_id`, `group_id`, `title`, `description`, `as
 (14, 6, 6, 'Prompt Engineering', 'Design prompt templates.', 16, 18, 'Pending', 'Medium', '2026-11-10', NULL, '2026-10-07 11:11:59'),
 (15, 8, 9, 'Company Database', 'Collect company data.', 20, 22, 'Completed', 'Medium', '2026-10-05', NULL, '2026-10-07 11:11:59'),
 (16, 8, 9, 'Matching Algorithm', 'Build matching algorithm.', 21, 22, 'In Progress', 'High', '2026-10-28', NULL, '2026-10-07 11:11:59'),
-(17, 8, 9, 'Frontend Dashboard', 'Build student dashboard.', 22, 22, 'Pending', 'Medium', '2026-11-15', NULL, '2026-10-07 11:11:59');
+(17, 8, 9, 'Frontend Dashboard', 'Build student dashboard.', 22, 22, 'Pending', 'Medium', '2026-11-15', NULL, '2026-10-07 11:11:59'),
+(18, 1, 1, 'ABC', 'XFGFHJHK', 2, 6, 'Completed', 'High', '2026-10-22', NULL, '2026-10-18 10:57:54'),
+(19, 1, 1, 'GFHJK', 'FXHHMJ/', 2, 6, 'Pending', 'Low', '2026-10-27', NULL, '2026-10-18 10:58:17'),
+(20, 1, 1, 'GFHJK', 'FXHHMJ/', 2, 6, 'Completed', 'Low', '2026-10-27', '2026-10-19 12:51:54', '2026-10-18 11:07:46'),
+(21, 1, 1, 'ABC', 'DFF', 2, 6, 'Completed', 'Medium', '2026-10-22', NULL, '2026-10-19 04:35:08');
 
 -- --------------------------------------------------------
 
@@ -789,8 +826,8 @@ INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `role`, `last_a
 (3, 'Prof. Rebecca Lam', 'rebeccalam@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
 (4, 'Dr. Vincent Ng', 'vincentng@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
 (5, 'Ms. Karen Tsang', 'karentsang@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
-(6, 'CHAN Ho Yin', '260222111@stu.vtc.edu.hk', '12345', 'student', '2026-10-17 23:35:35', '2026-10-07 11:11:58'),
-(7, 'CHUI Ka Chun', '260222112@stu.vtc.edu.hk', '12345', 'student', '2026-10-18 00:29:08', '2026-10-07 11:11:58'),
+(6, 'CHAN Ho Yin', '260222111@stu.vtc.edu.hk', '12345', 'student', '2026-10-19 12:51:50', '2026-10-07 11:11:58'),
+(7, 'CHUI Ka Chun', '260222112@stu.vtc.edu.hk', '12345', 'student', '2026-10-19 12:52:27', '2026-10-07 11:11:58'),
 (8, 'LAI Ka-Yu Savio', '260222113@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
 (9, 'MIAO Tung', '260222114@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
 (10, 'WONG Mei Ling', '260222115@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
@@ -813,7 +850,7 @@ INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `role`, `last_a
 (27, 'TSE Wing Lam', '260222215@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
 (28, 'WU Ka Man', '260222216@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
 (29, 'YIU Ho Kwan', '260222217@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58'),
-(30, 'ZHAO Wei', '260222218@stu.vtc.edu.hk', '12345', 'student', NULL, '2026-10-07 11:11:58');
+(30, 'ZHAO Wei', '260222218@stu.vtc.edu.hk', '12345', 'student', '2026-10-18 18:14:13', '2026-10-07 11:11:58');
 
 --
 -- 已匯出資料表的索引
@@ -1019,7 +1056,7 @@ ALTER TABLE `users`
 -- 使用資料表 AUTO_INCREMENT `activities`
 --
 ALTER TABLE `activities`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- 使用資料表 AUTO_INCREMENT `announcements`
@@ -1037,7 +1074,7 @@ ALTER TABLE `announcement_targets`
 -- 使用資料表 AUTO_INCREMENT `contributions`
 --
 ALTER TABLE `contributions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- 使用資料表 AUTO_INCREMENT `courses`
@@ -1055,13 +1092,13 @@ ALTER TABLE `course_enrollments`
 -- 使用資料表 AUTO_INCREMENT `files`
 --
 ALTER TABLE `files`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- 使用資料表 AUTO_INCREMENT `groups`
 --
 ALTER TABLE `groups`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- 使用資料表 AUTO_INCREMENT `group_requests`
@@ -1073,7 +1110,7 @@ ALTER TABLE `group_requests`
 -- 使用資料表 AUTO_INCREMENT `invitations`
 --
 ALTER TABLE `invitations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- 使用資料表 AUTO_INCREMENT `leader_votes`
@@ -1091,7 +1128,7 @@ ALTER TABLE `messages`
 -- 使用資料表 AUTO_INCREMENT `message_reads`
 --
 ALTER TABLE `message_reads`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- 使用資料表 AUTO_INCREMENT `milestones`
@@ -1103,7 +1140,7 @@ ALTER TABLE `milestones`
 -- 使用資料表 AUTO_INCREMENT `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- 使用資料表 AUTO_INCREMENT `projects`
@@ -1121,7 +1158,7 @@ ALTER TABLE `students`
 -- 使用資料表 AUTO_INCREMENT `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- 使用資料表 AUTO_INCREMENT `teachers`
