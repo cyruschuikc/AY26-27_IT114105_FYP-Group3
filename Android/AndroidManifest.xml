@@ -12,6 +12,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TeamBox_sk2">
         <activity
+            android:name=".TaskMilestonesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".StuProfileActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CalendarActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Notificationctivity"
+            android:exported="false" />
+        <activity
             android:name=".CreateTeamActivity"
             android:exported="false" />
         <activity
@@ -55,6 +67,9 @@
             android:exported="false" />
         <activity
             android:name=".StuHomeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".TeacherHomeActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
