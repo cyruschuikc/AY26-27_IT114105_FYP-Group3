@@ -115,7 +115,7 @@ if (!$myGroup && count($myGroups) > 0) {
 }
 
 // =========================================================
-// 5. Flash message（POST 結果 / GET msg）
+// 5. Flash message
 // =========================================================
 $flashMsg  = '';
 $flashType = '';
@@ -128,6 +128,10 @@ if (isset($_GET['msg'])) {
             break;
         case 'deleted':
             $flashMsg  = 'File deleted successfully.';
+            $flashType = 'success';
+            break;
+        case 'task_deleted':
+            $flashMsg  = 'Task deleted successfully.';
             $flashType = 'success';
             break;
         case 'nofile':
@@ -146,6 +150,18 @@ if (isset($_GET['msg'])) {
             $flashMsg  = 'You are not allowed to perform this action.';
             $flashType = 'error';
             break;
+        case 'waiting_confirm':
+            $flashMsg  = 'Task submitted. Waiting for the assigner to confirm.';
+            $flashType = 'success';
+            break;
+        case 'confirmed':
+            $flashMsg  = 'Task confirmed and completed. +10 contribution points awarded.';
+            $flashType = 'success';
+            break;
+        case 'rejected':
+            $flashMsg  = 'Task rejected. The assignee needs to redo it.';
+            $flashType = 'error';
+            break;
     }
 }
 
@@ -153,7 +169,86 @@ if (isset($_GET['msg'])) {
 // 6. 處理 POST
 // =========================================================
 
-// -------- 6.1 Create Task --------
+// -------- 6.0 Delete Task --------
+if (isset($_POST['deleteTask']) && $myGroup) {
+
+    $taskID = (int) (isset($_POST['taskID']) ? $_POST['taskID'] : 0);
+
+    if ($taskID > 0) {
+        $stmt = mysqli_prepare($conn, "
+            SELECT id, title, created_by, assigned_to
+            FROM `tasks`
+            WHERE id = ? AND group_id = ?
+            LIMIT 1
+        ");
+        mysqli_stmt_bind_param($stmt, "ii", $taskID, $activeGroupID);
+        mysqli_stmt_execute($stmt);
+        $rs = mysqli_stmt_get_result($stmt);
+        $taskRow = mysqli_fetch_assoc($rs);
+        mysqli_stmt_close($stmt);
+
+        if (!$taskRow) {
+            $flashMsg  = 'Task not found.';
+            $flashType = 'error';
+        } else {
+            $isCreator = ((int)$taskRow['created_by'] === $userID);
+            $isLeader  = ((int)$myGroup['leader_id'] === $studentID);
+
+            if (!$isCreator && !$isLeader) {
+                $flashMsg  = 'Only the task creator or team leader can delete this task.';
+                $flashType = 'error';
+            } else {
+                $stmtF = mysqli_prepare($conn, "
+                    SELECT id, stored_name FROM `files` WHERE task_id = ?
+                ");
+                mysqli_stmt_bind_param($stmtF, "i", $taskID);
+                mysqli_stmt_execute($stmtF);
+                $rsF = mysqli_stmt_get_result($stmtF);
+                $fileIDs = array();
+                while ($f = mysqli_fetch_assoc($rsF)) {
+                    $fileIDs[] = (int)$f['id'];
+                    if (!empty($f['stored_name'])) {
+                        $realPath = __DIR__ . '/uploads/chat_files/' . $f['stored_name'];
+                        if (is_file($realPath)) {
+                            @unlink($realPath);
+                        }
+                    }
+                }
+                mysqli_stmt_close($stmtF);
+
+                if (count($fileIDs) > 0) {
+                    $placeholders = implode(',', array_fill(0, count($fileIDs), '?'));
+                    $types = str_repeat('i', count($fileIDs));
+                    $stmtDelF = mysqli_prepare($conn, "DELETE FROM `files` WHERE id IN ($placeholders)");
+                    mysqli_stmt_bind_param($stmtDelF, $types, ...$fileIDs);
+                    mysqli_stmt_execute($stmtDelF);
+                    mysqli_stmt_close($stmtDelF);
+                }
+
+                $contribTitle = 'Completed task: ' . $taskID;
+                $stmtDelC = mysqli_prepare($conn, "
+                    DELETE FROM `contributions`
+                    WHERE group_id = ? AND title = ?
+                ");
+                mysqli_stmt_bind_param($stmtDelC, "is", $activeGroupID, $contribTitle);
+                mysqli_stmt_execute($stmtDelC);
+                mysqli_stmt_close($stmtDelC);
+
+                $stmtDelT = mysqli_prepare($conn, "
+                    DELETE FROM `tasks` WHERE id = ? AND group_id = ?
+                ");
+                mysqli_stmt_bind_param($stmtDelT, "ii", $taskID, $activeGroupID);
+                mysqli_stmt_execute($stmtDelT);
+                mysqli_stmt_close($stmtDelT);
+
+                $flashMsg  = 'Task deleted successfully.';
+                $flashType = 'success';
+            }
+        }
+    }
+}
+
+// -------- 6.1 Create Task（移除 self 選項） --------
 if (isset($_POST['createTask']) && $myGroup) {
 
     $title       = trim(isset($_POST['taskTitle'])       ? $_POST['taskTitle']       : '');
@@ -162,11 +257,8 @@ if (isset($_POST['createTask']) && $myGroup) {
     $deadline    = trim(isset($_POST['taskDeadline'])    ? $_POST['taskDeadline']    : '');
     $priority    = trim(isset($_POST['taskPriority'])    ? $_POST['taskPriority']    : 'Medium');
 
-    if ($assignedTo === 'self') {
-        $assignedToID = $studentID;
-    } else {
-        $assignedToID = (int) $assignedTo;
-    }
+    // 現在只能指定其他組員，不能選自己
+    $assignedToID = (int) $assignedTo;
 
     if ($title === '' || $description === '' || $deadline === '' || $assignedToID === 0) {
         $flashMsg  = 'Please fill in all required fields.';
@@ -207,6 +299,8 @@ if (isset($_POST['createTask']) && $myGroup) {
             );
 
             if (mysqli_stmt_execute($stmt)) {
+                $newTaskID = (int) mysqli_insert_id($conn);
+
                 $stmt2 = mysqli_prepare($conn, "
                     INSERT INTO `activities` (project_id, group_id, actor_id, action, detail)
                     VALUES (?, ?, ?, 'created', ?)
@@ -253,32 +347,180 @@ if (isset($_POST['createTask']) && $myGroup) {
     }
 }
 
-// -------- 6.2 Mark My Progress --------
-if (isset($_POST['updateProgress']) && $myGroup) {
+// -------- 6.2 Assignee marks task as Completed --------
+if (isset($_POST['markCompleted']) && $myGroup) {
 
     $taskID = (int) (isset($_POST['taskID']) ? $_POST['taskID'] : 0);
-    $status = trim(isset($_POST['status']) ? $_POST['status'] : '');
 
-    if ($taskID > 0 && in_array($status, array('Pending', 'In Progress', 'Completed'), true)) {
+    if ($taskID > 0) {
         $stmt = mysqli_prepare($conn, "
             UPDATE `tasks`
-            SET status = ?
-            WHERE id = ? AND group_id = ? AND assigned_to = ?
+            SET status = 'Waiting_Confirm'
+            WHERE id = ? AND group_id = ? AND assigned_to = ? AND status IN ('Pending', 'In Progress')
         ");
-        mysqli_stmt_bind_param($stmt, "siii", $status, $taskID, $activeGroupID, $studentID);
+        mysqli_stmt_bind_param($stmt, "iii", $taskID, $activeGroupID, $studentID);
 
-        if (mysqli_stmt_execute($stmt)) {
-            $flashMsg  = 'Your task progress was updated.';
+        if (mysqli_stmt_execute($stmt) && mysqli_stmt_affected_rows($stmt) > 0) {
+            $flashMsg  = 'Task submitted. Waiting for the assigner to confirm.';
             $flashType = 'success';
+
+            $stmtT = mysqli_prepare($conn, "SELECT title, created_by FROM `tasks` WHERE id = ? LIMIT 1");
+            mysqli_stmt_bind_param($stmtT, "i", $taskID);
+            mysqli_stmt_execute($stmtT);
+            $rsT = mysqli_stmt_get_result($stmtT);
+            $taskRow = mysqli_fetch_assoc($rsT);
+            mysqli_stmt_close($stmtT);
+
+            if ($taskRow) {
+                $creatorUserID = (int) $taskRow['created_by'];
+                $taskTitle     = $taskRow['title'];
+
+                $notifyTitle = 'Task Completed - Needs Confirmation';
+                $notifyMsg   = 'The assignee marked "' . $taskTitle . '" as completed. Please confirm.';
+                $notifyLink  = 'student_task.php?group_id=' . $activeGroupID;
+
+                $stmtN = mysqli_prepare($conn, "
+                    INSERT INTO `notifications` (user_id, type, title, message, link, is_read)
+                    VALUES (?, 'task', ?, ?, ?, 0)
+                ");
+                mysqli_stmt_bind_param($stmtN, "isss", $creatorUserID, $notifyTitle, $notifyMsg, $notifyLink);
+                mysqli_stmt_execute($stmtN);
+                mysqli_stmt_close($stmtN);
+            }
         } else {
-            $flashMsg  = 'Update failed: ' . mysqli_error($conn);
+            $flashMsg  = 'Unable to submit task. It may already be completed or you are not the assignee.';
             $flashType = 'error';
         }
         mysqli_stmt_close($stmt);
     }
 }
 
-// -------- 6.3 Log My Contribution --------
+// -------- 6.3 Assign From confirms or rejects --------
+if (isset($_POST['confirmTask']) && $myGroup) {
+
+    $taskID     = (int) (isset($_POST['taskID']) ? $_POST['taskID'] : 0);
+    $decision   = trim(isset($_POST['decision']) ? $_POST['decision'] : '');
+
+    if ($taskID > 0 && in_array($decision, array('confirm', 'reject'), true)) {
+
+        $stmt = mysqli_prepare($conn, "
+            SELECT id, title, created_by, assigned_to
+            FROM `tasks`
+            WHERE id = ? AND group_id = ? AND status = 'Waiting_Confirm' AND created_by = ?
+            LIMIT 1
+        ");
+        mysqli_stmt_bind_param($stmt, "iii", $taskID, $activeGroupID, $userID);
+        mysqli_stmt_execute($stmt);
+        $rs = mysqli_stmt_get_result($stmt);
+        $taskRow = mysqli_fetch_assoc($rs);
+        mysqli_stmt_close($stmt);
+
+        if (!$taskRow) {
+            $flashMsg  = 'Task not found or you are not the assigner.';
+            $flashType = 'error';
+        } else {
+            $taskTitle  = $taskRow['title'];
+            $assigneeID = (int) $taskRow['assigned_to'];
+
+            if ($decision === 'confirm') {
+                $stmtU = mysqli_prepare($conn, "
+                    UPDATE `tasks`
+                    SET status = 'Completed', completed_at = NOW()
+                    WHERE id = ? AND group_id = ?
+                ");
+                mysqli_stmt_bind_param($stmtU, "ii", $taskID, $activeGroupID);
+                mysqli_stmt_execute($stmtU);
+                mysqli_stmt_close($stmtU);
+
+                $contribTitle = 'Completed task: ' . $taskID;
+                $checkStmt = mysqli_prepare($conn, "
+                    SELECT id FROM `contributions`
+                    WHERE group_id = ? AND student_id = ? AND title = ?
+                    LIMIT 1
+                ");
+                mysqli_stmt_bind_param($checkStmt, "iis", $activeGroupID, $assigneeID, $contribTitle);
+                mysqli_stmt_execute($checkStmt);
+                $checkRs = mysqli_stmt_get_result($checkStmt);
+                $exists  = mysqli_fetch_assoc($checkRs);
+                mysqli_stmt_close($checkStmt);
+
+                if (!$exists) {
+                    $stmtC = mysqli_prepare($conn, "
+                        INSERT INTO `contributions`
+                            (group_id, student_id, title, type, notes, contribution_date)
+                        VALUES (?, ?, ?, 'Development', ?, CURDATE())
+                    ");
+                    $note = 'Auto-recorded when task "' . $taskTitle . '" was confirmed by the assigner.';
+                    mysqli_stmt_bind_param($stmtC, "iiss", $activeGroupID, $assigneeID, $contribTitle, $note);
+                    mysqli_stmt_execute($stmtC);
+                    mysqli_stmt_close($stmtC);
+                }
+
+                $flashMsg  = 'Task confirmed and completed. +10 contribution points awarded.';
+                $flashType = 'success';
+
+                $stmtUser = mysqli_prepare($conn, "SELECT user_id FROM `students` WHERE id = ? LIMIT 1");
+                mysqli_stmt_bind_param($stmtUser, "i", $assigneeID);
+                mysqli_stmt_execute($stmtUser);
+                $rsUser = mysqli_stmt_get_result($stmtUser);
+                $assigneeUser = mysqli_fetch_assoc($rsUser);
+                mysqli_stmt_close($stmtUser);
+
+                if ($assigneeUser) {
+                    $targetUID = (int) $assigneeUser['user_id'];
+                    $nTitle = 'Task Confirmed';
+                    $nMsg   = 'Your task "' . $taskTitle . '" has been confirmed. +10 contribution points.';
+                    $nLink  = 'student_task.php?group_id=' . $activeGroupID;
+
+                    $stmtN = mysqli_prepare($conn, "
+                        INSERT INTO `notifications` (user_id, type, title, message, link, is_read)
+                        VALUES (?, 'task', ?, ?, ?, 0)
+                    ");
+                    mysqli_stmt_bind_param($stmtN, "isss", $targetUID, $nTitle, $nMsg, $nLink);
+                    mysqli_stmt_execute($stmtN);
+                    mysqli_stmt_close($stmtN);
+                }
+
+            } else {
+                $stmtU = mysqli_prepare($conn, "
+                    UPDATE `tasks`
+                    SET status = 'Pending'
+                    WHERE id = ? AND group_id = ?
+                ");
+                mysqli_stmt_bind_param($stmtU, "ii", $taskID, $activeGroupID);
+                mysqli_stmt_execute($stmtU);
+                mysqli_stmt_close($stmtU);
+
+                $flashMsg  = 'Task rejected. The assignee needs to redo it.';
+                $flashType = 'error';
+
+                $stmtUser = mysqli_prepare($conn, "SELECT user_id FROM `students` WHERE id = ? LIMIT 1");
+                mysqli_stmt_bind_param($stmtUser, "i", $assigneeID);
+                mysqli_stmt_execute($stmtUser);
+                $rsUser = mysqli_stmt_get_result($stmtUser);
+                $assigneeUser = mysqli_fetch_assoc($rsUser);
+                mysqli_stmt_close($stmtUser);
+
+                if ($assigneeUser) {
+                    $targetUID = (int) $assigneeUser['user_id'];
+                    $nTitle = 'Task Rejected - Please Redo';
+                    $nMsg   = 'Your task "' . $taskTitle . '" was not confirmed. Please redo it.';
+                    $nLink  = 'student_task.php?group_id=' . $activeGroupID;
+
+                    $stmtN = mysqli_prepare($conn, "
+                        INSERT INTO `notifications` (user_id, type, title, message, link, is_read)
+                        VALUES (?, 'task', ?, ?, ?, 0)
+                    ");
+                    mysqli_stmt_bind_param($stmtN, "isss", $targetUID, $nTitle, $nMsg, $nLink);
+                    mysqli_stmt_execute($stmtN);
+                    mysqli_stmt_close($stmtN);
+                }
+            }
+        }
+    }
+}
+
+// -------- 6.4 Log My Contribution --------
 if (isset($_POST['logContribution']) && $myGroup) {
 
     $title  = trim(isset($_POST['contributionTitle']) ? $_POST['contributionTitle'] : '');
@@ -324,11 +566,10 @@ if (isset($_POST['logContribution']) && $myGroup) {
 // =========================================================
 // 7. 拎 group 資料
 // =========================================================
-$groupMembers    = array();
-$groupTasks      = array();
-$myContributions = array();
-$taskFiles       = array();
-$progress        = array('total' => 0, 'pending' => 0, 'in_progress' => 0, 'completed' => 0, 'pct' => 0);
+$groupMembers = array();
+$groupTasks   = array();
+$taskFiles    = array();
+$progress     = array('total' => 0, 'pending' => 0, 'in_progress' => 0, 'waiting' => 0, 'completed' => 0, 'pct' => 0);
 
 if ($myGroup) {
 
@@ -362,6 +603,7 @@ if ($myGroup) {
             t.due_date,
             t.assigned_to,
             t.completed_at,
+            t.created_by,
             au.username AS owner_name,
             cu.username AS creator_name
         FROM `tasks` t
@@ -371,10 +613,11 @@ if ($myGroup) {
         WHERE t.group_id = ?
         ORDER BY
             CASE t.status
-                WHEN 'In Progress' THEN 1
-                WHEN 'Pending'     THEN 2
-                WHEN 'Completed'   THEN 3
-                ELSE 4
+                WHEN 'Waiting_Confirm' THEN 1
+                WHEN 'In Progress'     THEN 2
+                WHEN 'Pending'         THEN 3
+                WHEN 'Completed'       THEN 4
+                ELSE 5
             END,
             t.due_date
     ");
@@ -385,9 +628,10 @@ if ($myGroup) {
         $groupTasks[] = $row;
 
         $progress['total']++;
-        if ($row['status'] === 'Pending')          $progress['pending']++;
-        elseif ($row['status'] === 'In Progress')  $progress['in_progress']++;
-        elseif ($row['status'] === 'Completed')    $progress['completed']++;
+        if ($row['status'] === 'Pending')              $progress['pending']++;
+        elseif ($row['status'] === 'In Progress')      $progress['in_progress']++;
+        elseif ($row['status'] === 'Waiting_Confirm')  $progress['waiting']++;
+        elseif ($row['status'] === 'Completed')        $progress['completed']++;
     }
     mysqli_stmt_close($stmt);
 
@@ -431,21 +675,6 @@ if ($myGroup) {
         }
         mysqli_stmt_close($stmt);
     }
-
-    $stmt = mysqli_prepare($conn, "
-        SELECT id, title, type, notes, contribution_date, created_at
-        FROM `contributions`
-        WHERE group_id = ? AND student_id = ?
-        ORDER BY contribution_date DESC, id DESC
-        LIMIT 10
-    ");
-    mysqli_stmt_bind_param($stmt, "ii", $activeGroupID, $studentID);
-    mysqli_stmt_execute($stmt);
-    $rs = mysqli_stmt_get_result($stmt);
-    while ($row = mysqli_fetch_assoc($rs)) {
-        $myContributions[] = $row;
-    }
-    mysqli_stmt_close($stmt);
 }
 
 // =========================================================
@@ -454,9 +683,19 @@ if ($myGroup) {
 if (!function_exists('statusClass')) {
     function statusClass($status) {
         switch ($status) {
-            case 'Completed':   return 'status-completed';
-            case 'In Progress': return 'status-progress';
-            default:            return 'status-pending';
+            case 'Completed':        return 'status-completed';
+            case 'Waiting_Confirm':  return 'status-waiting';
+            case 'In Progress':      return 'status-progress';
+            default:                 return 'status-pending';
+        }
+    }
+}
+
+if (!function_exists('statusLabel')) {
+    function statusLabel($status) {
+        switch ($status) {
+            case 'Waiting_Confirm': return 'Waiting for Confirmation';
+            default:                return $status;
         }
     }
 }
@@ -611,18 +850,18 @@ if (!function_exists('timeAgo')) {
         .alert-error   { background: #fdeeee; color: #a21b1b; border-color: #d32f2f; }
 
         .summary-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr);
-            gap: 20px; margin-bottom: 25px;
+            display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 16px; margin-bottom: 25px;
         }
         .summary-card {
-            min-height: 145px; padding: 24px;
+            min-height: 130px; padding: 22px;
             background: white; border-left: 5px solid black;
             border-radius: 15px; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s, box-shadow 0.3s;
         }
         .summary-card:hover { transform: translateY(-5px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); }
-        .summary-card h2 { margin-bottom: 15px; color: #666; font-size: 16px; }
-        .summary-number { color: black; font-size: 38px; font-weight: bold; }
+        .summary-card h2 { margin-bottom: 15px; color: #666; font-size: 15px; }
+        .summary-number { color: black; font-size: 34px; font-weight: bold; }
         .summary-description { margin-top: 7px; color: #777; font-size: 13px; }
 
         .log-contribution-section {
@@ -705,6 +944,7 @@ if (!function_exists('timeAgo')) {
             transition: transform 0.3s, box-shadow 0.3s;
         }
         .task-card:hover { transform: translateY(-3px); box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1); }
+        .task-card.waiting { border-left-color: #e0a030; background: #fffdf5; }
         .task-top {
             margin-bottom: 16px;
             display: flex; justify-content: space-between;
@@ -719,6 +959,7 @@ if (!function_exists('timeAgo')) {
         }
         .status-pending   { background: #eeeeee; color: #555; }
         .status-progress  { background: #fff1c2; color: #765900; }
+        .status-waiting   { background: #ffe9b8; color: #8a5a00; }
         .status-completed { background: #d9f5df; color: #176b2c; }
 
         .task-details {
@@ -878,7 +1119,22 @@ if (!function_exists('timeAgo')) {
             border: 2px dashed #cccccc; border-radius: 10px;
         }
         .my-progress h4 { margin-bottom: 12px; font-size: 14px; color: #555; }
-        .progress-options { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .progress-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .progress-row h4 {
+            margin: 0;
+            font-size: 14px;
+            color: #555;
+            flex-shrink: 0;
+        }
+
         .progress-btn {
             min-width: 120px; height: 40px; padding: 0 14px;
             background: white; color: #555;
@@ -887,9 +1143,131 @@ if (!function_exists('timeAgo')) {
             cursor: pointer; transition: 0.3s;
         }
         .progress-btn:hover { border-color: black; color: black; }
-        .progress-btn.active-pending   { background: #eeeeee; color: #333; border-color: #999999; }
-        .progress-btn.active-progress  { background: #fff1c2; color: #765900; border-color: #e0c060; }
-        .progress-btn.active-completed { background: #d9f5df; color: #176b2c; border-color: #8bc79a; }
+
+        .complete-btn {
+            min-width: 160px;
+            height: 40px;
+            padding: 0 16px;
+            background: black;
+            color: white;
+            border: 2px solid black;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+        .complete-btn:hover {
+            background: #333;
+        }
+        .complete-btn:active {
+            transform: scale(0.98);
+        }
+
+        .waiting-box {
+            margin-top: 18px;
+            padding: 18px 20px;
+            background: #fff8e1;
+            border: 2px solid #e0a030;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .waiting-box .waiting-text {
+            color: #8a5a00;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .waiting-box .waiting-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            background: #e0a030;
+            color: white;
+            border-radius: 50%;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .confirm-yes-btn {
+            min-width: 140px;
+            height: 40px;
+            padding: 0 16px;
+            background: #2e9d4d;
+            color: white;
+            border: 2px solid #2e9d4d;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .confirm-yes-btn:hover { background: #248a3f; border-color: #248a3f; }
+        .confirm-no-btn {
+            min-width: 140px;
+            height: 40px;
+            padding: 0 16px;
+            background: white;
+            color: #c62828;
+            border: 2px solid #c62828;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .confirm-no-btn:hover { background: #c62828; color: white; }
+
+        .completed-banner {
+            margin-top: 18px;
+            padding: 18px 20px;
+            background: #eaf7ee;
+            border: 2px solid #8bc79a;
+            border-radius: 10px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .completed-banner .completed-text {
+            color: #176b2c;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .completed-banner .completed-text .check-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            background: #2e9d4d;
+            color: white;
+            border-radius: 50%;
+            font-size: 14px;
+            font-weight: bold;
+        }
 
         .team-progress-section {
             padding: 28px; background: white;
@@ -912,20 +1290,6 @@ if (!function_exists('timeAgo')) {
         }
         .progress-value { height: 100%; background: black; border-radius: 10px; }
         .progress-note { margin-top: 12px; color: #777; font-size: 14px; }
-
-        .contrib-item {
-            padding: 14px 0; border-bottom: 1px solid #eeeeee;
-            display: flex; justify-content: space-between; gap: 16px;
-        }
-        .contrib-item:last-child { border-bottom: none; }
-        .contrib-item h4 { margin-bottom: 4px; font-size: 15px; }
-        .contrib-item p { color: #777; font-size: 13px; }
-        .contrib-type {
-            padding: 4px 10px; border-radius: 14px;
-            font-size: 11px; font-weight: bold;
-            background: #e5f0ff; color: #245889;
-            white-space: nowrap;
-        }
 
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -969,8 +1333,10 @@ if (!function_exists('timeAgo')) {
 
         .muted { color: #777; font-size: 14px; }
 
+        @media (max-width: 1100px) {
+            .summary-grid { grid-template-columns: repeat(3, 1fr); }
+        }
         @media (max-width: 1000px) {
-            .summary-grid { grid-template-columns: repeat(2, 1fr); }
             .section-heading { align-items: flex-start; flex-direction: column; }
             .task-details { grid-template-columns: repeat(2, 1fr); }
             .form-row { grid-template-columns: 1fr; gap: 0; }
@@ -991,13 +1357,17 @@ if (!function_exists('timeAgo')) {
             .task-details { grid-template-columns: 1fr; }
             .form-actions, .modal-footer { flex-direction: column; }
             .cancel-btn, .submit-btn { width: 100%; }
-            .progress-options { flex-direction: column; }
-            .progress-btn { width: 100%; }
+            .complete-btn { width: 100%; margin-left: 0; }
             .group-switcher { flex-direction: column; align-items: stretch; }
             .group-switcher select { min-width: 100%; }
             .task-files-head { flex-direction: column; align-items: flex-start; }
             .upload-btn { width: 100%; }
             .file-actions-wrap { width: 100%; justify-content: flex-end; }
+            .completed-banner { flex-direction: column; align-items: flex-start; }
+            .progress-row { flex-direction: column; align-items: stretch; }
+            .waiting-box { flex-direction: column; align-items: flex-start; }
+            .confirm-actions { width: 100%; }
+            .confirm-yes-btn, .confirm-no-btn { flex: 1; }
         }
     </style>
 </head>
@@ -1117,17 +1487,22 @@ if (!function_exists('timeAgo')) {
                 <p class="summary-description">All tasks in this team</p>
             </div>
             <div class="summary-card">
-                <h2>Pending Tasks</h2>
+                <h2>Pending</h2>
                 <p class="summary-number"><?php echo $progress['pending']; ?></p>
                 <p class="summary-description">Tasks waiting to be started</p>
             </div>
             <div class="summary-card">
                 <h2>In Progress</h2>
                 <p class="summary-number"><?php echo $progress['in_progress']; ?></p>
-                <p class="summary-description">Tasks currently being completed</p>
+                <p class="summary-description">Tasks being worked on</p>
             </div>
             <div class="summary-card">
-                <h2>Completed Tasks</h2>
+                <h2>Waiting Confirm</h2>
+                <p class="summary-number"><?php echo $progress['waiting']; ?></p>
+                <p class="summary-description">Awaiting assigner confirmation</p>
+            </div>
+            <div class="summary-card">
+                <h2>Completed</h2>
                 <p class="summary-number"><?php echo $progress['completed']; ?></p>
                 <p class="summary-description">Tasks successfully completed</p>
             </div>
@@ -1187,28 +1562,6 @@ if (!function_exists('timeAgo')) {
                     </button>
                 </div>
             </form>
-
-            <?php if (count($myContributions) > 0): ?>
-                <div style="margin-top: 28px; padding-top: 22px; border-top: 2px solid #eeeeee;">
-                    <h3 style="margin-bottom: 12px; font-size: 18px;">My Recent Contributions</h3>
-                    <?php foreach ($myContributions as $c): ?>
-                        <div class="contrib-item">
-                            <div>
-                                <h4><?php echo htmlspecialchars($c['title']); ?></h4>
-                                <p>
-                                    <?php echo htmlspecialchars($c['contribution_date']); ?>
-                                    <?php if (!empty($c['notes'])): ?>
-                                        · <?php echo htmlspecialchars($c['notes']); ?>
-                                    <?php endif; ?>
-                                </p>
-                            </div>
-                            <span class="contrib-type">
-                                <?php echo htmlspecialchars($c['type']); ?>
-                            </span>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
         </section>
 
         <section class="task-section">
@@ -1223,19 +1576,22 @@ if (!function_exists('timeAgo')) {
             <div class="task-list">
                 <?php foreach ($groupTasks as $t): ?>
                     <?php
-                    $taskId   = (int)$t['id'];
-                    $isMyTask = ((int)$t['assigned_to'] === $studentID);
+                    $taskId       = (int)$t['id'];
+                    $isMyTask     = ((int)$t['assigned_to'] === $studentID);
+                    $isCreator    = ((int)$t['created_by'] === $userID);
+                    $isCompleted  = ($t['status'] === 'Completed');
+                    $isWaiting    = ($t['status'] === 'Waiting_Confirm');
                     $filesForTask = isset($taskFiles[$taskId]) ? $taskFiles[$taskId] : array();
-                    $fileCount = count($filesForTask);
+                    $fileCount    = count($filesForTask);
                     ?>
-                    <article class="task-card">
+                    <article class="task-card <?php echo $isWaiting ? 'waiting' : ''; ?>">
                         <div class="task-top">
                             <div class="task-title">
                                 <h3><?php echo htmlspecialchars($t['title']); ?></h3>
                                 <p><?php echo htmlspecialchars($t['description'] ?: '—'); ?></p>
                             </div>
                             <span class="task-status <?php echo statusClass($t['status']); ?>">
-                                <?php echo htmlspecialchars($t['status']); ?>
+                                <?php echo htmlspecialchars(statusLabel($t['status'])); ?>
                             </span>
                         </div>
 
@@ -1251,7 +1607,12 @@ if (!function_exists('timeAgo')) {
                             </div>
                             <div class="detail-box">
                                 <h4>Created By</h4>
-                                <p><?php echo htmlspecialchars($t['creator_name'] ?: '—'); ?></p>
+                                <p>
+                                    <?php echo htmlspecialchars($t['creator_name'] ?: '—'); ?>
+                                    <?php if ($isCreator): ?>
+                                        <span style="color:#245889; font-weight:600;">(you)</span>
+                                    <?php endif; ?>
+                                </p>
                             </div>
                             <div class="detail-box">
                                 <h4>Deadline</h4>
@@ -1274,7 +1635,7 @@ if (!function_exists('timeAgo')) {
                                     <?php endif; ?>
                                 </h4>
 
-                                <?php if ($isMyTask): ?>
+                                <?php if ($isMyTask && !$isWaiting && !$isCompleted): ?>
                                     <form method="post"
                                           action="upload_task_file.php"
                                           enctype="multipart/form-data"
@@ -1289,8 +1650,18 @@ if (!function_exists('timeAgo')) {
                                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.txt,.zip,.fig,.sql,.ipynb">
                                         </label>
                                     </form>
+                                <?php elseif ($isCompleted): ?>
+                                    <span class="muted small" style="font-size:12px;">
+                                        Task completed — files are read-only.
+                                    </span>
+                                <?php elseif ($isWaiting): ?>
+                                    <span class="muted small" style="font-size:12px;">
+                                        Waiting for confirmation — files are read-only.
+                                    </span>
                                 <?php else: ?>
-
+                                    <span class="muted small" style="font-size:12px;">
+                                        Only the assignee can upload files.
+                                    </span>
                                 <?php endif; ?>
                             </div>
 
@@ -1321,7 +1692,7 @@ if (!function_exists('timeAgo')) {
                                                     ⬇ Download
                                                 </a>
 
-                                                <?php if ((int)$f['uploader_id'] === $studentID || $isLeader): ?>
+                                                <?php if (!$isWaiting && !$isCompleted && ((int)$f['uploader_id'] === $studentID || $isLeader)): ?>
                                                     <form method="post" action="delete_task_file.php" style="margin:0;"
                                                           onsubmit="return confirm('Are you sure you want to delete this file?');">
                                                         <input type="hidden" name="fileID" value="<?php echo (int)$f['id']; ?>">
@@ -1337,30 +1708,65 @@ if (!function_exists('timeAgo')) {
                             <?php endif; ?>
                         </div>
 
-                        <?php if ($isMyTask): ?>
+                        <?php if ($isMyTask && !$isWaiting && !$isCompleted): ?>
                             <div class="my-progress">
-                                <h4>Mark My Progress</h4>
-                                <form method="post"
-                                      action="student_task.php?group_id=<?php echo $activeGroupID; ?>"
-                                      class="progress-options">
-                                    <input type="hidden" name="taskID" value="<?php echo $taskId; ?>">
-                                    <input type="hidden" name="updateProgress" value="1">
+                                <div class="progress-row">
+                                    <h4>Mark My Progress</h4>
 
-                                    <button type="submit" name="status" value="Pending"
-                                            class="progress-btn <?php echo $t['status']==='Pending' ? 'active-pending' : ''; ?>">
-                                        Not Started
-                                    </button>
+                                    <form method="post" style="margin: 0; margin-left: auto;">
+                                        <input type="hidden" name="markCompleted" value="1">
+                                        <input type="hidden" name="taskID" value="<?php echo $taskId; ?>">
+                                        <button type="submit" class="complete-btn">
+                                            ✓ Mark as Completed
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
 
-                                    <button type="submit" name="status" value="In Progress"
-                                            class="progress-btn <?php echo $t['status']==='In Progress' ? 'active-progress' : ''; ?>">
-                                        Working On It
-                                    </button>
+                        <?php elseif ($isWaiting): ?>
+                            <?php if ($isCreator): ?>
+                                <div class="waiting-box">
+                                    <div class="waiting-text">
+                                        <span class="waiting-icon">?</span>
+                                        Assignee submitted this task. Confirm completion?
+                                    </div>
 
-                                    <button type="submit" name="status" value="Completed"
-                                            class="progress-btn <?php echo $t['status']==='Completed' ? 'active-completed' : ''; ?>">
-                                        I Completed It
-                                    </button>
-                                </form>
+                                    <div class="confirm-actions">
+                                        <form method="post" style="margin: 0;">
+                                            <input type="hidden" name="confirmTask" value="1">
+                                            <input type="hidden" name="taskID" value="<?php echo $taskId; ?>">
+                                            <input type="hidden" name="decision" value="confirm">
+                                            <button type="submit" class="confirm-yes-btn">
+                                                ✓ Confirm +10
+                                            </button>
+                                        </form>
+
+                                        <form method="post" style="margin: 0;"
+                                              onsubmit="return confirm('Reject this task? The assignee will need to redo it.');">
+                                            <input type="hidden" name="confirmTask" value="1">
+                                            <input type="hidden" name="taskID" value="<?php echo $taskId; ?>">
+                                            <input type="hidden" name="decision" value="reject">
+                                            <button type="submit" class="confirm-no-btn">
+                                                ✕ Reject
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="waiting-box">
+                                    <div class="waiting-text">
+                                        <span class="waiting-icon">⏳</span>
+                                        Waiting for the assigner to confirm your completion.
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                        <?php elseif ($isCompleted && $isMyTask): ?>
+                            <div class="completed-banner">
+                                <div class="completed-text">
+                                    <span class="check-icon">✓</span>
+                                    Task completed. Well done!
+                                </div>
                             </div>
                         <?php endif; ?>
                     </article>
@@ -1381,8 +1787,8 @@ if (!function_exists('timeAgo')) {
             </div>
 
             <p class="progress-note">
-                The progress bar updates automatically when tasks are marked
-                as completed by assigned members.
+                The progress bar updates automatically when tasks are confirmed
+                as completed by the assigner.
             </p>
         </section>
 
@@ -1391,6 +1797,7 @@ if (!function_exists('timeAgo')) {
 </main>
 
 <?php if ($myGroup): ?>
+    <!-- Create Task Modal -->
     <div class="modal-overlay" id="createTaskModal">
         <div class="modal-box">
 
@@ -1419,7 +1826,6 @@ if (!function_exists('timeAgo')) {
                             <label for="assignedTo">Assign To</label>
                             <select id="assignedTo" name="assignedTo" required>
                                 <option value="">-- Select Member --</option>
-                                <option value="self">Myself (<?php echo htmlspecialchars($studentName); ?>)</option>
                                 <?php foreach ($groupMembers as $m): ?>
                                     <?php if ((int)$m['student_id'] !== $studentID): ?>
                                         <option value="<?php echo (int)$m['student_id']; ?>">
@@ -1477,15 +1883,15 @@ if (!function_exists('timeAgo')) {
         }
     }
 
-    const modalEl = document.getElementById('createTaskModal');
-    if (modalEl) {
-        modalEl.addEventListener('click', function (e) {
-            if (e.target === this) closeCreateTaskModal();
-        });
-    }
+    document.addEventListener('click', function (e) {
+        const createModal = document.getElementById('createTaskModal');
+        if (createModal && e.target === createModal) closeCreateTaskModal();
+    });
 
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeCreateTaskModal();
+        if (e.key === 'Escape') {
+            closeCreateTaskModal();
+        }
     });
 </script>
 
