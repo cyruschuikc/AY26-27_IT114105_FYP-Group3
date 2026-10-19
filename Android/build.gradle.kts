@@ -14,12 +14,12 @@ android {
         applicationId = "com.example.teambox"
         minSdk = 32
         targetSdk = 36
-        versionCode = 21
-        val previousGit = "d92a8ec"
+        versionCode = 22
+        val previousGit = "b5c4f32"
         val sk2Script = "d44ac18"
         val devScript = "4e606db"
         val sk1Script = devScript
-        versionName = "LCDEP2.1.0_"+sk2Script+"."+sk1Script+"."+previousGit
+        versionName = "LCDEP2.1.1_"+sk2Script+"."+sk1Script+"."+previousGit
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
