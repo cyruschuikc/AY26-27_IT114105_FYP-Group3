@@ -1,0 +1,5 @@
+Add to android manifest:
+
+<activity
+            android:name=".UploadFileActivity"
+            android:exported="false" />
