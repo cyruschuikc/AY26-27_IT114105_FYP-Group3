@@ -57,8 +57,9 @@ C:\xampp\php\php.exe C:\xampp\htdocs\AY26-27_IT114105_FYP-Group3\Web\project_cro
 ```
 
 Project attachments are stored in `Web/uploads/project_attachments/`.
-The schema changes are in `Web/sql/2026_10_20_project_module.sql` and are also
-appended to `teambox.sql`.
+The complete schema, seed data, constraints and triggers are consolidated in
+the root-level `teambox.sql`. Import that single file into a fresh `teambox`
+database; no separate migration SQL files are required.
 
 Announcements are delivered through in-app notifications only.
 
@@ -75,8 +76,8 @@ The teacher-side chat has its own two-pane inbox:
 
 Teacher messages are stored in the existing `messages` table with
 `sender_user_id` set and `sender_id` left NULL. Student messages keep using
-`sender_id`. The schema change is in
-`Web/sql/2026_10_20_teacher_chat.sql` and is also appended to `teambox.sql`.
+`sender_id`. The complete chat schema is included in the root-level
+`teambox.sql`.
 
 - Tick **Pin as group announcement** before sending to keep a notice above the
   conversation. Pinned notices can be unpinned from the banner.
