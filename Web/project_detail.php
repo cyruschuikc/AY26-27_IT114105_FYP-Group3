@@ -606,7 +606,7 @@ foreach ($tasks as $t) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($project['name']); ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020">
+    <link rel="stylesheet" href="teacher.css?v=20261020d">
 
     <style>
         .page-head {

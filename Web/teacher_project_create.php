@@ -586,7 +586,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020">
+    <link rel="stylesheet" href="teacher.css?v=20261020d">
     <style>
         .pf-wrap { max-width: 980px; }
         .pf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 26px; }

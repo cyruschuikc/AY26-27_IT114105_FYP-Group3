@@ -1,11 +1,7 @@
 <?php
 // teacher_notifications.php
-// Dashboard notification bell. Included from teacher_nav.php only on the Dashboard.
-// Requires: $conn (mysqli), $active, $navTeacherId, $teacherName
-
-if (!isset($active) || $active !== 'dashboard') {
-    return;
-}
+// Notification bell shown on every teacher page.
+// Requires: $conn (mysqli), $navTeacherId, $teacherName
 
 if (!isset($conn) || !($conn instanceof mysqli)) {
     require_once __DIR__ . '/db.php';
@@ -274,7 +270,7 @@ if (!function_exists('notifSnippet')) {
                         <span class="notif-count"><?= (int) $notifMentionCount ?></span>
                     </div>
                     <?php foreach ($notifMentionItems as $item): ?>
-                        <a class="notif-item" href="team_detail.php?id=<?= (int) $item['group_id'] ?>">
+                        <a class="notif-item" href="teacher_messages.php?group_id=<?= (int) $item['group_id'] ?>">
                             <div class="notif-item-title"><?= htmlspecialchars($item['sender_name']) ?> mentioned you</div>
                             <div class="notif-item-meta">
                                 <?= htmlspecialchars($item['group_name']) ?>

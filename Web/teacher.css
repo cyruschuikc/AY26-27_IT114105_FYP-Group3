@@ -129,29 +129,31 @@ body {
 }
 
 /* =========================================================
-   Log Out —— 页面右上角
+   Sidebar footer — Log Out
    ========================================================= */
-.logout-btn {
-    position: absolute;
-    top: 30px;
-    right: 60px;
-    display: inline-block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #d9534f;
-    border: 1px solid #ffb0b0;
-    border-radius: 6px;
-    padding: 8px 16px;
-    text-decoration: none;
-    background: #fff;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-    z-index: 15;
+.sidebar-footer {
+    margin-top: auto;
+    padding: 14px 24px 8px;
+    border-top: 1px solid #23272f;
 }
 
-.logout-btn:hover {
-    background: #ff8888;
-    border-color: #ff8888;
-    color: #fff;
+.sidebar-logout {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 0;
+    color: #8b8f98;
+    font-size: 13.5px;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+.sidebar-logout:hover {
+    color: #ff8a8a;
+}
+
+.sidebar-logout svg {
+    flex-shrink: 0;
 }
 
 /* =========================================================
@@ -405,6 +407,13 @@ tr:last-child td {
     background: #f2f3f5;
     color: #6b6f78;
     font-weight: 500;
+}
+
+.pill-pending {
+    background: #fdf3e2;
+    color: #9a6a13;
+    font-size: 11px;
+    padding: 3px 8px;
 }
 
 .link {
@@ -828,11 +837,6 @@ ul li:last-child {
         padding-top: 60px;
     }
 
-    .logout-btn {
-        top: 20px;
-        right: 22px;
-    }
-
     .summary-grid {
         grid-template-columns: 1fr;
     }
@@ -902,7 +906,7 @@ ul li:last-child {
 .notif-wrap {
     position: absolute;
     top: 30px;
-    right: 162px;
+    right: 60px;
     z-index: 40;
 }
 
@@ -1120,8 +1124,10 @@ ul li:last-child {
 
 @media (max-width: 700px) {
     .notif-wrap {
-        top: 20px;
-        right: 122px;
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 60;
     }
 
     .notif-panel {

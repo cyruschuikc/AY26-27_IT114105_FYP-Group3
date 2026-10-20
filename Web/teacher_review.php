@@ -42,6 +42,20 @@ if (isset($_POST['action']) && isset($_POST['requestId'])) {
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
 
+        // Approving a formation request makes the group official.
+        $stmt = mysqli_prepare($conn, "
+            UPDATE `groups` g
+            INNER JOIN `group_requests` r
+                    ON r.project_id = g.project_id AND r.group_name = g.name
+            SET g.status = 'Voting',
+                g.formed_at = COALESCE(g.formed_at, NOW())
+            WHERE r.id = ?
+              AND g.status IN ('Recruiting', 'Waiting_Send')
+        ");
+        mysqli_stmt_bind_param($stmt, "i", $requestId);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+
     } elseif ($action === 'reject' && $note !== '') {
         $stmt = mysqli_prepare($conn, "
             UPDATE `group_requests`
@@ -260,9 +274,12 @@ $sql = "
         r.status,
         r.submitted_at,
         p.name AS project_name,
+        g.id AS group_id,
+        g.status AS group_status,
         u.username AS submitted_by_name
     FROM `group_requests` r
     INNER JOIN `projects` p ON p.id = r.project_id
+    LEFT JOIN `groups` g ON g.project_id = r.project_id AND g.name = r.group_name
     LEFT JOIN `students` s ON s.id = r.submitted_by
     LEFT JOIN `users`    u ON u.id = s.user_id
     WHERE r.status = 'Pending'
@@ -298,6 +315,30 @@ while ($row = mysqli_fetch_assoc($rs)) {
     }
     mysqli_stmt_close($stmtM);
 
+    // Fallback for requests created without request_members rows.
+    if (count($members) === 0 && !empty($row['group_id'])) {
+        $stmtM = mysqli_prepare($conn, "
+            SELECT
+                s.id AS student_id,
+                s.student_number,
+                u.username AS name,
+                (gm.role = 'leader') AS is_leader
+            FROM `group_members` gm
+            INNER JOIN `students` s ON s.id = gm.student_id
+            INNER JOIN `users`    u ON u.id = s.user_id
+            WHERE gm.group_id = ?
+            ORDER BY is_leader DESC, s.id
+        ");
+        $memberGroupId = (int) $row['group_id'];
+        mysqli_stmt_bind_param($stmtM, "i", $memberGroupId);
+        mysqli_stmt_execute($stmtM);
+        $rsM = mysqli_stmt_get_result($stmtM);
+        while ($m = mysqli_fetch_assoc($rsM)) {
+            $members[] = $m;
+        }
+        mysqli_stmt_close($stmtM);
+    }
+
     $row['members'] = $members;
     $groupRequests[] = $row;
 }
@@ -309,7 +350,7 @@ mysqli_stmt_close($stmt);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review Center | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020">
+    <link rel="stylesheet" href="teacher.css?v=20261020d">
 
     <style>
         /* ===== Tabs ===== */

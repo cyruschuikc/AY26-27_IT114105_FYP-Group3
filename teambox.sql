@@ -1407,3 +1407,51 @@ CREATE TABLE IF NOT EXISTS `project_extension_requests` (
     CONSTRAINT `project_ext_req_ibfk_3`
         FOREIGN KEY (`reviewed_by`) REFERENCES `teachers` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- =========================================================
+-- Teacher group chat (added 2026-10-20)
+-- =========================================================
+ALTER TABLE `messages`
+    MODIFY `sender_id` INT(11) NULL,
+    ADD COLUMN `sender_user_id` INT(11) NULL AFTER `sender_id`,
+    ADD KEY `idx_messages_sender_user` (`sender_user_id`),
+    ADD CONSTRAINT `fk_messages_sender_user`
+        FOREIGN KEY (`sender_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+
+-- =========================================================
+-- Pinned group announcements (added 2026-10-20)
+-- =========================================================
+ALTER TABLE `messages`
+    ADD COLUMN `is_pinned` TINYINT(1) NOT NULL DEFAULT 0,
+    ADD COLUMN `pinned_at` DATETIME NULL,
+    ADD COLUMN `pinned_by_user_id` INT(11) NULL,
+    ADD KEY `idx_messages_pinned` (`group_id`, `is_pinned`),
+    ADD CONSTRAINT `fk_messages_pinned_by`
+        FOREIGN KEY (`pinned_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+
+-- =========================================================
+-- Demo group requests pending teacher approval
+-- =========================================================
+INSERT INTO `group_requests` (`group_name`, `project_id`, `submitted_by`, `status`) VALUES
+('Team 02', 1, 3, 'Pending'),
+('Team 03', 2, 5, 'Pending');
+
+-- Team 03 has submitted its formation request and waits for approval.
+UPDATE `groups` SET `status` = 'Waiting_Send' WHERE `id` = 3 AND `status` = 'Recruiting';
+
+-- Members snapshot for the pending requests.
+INSERT INTO `request_members` (`request_id`, `student_id`, `is_leader`)
+SELECT r.id, x.student_id, x.is_leader
+FROM `group_requests` r
+INNER JOIN (
+    SELECT 'Team 02' AS group_name, 1 AS project_id, 3 AS student_id, 1 AS is_leader
+    UNION ALL SELECT 'Team 02', 1, 6, 0
+    UNION ALL SELECT 'Team 03', 2, 5, 1
+    UNION ALL SELECT 'Team 03', 2, 6, 0
+    UNION ALL SELECT 'Team 03', 2, 7, 0
+) x ON x.group_name = r.group_name AND x.project_id = r.project_id
+WHERE r.status = 'Pending'
+ON DUPLICATE KEY UPDATE `is_leader` = VALUES(`is_leader`);

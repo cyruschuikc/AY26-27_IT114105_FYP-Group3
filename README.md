@@ -61,3 +61,38 @@ The schema changes are in `Web/sql/2026_10_20_project_module.sql` and are also
 appended to `teambox.sql`.
 
 Announcements are delivered through in-app notifications only.
+
+## Teacher group chat
+
+The teacher-side chat has its own two-pane inbox:
+
+| File | Purpose |
+|---|---|
+| `Web/teacher_messages.php` | Conversation list and message thread |
+| `Web/teacher_chat_thread.php` | Sends a text message |
+| `Web/teacher_chat_feed.php` | JSON feed polled every 5 seconds |
+| `Web/teacher_chat_helpers.php` | Shared access, message and read-state queries |
+
+Teacher messages are stored in the existing `messages` table with
+`sender_user_id` set and `sender_id` left NULL. Student messages keep using
+`sender_id`. The schema change is in
+`Web/sql/2026_10_20_teacher_chat.sql` and is also appended to `teambox.sql`.
+
+- Tick **Pin as group announcement** before sending to keep a notice above the
+  conversation. Pinned notices can be unpinned from the banner.
+- Unread student messages containing `@Teacher Name` appear in the notification
+  bell under **Mentions**.
+- A group with a pending row in `group_requests` is shown as
+  **Pending Approval** in the Teams list.
+- Chat conversations only appear for groups in `Voting` or `Executing` with no
+  pending formation request. Accepting a request moves a `Recruiting` or
+  `Waiting_Send` group to `Voting`.
+
+## Teacher files view
+
+Recent Uploads groups versions by file name, team, uploader and task:
+
+- one row per file group, showing the latest upload
+- `vN` chip opens the version history
+- `Resubmitted` appears when the latest upload is newer than the last rejection
+- Review Center still reviews each individual upload

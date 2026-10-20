@@ -104,7 +104,14 @@ $where  = array("p.supervisor_id = ?");
 $params = array($teacherId);
 $types  = 'i';
 
-if ($status !== 'all' && $status !== '') {
+if ($status === 'pending') {
+    $where[] = "EXISTS (
+        SELECT 1 FROM `group_requests` r
+        WHERE r.project_id = g.project_id
+          AND r.group_name = g.name
+          AND r.status = 'Pending'
+    )";
+} elseif ($status !== 'all' && $status !== '') {
     $where[]  = "g.status = ?";
     $params[] = $status;
     $types   .= 's';
@@ -144,7 +151,11 @@ $sql = "
               AND t2.status = 'Completed') AS completed_tasks,
         (SELECT COUNT(*) FROM `tasks` t3
             WHERE t3.group_id = g.id) AS total_tasks,
-        (SELECT MAX(a.created_at) FROM `activities` a WHERE a.group_id = g.id) AS last_activity
+        (SELECT MAX(a.created_at) FROM `activities` a WHERE a.group_id = g.id) AS last_activity,
+        (SELECT COUNT(*) FROM `group_requests` r
+            WHERE r.project_id = g.project_id
+              AND r.group_name = g.name
+              AND r.status = 'Pending') AS pending_requests
     FROM `groups` g
     INNER JOIN `projects` p ON p.id = g.project_id
     LEFT JOIN `students` s ON s.id = g.leader_id
@@ -168,7 +179,7 @@ mysqli_stmt_close($stmt);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teams | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020">
+    <link rel="stylesheet" href="teacher.css?v=20261020d">
 </head>
 <body>
 
@@ -218,6 +229,7 @@ mysqli_stmt_close($stmt);
                 <label for="teamStatus">Filter by status</label>
                 <select id="teamStatus" name="status">
                     <option value="all"        <?php echo $status==='all'?'selected':''; ?>>All Status</option>
+                    <option value="pending"    <?php echo $status==='pending'?'selected':''; ?>>Pending Approval</option>
                     <option value="Recruiting" <?php echo $status==='Recruiting'?'selected':''; ?>>Recruiting</option>
                     <option value="Voting"     <?php echo $status==='Voting'?'selected':''; ?>>Voting</option>
                     <option value="Executing"  <?php echo $status==='Executing'?'selected':''; ?>>Executing</option>
@@ -238,18 +250,18 @@ mysqli_stmt_close($stmt);
         </form>
 
         <!-- Team list -->
-        <div class="card">
-            <table>
+        <div class="card table-scroll">
+            <table class="teams-table">
                 <tr>
-                    <th>Team Name</th>
-                    <th>Project</th>
-                    <th>Leader</th>
-                    <th>Members</th>
-                    <th>Progress</th>
-                    <th>Last Activity</th>
-                    <th>Status</th>
-                    <th>Overdue</th>
-                    <th></th>
+                    <th style="width: 20%;">Team Name</th>
+                    <th style="width: 20%;">Status</th>
+                    <th style="width: 13%;">Project</th>
+                    <th style="width: 11%;">Leader</th>
+                    <th style="width: 7%;">Members</th>
+                    <th style="width: 7%;">Progress</th>
+                    <th style="width: 8%;">Last Activity</th>
+                    <th style="width: 6%;">Overdue</th>
+                    <th style="width: 56px;"></th>
                 </tr>
 
                 <?php if (count($teams) === 0): ?>
@@ -263,6 +275,13 @@ mysqli_stmt_close($stmt);
                 <?php foreach ($teams as $t): ?>
                     <tr>
                         <td><?php echo htmlspecialchars($t['name']); ?></td>
+                        <td>
+                            <?php if ((int) $t['pending_requests'] > 0): ?>
+                                <span class="pill pill-pending">Pending Approval</span>
+                            <?php else: ?>
+                                <span class="pill"><?php echo htmlspecialchars($t['status']); ?></span>
+                            <?php endif; ?>
+                        </td>
                         <td><?php echo htmlspecialchars($t['project_name'] ?: '—'); ?></td>
                         <td><?php echo htmlspecialchars($t['leader_name'] ?: '—'); ?></td>
                         <td>
@@ -276,7 +295,6 @@ mysqli_stmt_close($stmt);
                             ?>
                         </td>
                         <td class="muted"><?php echo timeAgo($t['last_activity']); ?></td>
-                        <td><span class="pill"><?php echo htmlspecialchars($t['status']); ?></span></td>
                         <td>
                             <?php if ((int)$t['overdue_count'] > 0): ?>
                                 <span style="color:#d32f2f; font-weight:600;"><?php echo (int)$t['overdue_count']; ?></span>
@@ -292,6 +310,11 @@ mysqli_stmt_close($stmt);
 
     </div>
 </main>
+
+<style>
+.table-scroll { overflow-x: auto; }
+.teams-table { min-width: 780px; }
+</style>
 
 </body>
 </html>

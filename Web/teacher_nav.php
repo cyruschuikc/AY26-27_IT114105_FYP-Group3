@@ -70,6 +70,7 @@ $navPendingFiles        = 0;
 $navPendingRequests     = 0;
 $navOverdueTasks        = 0;
 $navUnsubmittedStudents = 0;
+$navUnreadMessages      = 0;
 
 if ($navTeacherId > 0) {
 
@@ -132,6 +133,34 @@ if ($navTeacherId > 0) {
     $rc = mysqli_fetch_assoc($rs);
     $navUnsubmittedStudents = (int) $rc['c'];
     mysqli_stmt_close($stmt);
+
+    // 未读小组消息
+    $stmt = mysqli_prepare($conn, "
+        SELECT COUNT(*) AS c
+        FROM `messages` m
+        INNER JOIN `groups` g   ON g.id = m.group_id
+        INNER JOIN `projects` p ON p.id = g.project_id
+        LEFT JOIN `message_reads` mr
+               ON mr.group_id = m.group_id AND mr.user_id = ?
+        WHERE p.supervisor_id = ?
+          AND m.recipient_id IS NULL
+          AND m.id > COALESCE(mr.last_read_message_id, 0)
+          AND (m.sender_user_id IS NULL OR m.sender_user_id <> ?)
+          AND g.status IN ('Voting', 'Executing')
+          AND NOT EXISTS (
+              SELECT 1 FROM `group_requests` gr
+              WHERE gr.project_id = g.project_id
+                AND gr.group_name = g.name
+                AND gr.status = 'Pending'
+          )
+    ");
+    $navUserID = (int) $_SESSION['userID'];
+    mysqli_stmt_bind_param($stmt, "iii", $navUserID, $navTeacherId, $navUserID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rc = mysqli_fetch_assoc($rs);
+    $navUnreadMessages = (int) $rc['c'];
+    mysqli_stmt_close($stmt);
 }
 
 $navReviewCount = $navPendingFiles + $navPendingRequests;
@@ -190,20 +219,30 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
                 <span class="nav-dot" title="<?= (int) $navPendingFiles ?> unviewed file<?= $navPendingFiles === 1 ? '' : 's' ?>" aria-label="<?= (int) $navPendingFiles ?> unviewed files"></span>
             <?php endif; ?>
         </a>
+        <a href="teacher_messages.php"       class="<?= $active==='messages'?'active':'' ?>">
+            <span>Messages</span>
+            <?php if ($navUnreadMessages > 0): ?>
+                <span class="nav-dot" title="<?= (int) $navUnreadMessages ?> unread message<?= $navUnreadMessages === 1 ? '' : 's' ?>" aria-label="<?= (int) $navUnreadMessages ?> unread messages"></span>
+            <?php endif; ?>
+        </a>
         <a href="teacher_announcements.php"  class="<?= $active==='announcements'?'active':'' ?>">Announcements</a>
         <a href="teacher_profile.php"        class="<?= $active==='profile'?'active':'' ?>">Profile</a>
     </nav>
 
+    <!-- 底部：退出登录 -->
+    <div class="sidebar-footer">
+        <a href="logout.php" class="sidebar-logout">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                 stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <path d="M16 17l5-5-5-5"></path>
+                <path d="M21 12H9"></path>
+            </svg>
+            <span>Log Out</span>
+        </a>
+    </div>
+
 </aside>
 
-<!-- =========================================================
-     Log Out —— 页面右上角
-     ========================================================= -->
-<a href="logout.php" class="logout-btn">Log Out</a>
-
-<?php
-// 铃铛只出现在老师首页
-if ($active === 'dashboard') {
-    include __DIR__ . '/teacher_notifications.php';
-}
-?>
+<?php include __DIR__ . '/teacher_notifications.php'; ?>
