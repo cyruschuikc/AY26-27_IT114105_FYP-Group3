@@ -119,6 +119,21 @@ $rs = mysqli_stmt_get_result($stmt);
 $currentPhase = mysqli_fetch_assoc($rs);
 mysqli_stmt_close($stmt);
 
+$projectMilestones = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT name, start_date, end_date, status, progress
+    FROM `Milestones`
+    WHERE project_id = ?
+    ORDER BY start_date ASC
+");
+mysqli_stmt_bind_param($stmt, "i", $team['project_id']);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($milestone = mysqli_fetch_assoc($rs)) {
+    $projectMilestones[] = $milestone;
+}
+mysqli_stmt_close($stmt);
+
 $projectDaysLeft = null;
 $projectDeadlineLabel = '';
 if (!empty($team['period_end'])) {
@@ -1389,6 +1404,102 @@ if (!$selectedMember && count($members) > 0) {
             text-transform: uppercase;
         }
 
+        .milestone-card {
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        .milestone-head,
+        .milestone-row {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) 190px 100px 110px;
+            gap: 12px;
+            align-items: center;
+        }
+        .milestone-head {
+            padding: 8px 16px;
+            border-bottom: 1px solid #eef0f2;
+            background: #f7f9fc;
+            color: #9aa0a8;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .milestone-row {
+            padding: 10px 16px;
+            border-bottom: 1px solid #f2f3f5;
+            font-size: 11.5px;
+        }
+        .milestone-row:last-child { border-bottom: none; }
+        .milestone-name { color: #2c2f36; font-weight: 500; }
+        .milestone-dates { color: #6b6f78; font-size: 10.5px; }
+        .milestone-progress {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #9aa0a8;
+            font-size: 10px;
+        }
+        .milestone-bar {
+            width: 50px;
+            height: 5px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #eef0f3;
+        }
+        .milestone-bar i {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            background: #175196;
+        }
+        .milestone-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: #f4f6f8;
+            color: #5b6068;
+            font-size: 9.5px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .milestone-status::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #9aa0a8;
+        }
+        .milestone-status.completed::before { background: #4f8066; }
+        .milestone-status.in-progress::before { background: #6488b5; }
+        .milestone-empty {
+            padding: 24px 16px;
+            color: #8b8f98;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .pending-lock {
+            margin: 4px 0 30px;
+            padding: 18px 20px;
+            border: 1px solid #e6e8eb;
+            border-radius: 10px;
+            background: #fafbfc;
+            color: #6b6f78;
+        }
+        .pending-lock strong {
+            display: block;
+            margin-bottom: 3px;
+            color: #2c2f36;
+            font-size: 12px;
+        }
+        .pending-lock p {
+            font-size: 11.5px;
+            line-height: 1.5;
+        }
+
         .member-note {
             margin: -5px 0 10px;
             color: #9aa0a8;
@@ -1595,6 +1706,12 @@ if (!$selectedMember && count($members) > 0) {
                 gap: 4px 12px;
             }
             .completed-task-name { grid-column: 1 / -1; }
+            .milestone-head { display: none; }
+            .milestone-row {
+                grid-template-columns: 1fr auto;
+                gap: 4px 12px;
+            }
+            .milestone-name { grid-column: 1 / -1; }
         }
 
         @media (max-width: 700px) {
@@ -1844,6 +1961,58 @@ if (!$selectedMember && count($members) > 0) {
                 </div>
             </section>
         </div>
+
+        <!-- Project milestones (teacher, read-only) -->
+        <h2>Project Milestones</h2>
+        <p class="muted" style="margin-bottom: 12px;">
+            Read-only project phases set by the supervisor.
+        </p>
+        <div class="card milestone-card">
+            <?php if (count($projectMilestones) === 0): ?>
+                <div class="milestone-empty">No project milestones yet.</div>
+            <?php else: ?>
+                <div class="milestone-head">
+                    <span>Milestone</span>
+                    <span>Dates</span>
+                    <span>Progress</span>
+                    <span>Status</span>
+                </div>
+                <?php foreach ($projectMilestones as $milestone): ?>
+                    <?php
+                    $milestoneClass = strtolower(str_replace(
+                        array(' ', '_'),
+                        '-',
+                        $milestone['status']
+                    ));
+                    ?>
+                    <div class="milestone-row">
+                        <div class="milestone-name"><?php echo htmlspecialchars($milestone['name']); ?></div>
+                        <div class="milestone-dates">
+                            <?php echo date('d M Y', strtotime($milestone['start_date'])); ?>
+                            – <?php echo date('d M Y', strtotime($milestone['end_date'])); ?>
+                        </div>
+                        <div class="milestone-progress">
+                            <span class="milestone-bar">
+                                <i style="width: <?php echo (int) $milestone['progress']; ?>%;"></i>
+                            </span>
+                            <span><?php echo (int) $milestone['progress']; ?>%</span>
+                        </div>
+                        <div>
+                            <span class="milestone-status <?php echo $milestoneClass; ?>">
+                                <?php echo htmlspecialchars($milestone['status']); ?>
+                            </span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($isPending): ?>
+            <div class="pending-lock">
+                <strong>Approval required</strong>
+                <p>Team tasks, attachments and activity are locked until this group is approved.</p>
+            </div>
+        <?php else: ?>
 
         <!-- Tasks -->
         <h2 id="tasks">Tasks</h2>
@@ -2141,6 +2310,8 @@ if (!$selectedMember && count($members) > 0) {
                     <?php endforeach; ?>
                 </div>
             </details>
+        <?php endif; ?>
+
         <?php endif; ?>
 
     </div>

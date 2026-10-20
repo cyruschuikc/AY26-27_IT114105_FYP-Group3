@@ -115,7 +115,7 @@ The Teams page uses attention-first team cards instead of a wide table:
   the current milestone
 - pending group requests show **Pending Approval** and a review action
 - task progress and last activity are shown without the old "today" label bug
-- the Tasks list shows due status, attachment count, priority and status
+- the Tasks list shows due status, attachment count and status
 - the main Tasks table shows open work only; completed tasks are in a
   collapsed section and overdue rows use a light red background
 - only task attachments are listed; shared-area files are excluded
@@ -126,6 +126,13 @@ The Teams page uses attention-first team cards instead of a wide table:
 - Activity filters run in the browser without reloading or jumping to the top
 - Project and Team Overview sit side by side at equal height on wide screens;
   Members use a horizontal switcher below them and stack on narrow screens
+
+### Team approval rules
+
+- Teacher milestones are project-level and read-only for every team.
+- Student tasks belong to a single group.
+- Pending-approval teams can view project milestones only; team tasks,
+  attachments, activity and chat stay locked until approval.
 
 ## Teacher dashboard
 

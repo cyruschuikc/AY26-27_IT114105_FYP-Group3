@@ -113,20 +113,18 @@ foreach ($allTeams as &$team) {
     $priority = 5;
 
     if ($pending > 0) {
-        $reasons[] = 'Pending approval';
-        $priority  = min($priority, 1);
+        // The status pill already says "Pending Approval".
+        $priority = min($priority, 1);
     }
     if ($overdue > 0) {
         $reasons[] = $overdue . ' overdue task' . ($overdue === 1 ? '' : 's');
         $priority  = min($priority, 2);
     }
     if ($pending === 0 && $team['status'] === 'Recruiting') {
-        $reasons[] = 'Recruiting';
-        $priority  = min($priority, 3);
+        $priority = min($priority, 3);
     }
     if ($pending === 0 && $team['status'] === 'Waiting_Send') {
-        $reasons[] = 'Waiting to submit';
-        $priority  = min($priority, 3);
+        $priority = min($priority, 3);
     }
     if (empty($team['last_activity'])
         || strtotime($team['last_activity']) < strtotime('-7 days')) {

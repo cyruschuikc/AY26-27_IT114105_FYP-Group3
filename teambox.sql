@@ -1503,3 +1503,52 @@ VALUES
     (1, 2, 5, 3, 'Android_Prototype.zip', 'Android Prototype', NULL,
      'demo_android_prototype_v2.zip', '1.3 MB', 'ZIP', 'Unviewed', '2026-10-19 11:20:00',
      NULL, NULL, NULL);
+
+
+-- =========================================================
+-- Pending-approval team cleanup (added 2026-10-20)
+-- =========================================================
+START TRANSACTION;
+
+DELETE FROM `files` WHERE `group_id` IN (2, 3);
+DELETE FROM `tasks` WHERE `group_id` IN (2, 3);
+DELETE FROM `messages` WHERE `group_id` IN (2, 3);
+DELETE FROM `activities` WHERE `group_id` IN (2, 3);
+
+DELETE FROM `group_members`
+WHERE `group_id` = 2 AND `student_id` = 3;
+
+UPDATE `group_members`
+SET `role` = 'leader'
+WHERE `group_id` = 2 AND `student_id` = 6;
+
+UPDATE `groups`
+SET `status` = 'Waiting_Send',
+    `leader_id` = 6,
+    `creator_id` = 6
+WHERE `id` = 2;
+
+UPDATE `group_requests`
+SET `submitted_by` = 6
+WHERE `id` = 1;
+
+DELETE FROM `request_members`
+WHERE `request_id` = 1 AND `student_id` = 3;
+
+UPDATE `request_members`
+SET `is_leader` = 1
+WHERE `request_id` = 1 AND `student_id` = 6;
+
+INSERT INTO `group_members` (`group_id`, `student_id`, `role`)
+VALUES
+    (2, 24, 'member'),
+    (2, 25, 'member')
+ON DUPLICATE KEY UPDATE `role` = VALUES(`role`);
+
+INSERT INTO `request_members` (`request_id`, `student_id`, `is_leader`)
+VALUES
+    (1, 24, 0),
+    (1, 25, 0)
+ON DUPLICATE KEY UPDATE `is_leader` = VALUES(`is_leader`);
+
+COMMIT;
