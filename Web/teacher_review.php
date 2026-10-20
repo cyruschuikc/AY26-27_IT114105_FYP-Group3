@@ -84,7 +84,9 @@ $pendingFiles = 0;
 $stmt = mysqli_prepare($conn, "
     SELECT COUNT(*) AS c FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
-    WHERE f.status = 'Unviewed' AND p.supervisor_id = ?
+    WHERE f.status = 'Unviewed'
+      AND f.task_id IS NOT NULL
+      AND p.supervisor_id = ?
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
@@ -98,7 +100,9 @@ $approvedFiles = 0;
 $stmt = mysqli_prepare($conn, "
     SELECT COUNT(*) AS c FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
-    WHERE f.status = 'Accepted' AND p.supervisor_id = ?
+    WHERE f.status = 'Accepted'
+      AND f.task_id IS NOT NULL
+      AND p.supervisor_id = ?
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
@@ -112,7 +116,9 @@ $rejectedFiles = 0;
 $stmt = mysqli_prepare($conn, "
     SELECT COUNT(*) AS c FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
-    WHERE f.status = 'Rejected' AND p.supervisor_id = ?
+    WHERE f.status = 'Rejected'
+      AND f.task_id IS NOT NULL
+      AND p.supervisor_id = ?
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
@@ -144,7 +150,7 @@ $filterTo     = isset($_GET['to'])     ? trim($_GET['to'])     : '';
 $filterStatus = isset($_GET['status']) ? trim($_GET['status']) : 'all';
 $filterSearch = isset($_GET['q'])      ? trim($_GET['q'])      : '';
 
-$where  = array("p.supervisor_id = ?");
+$where  = array("p.supervisor_id = ?", "f.task_id IS NOT NULL");
 $params = array($teacherId);
 $types  = 'i';
 
@@ -189,12 +195,14 @@ $sql = "
         g.id     AS group_id,
         g.name   AS team_name,
         p.name   AS project_name,
+        t.title  AS task_title,
         s.id     AS uploader_id,
         s.student_number,
         u.username AS uploader_name
     FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
     LEFT JOIN `groups`   g ON g.id = f.group_id
+    LEFT JOIN `tasks`    t ON t.id = f.task_id
     LEFT JOIN `students` s ON s.id = f.uploader_id
     LEFT JOIN `users`    u ON u.id = s.user_id
     $whereSql
@@ -214,6 +222,7 @@ $stmt = mysqli_prepare($conn, "
     SELECT COUNT(*) AS c FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
     WHERE p.supervisor_id = ?
+      AND f.task_id IS NOT NULL
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
@@ -243,13 +252,16 @@ $sql = "
         f.file_type,
         f.uploaded_at,
         g.name     AS team_name,
+        t.title    AS task_title,
         u.username AS uploader_name
     FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
     LEFT JOIN `groups`   g ON g.id = f.group_id
+    LEFT JOIN `tasks`    t ON t.id = f.task_id
     LEFT JOIN `students` s ON s.id = f.uploader_id
     LEFT JOIN `users`    u ON u.id = s.user_id
     WHERE f.status = 'Unviewed'
+      AND f.task_id IS NOT NULL
       AND p.supervisor_id = ?
     ORDER BY f.uploaded_at DESC
 ";
@@ -510,6 +522,13 @@ mysqli_stmt_close($stmt);
 
         .file-name-link:hover { text-decoration: underline; }
 
+        .file-task-label {
+            margin-top: 2px;
+            color: #9aa0a8;
+            font-size: 10.5px;
+            line-height: 1.4;
+        }
+
         .row-actions {
             display: flex;
             gap: 12px;
@@ -743,7 +762,7 @@ mysqli_stmt_close($stmt);
                         <th>Uploaded On</th>
                         <th>Size</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th style="width: 72px;">Action</th>
                     </tr>
 
                     <?php if ($filteredCount === 0): ?>
@@ -763,6 +782,9 @@ mysqli_stmt_close($stmt);
                                    title="<?php echo htmlspecialchars($f['file_name']); ?>">
                                     <?php echo htmlspecialchars($f['file_name']); ?>
                                 </a>
+                                <?php if (!empty($f['task_title'])): ?>
+                                    <div class="file-task-label">Task: <?php echo htmlspecialchars($f['task_title']); ?></div>
+                                <?php endif; ?>
                             </td>
                             <td><?php echo htmlspecialchars($f['team_name']); ?></td>
                             <td><?php echo htmlspecialchars($f['uploader_name']); ?></td>
@@ -792,7 +814,7 @@ mysqli_stmt_close($stmt);
 
             <h2>Unviewed Files</h2>
             <p class="muted" style="margin-bottom: 16px;">
-                Files that students uploaded but you have not reviewed yet.
+                Task attachments that students uploaded but you have not reviewed yet.
                 Open one to accept or reject it.
             </p>
 
@@ -823,6 +845,9 @@ mysqli_stmt_close($stmt);
                                    title="<?php echo htmlspecialchars($f['file_name']); ?>">
                                     <?php echo htmlspecialchars($f['file_name']); ?>
                                 </a>
+                                <?php if (!empty($f['task_title'])): ?>
+                                    <div class="file-task-label">Task: <?php echo htmlspecialchars($f['task_title']); ?></div>
+                                <?php endif; ?>
                             </td>
                             <td><?php echo htmlspecialchars($f['team_name']); ?></td>
                             <td><?php echo htmlspecialchars($f['uploader_name']); ?></td>

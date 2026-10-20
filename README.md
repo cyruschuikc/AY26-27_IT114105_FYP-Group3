@@ -96,4 +96,52 @@ and groups versions by file name, team, uploader and task:
 - one row per file group, showing the latest upload
 - `vN` chip opens the version history
 - `Resubmitted` appears when the latest upload is newer than the last rejection
-- Review Center still reviews each individual upload
+- Review Center reviews each task attachment individually; shared-area files
+  are excluded there too
+
+## Teacher teams view
+
+The Teams page uses attention-first team cards instead of a wide table:
+
+- summary: total teams, awaiting approval, active teams and overdue tasks
+- status chips with counts and search by team, project or leader
+- progress bar, last activity and reason chips on each team
+- actions for View, Review request and Message team
+
+## Teacher team detail
+
+- only the project supervisor can open a team detail page
+- the Project card shows course, supervisor, period, deadline countdown and
+  the current milestone
+- pending group requests show **Pending Approval** and a review action
+- task progress and last activity are shown without the old "today" label bug
+- the Tasks list shows due status, attachment count, priority and status
+- the main Tasks table shows open work only; completed tasks are in a
+  collapsed section and overdue rows use a light red background
+- only task attachments are listed; shared-area files are excluded
+- member activity counts task files, not shared uploads
+- Activity uses avatars, links and filters, merges consecutive uploads, shows
+  the latest five entries with **Show more**, and keeps deletions inside a
+  collapsed **System cleanup** section
+- Activity filters run in the browser without reloading or jumping to the top
+- Project and Team Overview sit side by side at equal height on wide screens;
+  Members use a horizontal switcher below them and stack on narrow screens
+
+## Teacher dashboard
+
+The dashboard is action-focused:
+
+- **Needs Attention** links to pending reviews, group requests, overdue tasks
+  and students with no uploads
+- **Upcoming Deadlines** merges tasks and milestones, including overdue items
+- **Group Formation** summarises recruiting, waiting approval, voting and
+  executing teams
+- **Teams Needing Attention** lists only groups that require action
+- Recent Activity is limited to the teacher's own projects
+
+The "Phases Not Submitted" card counts project milestones whose end date is
+today or earlier and whose status is not `Completed`.
+
+Milestones do not currently store a completion timestamp and tasks are not yet
+linked to a milestone, so the dashboard can show overdue phases but cannot
+prove whether a completed phase was submitted on time.

@@ -151,7 +151,9 @@ if ($notifPendingFiles > 0) {
         FROM `files` f
         INNER JOIN `projects` p ON p.id = f.project_id
         LEFT JOIN `groups` g    ON g.id = f.group_id
-        WHERE f.status = 'Unviewed' AND p.supervisor_id = ?
+        WHERE f.status = 'Unviewed'
+          AND f.task_id IS NOT NULL
+          AND p.supervisor_id = ?
         ORDER BY f.uploaded_at DESC
         LIMIT 3
     ");

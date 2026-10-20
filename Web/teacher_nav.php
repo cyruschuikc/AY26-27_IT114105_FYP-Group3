@@ -79,7 +79,9 @@ if ($navTeacherId > 0) {
         SELECT COUNT(*) AS c
         FROM `files` f
         INNER JOIN `projects` p ON p.id = f.project_id
-        WHERE f.status = 'Unviewed' AND p.supervisor_id = ?
+        WHERE f.status = 'Unviewed'
+          AND f.task_id IS NOT NULL
+          AND p.supervisor_id = ?
     ");
     mysqli_stmt_bind_param($stmt, "i", $navTeacherId);
     mysqli_stmt_execute($stmt);
