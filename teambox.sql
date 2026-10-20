@@ -66,9 +66,9 @@ INSERT INTO `activities` (`id`, `project_id`, `group_id`, `actor_id`, `action`, 
 (23, 1, 1, 7, 'uploaded', 'uploaded shared file \"bell\"', '2026-10-17 16:01:13'),
 (24, 1, 1, 7, 'uploaded', 'uploaded shared file \"bell\"', '2026-10-17 16:02:51'),
 (25, 1, 1, 7, 'uploaded', 'uploaded shared file \"TeamBox_logo_black\"', '2026-10-17 16:12:02'),
-(26, 1, 1, 6, 'created', 'created task \"ABC\"', '2026-10-18 10:57:54'),
-(27, 1, 1, 6, 'created', 'created task \"GFHJK\"', '2026-10-18 10:58:17'),
-(28, 1, 1, 6, 'created', 'created task \"GFHJK\"', '2026-10-18 11:07:46'),
+(26, 1, 1, 6, 'created', 'created task \"Bell Interaction States\"', '2026-10-18 10:57:54'),
+(27, 1, 1, 6, 'created', 'created task \"Notification Bell Icon\"', '2026-10-18 10:58:17'),
+(28, 1, 1, 6, 'created', 'created task \"Notification Bell Icon\"', '2026-10-18 11:07:46'),
 (29, 1, 1, 6, 'uploaded', 'uploaded bell.png to task \"Complete Project Proposal\"', '2026-10-18 11:10:27'),
 (30, 1, 1, 6, 'uploaded', 'uploaded bell.png to task \"Complete Project Proposal\"', '2026-10-18 11:34:37'),
 (31, 1, 1, 6, 'deleted', 'deleted task file \"bell.png\"', '2026-10-18 11:43:36'),
@@ -76,10 +76,10 @@ INSERT INTO `activities` (`id`, `project_id`, `group_id`, `actor_id`, `action`, 
 (33, 1, 1, 6, 'uploaded', 'uploaded bell (2).png to task \"Complete Project Proposal\"', '2026-10-18 12:00:54'),
 (34, 1, 1, 6, 'deleted', 'deleted task file \"bell (2).png\"', '2026-10-18 12:01:00'),
 (35, 1, 1, 6, 'uploaded', 'uploaded bell (2).png to task \"Complete Project Proposal\"', '2026-10-19 04:25:27'),
-(36, 1, 1, 6, 'created', 'created task \"ABC\"', '2026-10-19 04:35:08'),
-(37, 1, 1, 7, 'uploaded', 'uploaded bell (2).png to task \"ABC\"', '2026-10-19 04:35:49'),
-(38, 1, 1, 7, 'uploaded', 'uploaded bell.png to task \"ABC\"', '2026-10-19 04:37:43'),
-(39, 1, 1, 7, 'uploaded', 'uploaded bell.png to task \"GFHJK\"', '2026-10-19 04:45:27');
+(36, 1, 1, 6, 'created', 'created task \"Bell Interaction States\"', '2026-10-19 04:35:08'),
+(37, 1, 1, 7, 'uploaded', 'uploaded bell (2).png to task \"Bell Interaction States\"', '2026-10-19 04:35:49'),
+(38, 1, 1, 7, 'uploaded', 'uploaded bell.png to task \"Bell Interaction States\"', '2026-10-19 04:37:43'),
+(39, 1, 1, 7, 'uploaded', 'uploaded bell.png to task \"Notification Bell Icon\"', '2026-10-19 04:45:27');
 
 -- --------------------------------------------------------
 
@@ -149,9 +149,9 @@ CREATE TABLE `contributions` (
 --
 
 INSERT INTO `contributions` (`id`, `group_id`, `student_id`, `title`, `type`, `notes`, `contribution_date`, `created_at`) VALUES
-(2, 1, 2, 'Completed task: 21', 'Development', 'Auto-recorded when task \"ABC\" was completed.', '2026-10-19', '2026-10-19 04:37:51'),
-(3, 1, 2, 'Completed task: 18', 'Development', 'Auto-recorded when task \"ABC\" was completed.', '2026-10-19', '2026-10-19 04:41:08'),
-(4, 1, 2, 'Completed task: 20', 'Development', 'Auto-recorded when task \"GFHJK\" was confirmed by the assigner.', '2026-10-19', '2026-10-19 04:51:54');
+(2, 1, 2, 'Completed task: 21', 'Development', 'Auto-recorded when task \"Bell Interaction States\" was completed.', '2026-10-19', '2026-10-19 04:37:51'),
+(3, 1, 2, 'Completed task: 18', 'Development', 'Auto-recorded when task \"Bell Interaction States\" was completed.', '2026-10-19', '2026-10-19 04:41:08'),
+(4, 1, 2, 'Completed task: 20', 'Development', 'Auto-recorded when task \"Notification Bell Icon\" was confirmed by the assigner.', '2026-10-19', '2026-10-19 04:51:54');
 
 -- --------------------------------------------------------
 
@@ -282,8 +282,6 @@ INSERT INTO `files` (`id`, `project_id`, `group_id`, `task_id`, `uploader_id`, `
 (32, 1, 1, NULL, 2, 'bell.png', 'bell', 'ABC', 'shared1_1792252873_0d29b20b.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-17 16:01:13', NULL, NULL, NULL),
 (33, 1, 1, NULL, 2, 'bell.png', 'bell', NULL, 'shared1_1792252971_219da567.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-17 16:02:51', NULL, NULL, NULL),
 (34, 1, 1, NULL, 2, 'TeamBox_logo_black.png', 'TeamBox_logo_black', NULL, 'shared1_1792253522_dd9eb8d2.png', '553.4 KB', 'PNG', 'Unviewed', '2026-10-17 16:12:02', NULL, NULL, NULL),
-(35, 1, 1, 1, 1, 'bell (2).png', NULL, NULL, 'task1_1792383927_368bee70.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-19 04:25:27', NULL, NULL, NULL),
-(36, 1, 1, 18, 2, 'bell (2).png', NULL, NULL, 'task18_1792384549_b8309e13.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-19 04:35:49', NULL, NULL, NULL),
 (37, 1, 1, 21, 2, 'bell.png', NULL, NULL, 'task21_1792384663_4e35bb69.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-19 04:37:43', NULL, NULL, NULL),
 (38, 1, 1, 20, 2, 'bell.png', NULL, NULL, 'task20_1792385127_f5825b7a.png', '418.2 KB', 'PNG', 'Unviewed', '2026-10-19 04:45:27', NULL, NULL, NULL);
 
@@ -583,12 +581,12 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `link`
 (9, 25, 'file', 'File Approved', 'Your \"Company_List.xlsx\" was approved.', 'student_files.php', 0, '2026-10-07 11:11:59'),
 (10, 26, 'task', 'New Task Assigned', 'You have been assigned \"Matching Algorithm\".', 'student_task.php', 0, '2026-10-07 11:11:59'),
 (11, 27, 'team', 'New Group Message', 'A new message was posted in Team 09.', 'student_chat.php', 0, '2026-10-07 11:11:59'),
-(12, 7, 'task', 'New Task Assigned', 'You have been assigned \"ABC\".', 'student_task.php?group_id=1', 0, '2026-10-18 10:57:54'),
-(13, 7, 'task', 'New Task Assigned', 'You have been assigned \"GFHJK\".', 'student_task.php?group_id=1', 0, '2026-10-18 10:58:17'),
-(14, 7, 'task', 'New Task Assigned', 'You have been assigned \"GFHJK\".', 'student_task.php?group_id=1', 0, '2026-10-18 11:07:46'),
-(15, 7, 'task', 'New Task Assigned', 'You have been assigned \"ABC\".', 'student_task.php?group_id=1', 0, '2026-10-19 04:35:08'),
-(16, 6, 'task', 'Task Completed - Needs Confirmation', 'The assignee marked \"GFHJK\" as completed. Please confirm.', 'student_task.php?group_id=1', 0, '2026-10-19 04:51:32'),
-(17, 7, 'task', 'Task Confirmed', 'Your task \"GFHJK\" has been confirmed. +10 contribution points.', 'student_task.php?group_id=1', 0, '2026-10-19 04:51:54');
+(12, 7, 'task', 'New Task Assigned', 'You have been assigned \"Bell Interaction States\".', 'student_task.php?group_id=1', 0, '2026-10-18 10:57:54'),
+(13, 7, 'task', 'New Task Assigned', 'You have been assigned \"Notification Bell Icon\".', 'student_task.php?group_id=1', 0, '2026-10-18 10:58:17'),
+(14, 7, 'task', 'New Task Assigned', 'You have been assigned \"Notification Bell Icon\".', 'student_task.php?group_id=1', 0, '2026-10-18 11:07:46'),
+(15, 7, 'task', 'New Task Assigned', 'You have been assigned \"Bell Interaction States\".', 'student_task.php?group_id=1', 0, '2026-10-19 04:35:08'),
+(16, 6, 'task', 'Task Completed - Needs Confirmation', 'The assignee marked \"Notification Bell Icon\" as completed. Please confirm.', 'student_task.php?group_id=1', 0, '2026-10-19 04:51:32'),
+(17, 7, 'task', 'Task Confirmed', 'Your task \"Notification Bell Icon\" has been confirmed. +10 contribution points.', 'student_task.php?group_id=1', 0, '2026-10-19 04:51:54');
 
 -- --------------------------------------------------------
 
@@ -727,9 +725,9 @@ INSERT INTO `tasks` (`id`, `project_id`, `group_id`, `title`, `description`, `as
 (16, 8, 9, 'Matching Algorithm', 'Build matching algorithm.', 21, 22, 'In Progress', 'High', '2026-10-28', NULL, '2026-10-07 11:11:59'),
 (17, 8, 9, 'Frontend Dashboard', 'Build student dashboard.', 22, 22, 'Pending', 'Medium', '2026-11-15', NULL, '2026-10-07 11:11:59'),
 (18, 1, 1, 'ABC', 'XFGFHJHK', 2, 6, 'Completed', 'High', '2026-10-22', NULL, '2026-10-18 10:57:54'),
-(19, 1, 1, 'GFHJK', 'FXHHMJ/', 2, 6, 'Pending', 'Low', '2026-10-27', NULL, '2026-10-18 10:58:17'),
-(20, 1, 1, 'GFHJK', 'FXHHMJ/', 2, 6, 'Completed', 'Low', '2026-10-27', '2026-10-19 12:51:54', '2026-10-18 11:07:46'),
-(21, 1, 1, 'ABC', 'DFF', 2, 6, 'Completed', 'Medium', '2026-10-22', NULL, '2026-10-19 04:35:08');
+(19, 1, 1, 'Notification Bell Research', 'Review existing notification patterns and document the icon requirements for TeamBox.', 2, 6, 'Pending', 'Low', '2026-10-27', NULL, '2026-10-18 10:58:17'),
+(20, 1, 1, 'Notification Bell Icon', 'Design the notification bell icon used in the teacher and student headers.', 2, 6, 'Completed', 'Low', '2026-10-27', '2026-10-19 12:51:54', '2026-10-18 11:07:46'),
+(21, 1, 1, 'Bell Interaction States', 'Prepare hover and unread states for the notification bell and upload the final assets.', 2, 6, 'Completed', 'Medium', '2026-10-22', NULL, '2026-10-19 04:35:08');
 
 -- --------------------------------------------------------
 

@@ -94,25 +94,6 @@ $rc = mysqli_fetch_assoc($rs);
 $teamsActive = (int)$rc['c'];
 mysqli_stmt_close($stmt);
 
-// Storage Used
-$storageUsedBytes = 0;
-$stmt = mysqli_prepare($conn, "
-    SELECT f.file_size
-    FROM `files` f
-    INNER JOIN `projects` p ON p.id = f.project_id
-    WHERE p.supervisor_id = ?
-");
-mysqli_stmt_bind_param($stmt, "i", $teacherId);
-mysqli_stmt_execute($stmt);
-$rs = mysqli_stmt_get_result($stmt);
-while ($row = mysqli_fetch_assoc($rs)) {
-    $storageUsedBytes += parseSizeToBytes($row['file_size']);
-}
-mysqli_stmt_close($stmt);
-
-$storageUsed = formatBytes($storageUsedBytes);
-
-
 // =========================================================
 // 2. Recent Uploads（按 文件+小组+上传者+任务 分组，最近 10 组）
 // =========================================================
@@ -245,7 +226,7 @@ mysqli_stmt_close($stmt);
         <p class="subtitle">Project files uploaded by your teams</p>
 
         <!-- Summary -->
-        <div class="summary-grid">
+        <div class="summary-grid summary-grid-3">
             <div class="summary-item">
                 <div class="label">Total Files</div>
                 <div class="value"><?php echo $totalFiles; ?></div>
@@ -258,10 +239,6 @@ mysqli_stmt_close($stmt);
             <div class="summary-item">
                 <div class="label">Teams Active</div>
                 <div class="value"><?php echo $teamsActive; ?></div>
-            </div>
-            <div class="summary-item">
-                <div class="label">Storage Used</div>
-                <div class="value"><?php echo htmlspecialchars($storageUsed); ?></div>
             </div>
         </div>
 
@@ -412,6 +389,10 @@ mysqli_stmt_close($stmt);
 </main>
 
 <style>
+.summary-grid-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 700px) {
+    .summary-grid-3 { grid-template-columns: 1fr; }
+}
 .table-scroll { overflow-x: auto; }
 .files-table { min-width: 720px; }
 .files-table td { vertical-align: top; white-space: normal; }
