@@ -90,7 +90,8 @@ Teacher messages are stored in the existing `messages` table with
 
 ## Teacher files view
 
-Recent Uploads groups versions by file name, team, uploader and task:
+Recent Uploads lists task attachments only (shared-area files are excluded)
+and groups versions by file name, team, uploader and task:
 
 - one row per file group, showing the latest upload
 - `vN` chip opens the version history

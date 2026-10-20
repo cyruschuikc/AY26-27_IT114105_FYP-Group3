@@ -36,6 +36,7 @@ $stmt = mysqli_prepare($conn, "
     FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
     WHERE p.supervisor_id = ?
+      AND f.task_id IS NOT NULL
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
@@ -53,6 +54,7 @@ $stmt = mysqli_prepare($conn, "
         FROM `files` f
         INNER JOIN `projects` p ON p.id = f.project_id
         WHERE p.supervisor_id = ?
+          AND f.task_id IS NOT NULL
         GROUP BY LOWER(TRIM(f.file_name)), f.group_id, f.uploader_id, COALESCE(f.task_id, 0)
     ) grouped
 ");
@@ -70,6 +72,7 @@ $stmt = mysqli_prepare($conn, "
     FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
     WHERE p.supervisor_id = ?
+      AND f.task_id IS NOT NULL
       AND f.uploaded_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
@@ -86,6 +89,7 @@ $stmt = mysqli_prepare($conn, "
     FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
     WHERE p.supervisor_id = ?
+      AND f.task_id IS NOT NULL
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
@@ -130,6 +134,7 @@ $sql = "
         FROM `files` f
         INNER JOIN `projects` p ON p.id = f.project_id
         WHERE p.supervisor_id = ?
+          AND f.task_id IS NOT NULL
         GROUP BY name_key, f.group_id, f.uploader_id, task_key
     ) grp
     INNER JOIN `files` latest ON latest.id = grp.latest_id
@@ -189,11 +194,13 @@ $sql = "
     SELECT
         g.id           AS group_id,
         g.name         AS team_name,
-        COUNT(f.id)    AS file_count,
+        COUNT(DISTINCT CONCAT(
+            LOWER(TRIM(f.file_name)), '|', f.uploader_id, '|', COALESCE(f.task_id, 0)
+        )) AS file_count,
         MAX(f.uploaded_at) AS last_upload
     FROM `groups` g
     INNER JOIN `projects` p ON p.id = g.project_id
-    LEFT JOIN `files` f ON f.group_id = g.id
+    LEFT JOIN `files` f ON f.group_id = g.id AND f.task_id IS NOT NULL
     WHERE p.supervisor_id = ?
     GROUP BY g.id, g.name
     HAVING file_count > 0
@@ -223,7 +230,7 @@ mysqli_stmt_close($stmt);
     <div class="content">
 
         <h1>Files</h1>
-        <p class="subtitle">Project files uploaded by your teams</p>
+        <p class="subtitle">Task attachments submitted by your teams</p>
 
         <!-- Summary -->
         <div class="summary-grid summary-grid-3">
@@ -259,7 +266,7 @@ mysqli_stmt_close($stmt);
                 <?php if (count($recentUploads) === 0): ?>
                     <tr>
                         <td colspan="7" class="muted" style="text-align: center; padding: 30px;">
-                            No files uploaded yet.
+                            No task attachments uploaded yet.
                         </td>
                     </tr>
                 <?php endif; ?>
@@ -358,7 +365,7 @@ mysqli_stmt_close($stmt);
             <table>
                 <tr>
                     <th>Team</th>
-                    <th>Files</th>
+                    <th>Task Files</th>
                     <th>Last Upload</th>
                     <th></th>
                 </tr>
@@ -366,7 +373,7 @@ mysqli_stmt_close($stmt);
                 <?php if (count($teamFiles) === 0): ?>
                     <tr>
                         <td colspan="4" class="muted" style="text-align: center; padding: 30px;">
-                            No team has uploaded any files yet.
+                            No team has task attachments yet.
                         </td>
                     </tr>
                 <?php endif; ?>
