@@ -80,6 +80,7 @@ $sql = "
     SELECT
         f.id,
         f.file_name,
+        f.stored_name,
         f.file_size,
         f.file_type,
         f.status,
@@ -121,6 +122,14 @@ if (!$file) {
     exit;
 }
 
+// Physical file check (the database can contain records for files that are
+// no longer present on this server, e.g. after moving the project folder).
+$filePath = '';
+if (!empty($file['stored_name'])) {
+    $filePath = __DIR__ . '/uploads/chat_files/' . basename($file['stored_name']);
+}
+$fileAvailable = ($filePath !== '' && is_file($filePath));
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -128,7 +137,7 @@ if (!$file) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review File | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css">
+    <link rel="stylesheet" href="teacher.css?v=20261020">
 
     <style>
         /* 兜底：任何带 hidden 属性的元素都不显示 */
@@ -167,6 +176,23 @@ if (!$file) {
             flex-shrink: 0;
             align-items: center;
         }
+
+        .btn-secondary.is-disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            pointer-events: auto;
+        }
+
+        .file-warning {
+            margin: -18px 0 24px;
+            padding: 11px 15px;
+            border: 1px solid #f0d5a8;
+            border-radius: 8px;
+            background: #fdf7ea;
+            color: #8a5a10;
+            font-size: 12.5px;
+            line-height: 1.55;
+        }
     </style>
 </head>
 <body>
@@ -196,11 +222,25 @@ if (!$file) {
             </div>
 
             <div class="head-actions">
-                <a href="#" class="btn-secondary">Open</a>
-                <a href="#" class="btn-secondary">Download</a>
+                <?php if ($fileAvailable): ?>
+                    <a href="open_file.php?id=<?php echo (int)$file['id']; ?>"
+                       target="_blank" rel="noopener" class="btn-secondary">Open</a>
+                    <a href="download_file.php?id=<?php echo (int)$file['id']; ?>"
+                       class="btn-secondary">Download</a>
+                <?php else: ?>
+                    <span class="btn-secondary is-disabled" title="The uploaded file is missing from this server.">Open</span>
+                    <span class="btn-secondary is-disabled" title="The uploaded file is missing from this server.">Download</span>
+                <?php endif; ?>
                 <span class="pill"><?php echo htmlspecialchars($file['status']); ?></span>
             </div>
         </div>
+
+        <?php if (!$fileAvailable): ?>
+            <div class="file-warning">
+                This file record exists, but the uploaded file is missing from the server.
+                Ask the student to upload it again to preview or download it.
+            </div>
+        <?php endif; ?>
 
         <!-- Uploader + File Information -->
         <div class="two-col">

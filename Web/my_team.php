@@ -63,6 +63,7 @@ $stmt = mysqli_prepare($conn, "
         p.period_end,
         p.progress      AS project_progress,
         p.description   AS project_description,
+        p.allow_extension,
         p.supervisor_id,
         t.user_id       AS supervisor_user_id,
         tu.username     AS supervisor_name,
@@ -130,6 +131,25 @@ if ($activeGroupID > 0) {
 if (!$myGroup && count($myGroups) > 0) {
     $myGroup = $myGroups[0];
     $activeGroupID = (int) $myGroup['group_id'];
+}
+
+// Pending deadline-extension request for the current project
+$pendingExtension = null;
+
+if ($myGroup) {
+    $stmt = mysqli_prepare($conn, "
+        SELECT id, requested_end, status
+        FROM `project_extension_requests`
+        WHERE project_id = ? AND student_id = ? AND status = 'Pending'
+        ORDER BY created_at DESC
+        LIMIT 1
+    ");
+    $pid = (int) $myGroup['project_id'];
+    mysqli_stmt_bind_param($stmt, "ii", $pid, $studentID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $pendingExtension = mysqli_fetch_assoc($rs);
+    mysqli_stmt_close($stmt);
 }
 
 // =========================================================
@@ -561,6 +581,82 @@ if (!function_exists('timeAgo')) {
             .member-list { grid-template-columns: 1fr; }
             .task-item { align-items: flex-start; flex-direction: column; }
         }
+        /* ---------- Deadline extension ---------- */
+        .extension-box {
+            margin-top: 18px;
+            border: 1px solid #e6e8eb;
+            border-radius: 10px;
+            padding: 16px 18px;
+            background: #fafbfc;
+        }
+        .extension-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        .extension-head h3 { font-size: 14px; }
+        .extension-pending {
+            font-size: 11px;
+            font-weight: 600;
+            color: #9a6a13;
+            background: #fdf3e2;
+            padding: 3px 9px;
+            border-radius: 999px;
+        }
+        .extension-note {
+            font-size: 12px;
+            color: #6b6f78;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        .extension-form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .extension-form label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 11px;
+            color: #6b6f78;
+        }
+        .extension-form input {
+            padding: 7px 9px;
+            border: 1px solid #dfe2e6;
+            border-radius: 6px;
+            font-size: 12px;
+            min-width: 190px;
+        }
+        .extension-form button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 7px;
+            background: #175196;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .team-flash {
+            margin: 10px 0 18px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 12.5px;
+        }
+        .team-flash.success {
+            background: #e8f6ee;
+            border: 1px solid #bfe4cd;
+            color: #256b3f;
+        }
+        .team-flash.error {
+            background: #fdecec;
+            border: 1px solid #f5c2c2;
+            color: #a61b1b;
+        }
     </style>
 </head>
 
@@ -590,6 +686,25 @@ if (!function_exists('timeAgo')) {
 
     <section class="page-heading">
         <h1>My Team &amp; Project</h1>
+
+        <?php
+        $teamMsg = '';
+        $teamMsgType = 'success';
+        if (isset($_GET['msg'])) {
+            if ($_GET['msg'] === 'extension_requested') {
+                $teamMsg = 'Extension request sent to your supervisor.';
+            } elseif ($_GET['msg'] === 'extension_pending') {
+                $teamMsg = 'You already have a pending extension request for this project.';
+                $teamMsgType = 'error';
+            } elseif ($_GET['msg'] === 'extension_error') {
+                $teamMsg = 'The extension request could not be submitted. Check the new deadline and try again.';
+                $teamMsgType = 'error';
+            }
+        }
+        ?>
+        <?php if ($teamMsg !== ''): ?>
+            <div class="team-flash <?= $teamMsgType ?>"><?= htmlspecialchars($teamMsg) ?></div>
+        <?php endif; ?>
         <p>
             View your team information, project details, members, current
             progress, assigned tasks and recent team activities — all in
@@ -771,6 +886,44 @@ if (!function_exists('timeAgo')) {
                 <p class="project-description">
                     <?php echo htmlspecialchars($myGroup['project_description']); ?>
                 </p>
+            <?php endif; ?>
+
+            <?php if (!empty($myGroup['allow_extension'])): ?>
+                <div class="extension-box">
+                    <div class="extension-head">
+                        <h3>Deadline Extension</h3>
+                        <?php if ($pendingExtension): ?>
+                            <span class="extension-pending">
+                                Pending · requested for <?= date('d M Y', strtotime($pendingExtension['requested_end'])) ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if ($pendingExtension): ?>
+                        <p class="extension-note">
+                            Your request has been sent to the supervisor and is waiting for review.
+                        </p>
+                    <?php else: ?>
+                        <p class="extension-note">
+                            If your team needs more time, request a new deadline. The supervisor must approve it.
+                        </p>
+                        <form method="post" action="project_extension_request.php" class="extension-form">
+                            <input type="hidden" name="projectId" value="<?= (int) $myGroup['project_id'] ?>">
+                            <input type="hidden" name="groupId" value="<?= (int) $myGroup['group_id'] ?>">
+
+                            <label>
+                                New deadline
+                                <input type="date" name="requestedEnd" required
+                                       min="<?= $myGroup['period_end'] ? date('Y-m-d', strtotime($myGroup['period_end'] . ' +1 day')) : date('Y-m-d', strtotime('+1 day')) ?>">
+                            </label>
+                            <label>
+                                Reason
+                                <input type="text" name="reason" maxlength="300" placeholder="Why do you need more time?">
+                            </label>
+                            <button type="submit">Request Extension</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         </section>
 

@@ -69,6 +69,8 @@ if (!$enrolled) {
 $stmt = mysqli_prepare($conn, "
     SELECT 1 FROM `projects`
     WHERE id = ? AND course_id = ?
+      AND is_draft = 0
+      AND status <> 'Archived'
     LIMIT 1
 ");
 mysqli_stmt_bind_param($stmt, "ii", $projectID, $courseID);

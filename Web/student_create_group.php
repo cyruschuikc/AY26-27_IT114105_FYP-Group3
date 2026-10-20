@@ -929,19 +929,31 @@ if (!function_exists('statusClass')) {
                     <select id="projectID" name="projectID" required>
                         <option value="">-- Select Project --</option>
                         <?php
-                        $rs = mysqli_query($conn, "
+                        $stmtProj = mysqli_prepare($conn, "
                             SELECT p.id, p.name, c.code AS course_code
                             FROM `projects` p
                             LEFT JOIN `courses` c ON c.id = p.course_id
                             WHERE p.status <> 'Archived'
+                              AND p.is_draft = 0
+                              AND (
+                                    p.visibility = 'All'
+                                    OR p.course_id IN (
+                                        SELECT ce.course_id
+                                        FROM `course_enrollments` ce
+                                        WHERE ce.student_id = ?
+                                    )
+                                  )
                             ORDER BY p.name
                         ");
-                        while ($p = mysqli_fetch_assoc($rs)) {
+                        mysqli_stmt_bind_param($stmtProj, "i", $studentID);
+                        mysqli_stmt_execute($stmtProj);
+                        $rsProj = mysqli_stmt_get_result($stmtProj);
+                        while ($p = mysqli_fetch_assoc($rsProj)) {
                             echo '<option value="' . (int)$p['id'] . '">'
                                     . htmlspecialchars($p['name'] . ($p['course_code'] ? ' (' . $p['course_code'] . ')' : ''))
                                     . '</option>';
                         }
-                        mysqli_free_result($rs);
+                        mysqli_stmt_close($stmtProj);
                         ?>
                     </select>
                 </div>

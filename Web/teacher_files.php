@@ -158,7 +158,7 @@ mysqli_stmt_close($stmt);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Files | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css">
+    <link rel="stylesheet" href="teacher.css?v=20261020">
 </head>
 <body>
 
@@ -227,7 +227,7 @@ mysqli_stmt_close($stmt);
                         <td>
                             <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">View</a>
                             &nbsp;·&nbsp;
-                            <a href="#" class="link">Download</a>
+                            <a href="download_file.php?id=<?php echo (int)$f['id']; ?>" class="link">Download</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

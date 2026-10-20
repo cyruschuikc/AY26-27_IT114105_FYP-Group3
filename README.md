@@ -34,3 +34,30 @@ Unlicensed works, modifications, and larger works may be distributed under diffe
 [Quick download xDebug｜php_xdebug-2.9.8-7.3-vc15.dll](http://xdebug.org/files/php_xdebug-2.9.8-7.3-vc15.dll)
 ### PhpStorme
 ### MySQL
+
+## Teacher project module
+
+Teachers can create, edit, duplicate and publish projects from
+`Web/teacher_projects.php` → **Create Project**.
+
+| Feature | Where |
+|---|---|
+| Project details, requirements, course, attachments | `Web/teacher_project_create.php` |
+| Team rules: free / random / teacher-assigned, cross-class, leader permissions, post-deadline action | `Web/teacher_project_create.php` |
+| Unlimited milestones and deadline reminder setting | `Web/teacher_project_create.php` |
+| Announcement preview, in-app notifications, send now or schedule | `Web/teacher_project_create.php` |
+| Draft / published state, duplicate project | `Web/teacher_projects.php` |
+| Team formation progress board and extension request review | `Web/project_detail.php` |
+| Scheduled announcements and deadline reminders | `Web/project_cron.php` |
+
+Run the scheduler every few minutes (Windows Task Scheduler or cron):
+
+```
+C:\xampp\php\php.exe C:\xampp\htdocs\AY26-27_IT114105_FYP-Group3\Web\project_cron.php
+```
+
+Project attachments are stored in `Web/uploads/project_attachments/`.
+The schema changes are in `Web/sql/2026_10_20_project_module.sql` and are also
+appended to `teambox.sql`.
+
+Announcements are delivered through in-app notifications only.

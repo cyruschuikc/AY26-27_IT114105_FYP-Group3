@@ -18,11 +18,13 @@ require_once __DIR__ . '/db.php';
 $teacherName     = 'Unknown';
 $teacherRole     = 'Teacher';
 $teacherInitials = '';
+$navTeacherId    = 0;
 
 if (isset($_SESSION['userID'])) {
 
     $sql = "
         SELECT u.id, u.username, u.email, u.role,
+               t.id AS teacher_id,
                t.department, t.title
         FROM Users u
         LEFT JOIN Teachers t ON t.user_id = u.id
@@ -45,6 +47,7 @@ if (isset($_SESSION['userID'])) {
 
         if ($rc) {
             $teacherName = $rc['username'];
+            $navTeacherId = (int) $rc['teacher_id'];
 
             // 头像首字母
             $parts = preg_split('/\s+/', trim($teacherName));
@@ -61,6 +64,77 @@ if (isset($_SESSION['userID'])) {
         }
     }
 }
+
+// ===== 侧边栏红点：当前老师的待办数量 =====
+$navPendingFiles        = 0;
+$navPendingRequests     = 0;
+$navOverdueTasks        = 0;
+$navUnsubmittedStudents = 0;
+
+if ($navTeacherId > 0) {
+
+    // 待审核文件
+    $stmt = mysqli_prepare($conn, "
+        SELECT COUNT(*) AS c
+        FROM `files` f
+        INNER JOIN `projects` p ON p.id = f.project_id
+        WHERE f.status = 'Unviewed' AND p.supervisor_id = ?
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $navTeacherId);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rc = mysqli_fetch_assoc($rs);
+    $navPendingFiles = (int) $rc['c'];
+    mysqli_stmt_close($stmt);
+
+    // 待审批小组申请
+    $stmt = mysqli_prepare($conn, "
+        SELECT COUNT(*) AS c
+        FROM `group_requests` r
+        INNER JOIN `projects` p ON p.id = r.project_id
+        WHERE r.status = 'Pending' AND p.supervisor_id = ?
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $navTeacherId);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rc = mysqli_fetch_assoc($rs);
+    $navPendingRequests = (int) $rc['c'];
+    mysqli_stmt_close($stmt);
+
+    // 逾期任务
+    $stmt = mysqli_prepare($conn, "
+        SELECT COUNT(*) AS c
+        FROM `tasks` t
+        INNER JOIN `projects` p ON p.id = t.project_id
+        WHERE p.supervisor_id = ?
+          AND t.status <> 'Completed'
+          AND t.due_date IS NOT NULL
+          AND t.due_date < CURDATE()
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $navTeacherId);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rc = mysqli_fetch_assoc($rs);
+    $navOverdueTasks = (int) $rc['c'];
+    mysqli_stmt_close($stmt);
+
+    // 还没交过任何文件的学生
+    $stmt = mysqli_prepare($conn, "
+        SELECT COUNT(DISTINCT ce.student_id) AS c
+        FROM `course_enrollments` ce
+        INNER JOIN `projects` p ON p.course_id = ce.course_id
+        WHERE p.supervisor_id = ?
+          AND ce.student_id NOT IN (SELECT DISTINCT uploader_id FROM `files`)
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $navTeacherId);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rc = mysqli_fetch_assoc($rs);
+    $navUnsubmittedStudents = (int) $rc['c'];
+    mysqli_stmt_close($stmt);
+}
+
+$navReviewCount = $navPendingFiles + $navPendingRequests;
 
 // 头像圆圈背景：从几个浅色里按名字挑一个（同名同色）
 $avatarPalette = array(
@@ -92,10 +166,30 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
     <nav class="sidebar-menu">
         <a href="teacher_index.php"          class="<?= $active==='dashboard'?'active':'' ?>">Dashboard</a>
         <a href="teacher_projects.php"       class="<?= $active==='projects'?'active':'' ?>">Projects</a>
-        <a href="teacher_teams.php"          class="<?= $active==='teams'?'active':'' ?>">Teams</a>
-        <a href="teacher_students.php"       class="<?= $active==='students'?'active':'' ?>">Students</a>
-        <a href="teacher_review.php"         class="<?= $active==='review'?'active':'' ?>">Review Center</a>
-        <a href="teacher_files.php"          class="<?= $active==='files'?'active':'' ?>">Files</a>
+        <a href="teacher_teams.php"          class="<?= $active==='teams'?'active':'' ?>">
+            <span>Teams</span>
+            <?php if ($navOverdueTasks > 0): ?>
+                <span class="nav-dot" title="<?= (int) $navOverdueTasks ?> overdue task<?= $navOverdueTasks === 1 ? '' : 's' ?>" aria-label="<?= (int) $navOverdueTasks ?> overdue tasks"></span>
+            <?php endif; ?>
+        </a>
+        <a href="teacher_students.php"       class="<?= $active==='students'?'active':'' ?>">
+            <span>Students</span>
+            <?php if ($navUnsubmittedStudents > 0): ?>
+                <span class="nav-dot" title="<?= (int) $navUnsubmittedStudents ?> student<?= $navUnsubmittedStudents === 1 ? '' : 's' ?> with no submissions" aria-label="<?= (int) $navUnsubmittedStudents ?> students with no submissions"></span>
+            <?php endif; ?>
+        </a>
+        <a href="teacher_review.php"         class="<?= $active==='review'?'active':'' ?>">
+            <span>Review Center</span>
+            <?php if ($navReviewCount > 0): ?>
+                <span class="nav-dot" title="<?= (int) $navReviewCount ?> item<?= $navReviewCount === 1 ? '' : 's' ?> waiting for review" aria-label="<?= (int) $navReviewCount ?> items waiting for review"></span>
+            <?php endif; ?>
+        </a>
+        <a href="teacher_files.php"          class="<?= $active==='files'?'active':'' ?>">
+            <span>Files</span>
+            <?php if ($navPendingFiles > 0): ?>
+                <span class="nav-dot" title="<?= (int) $navPendingFiles ?> unviewed file<?= $navPendingFiles === 1 ? '' : 's' ?>" aria-label="<?= (int) $navPendingFiles ?> unviewed files"></span>
+            <?php endif; ?>
+        </a>
         <a href="teacher_announcements.php"  class="<?= $active==='announcements'?'active':'' ?>">Announcements</a>
         <a href="teacher_profile.php"        class="<?= $active==='profile'?'active':'' ?>">Profile</a>
     </nav>
@@ -106,3 +200,10 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
      Log Out —— 页面右上角
      ========================================================= -->
 <a href="logout.php" class="logout-btn">Log Out</a>
+
+<?php
+// 铃铛只出现在老师首页
+if ($active === 'dashboard') {
+    include __DIR__ . '/teacher_notifications.php';
+}
+?>
