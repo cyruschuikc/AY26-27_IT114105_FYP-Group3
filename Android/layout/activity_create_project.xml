@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Create Project" android:textSize="24sp" android:textStyle="bold"/>
+        <EditText android:id="@+id/etTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Project Title"/>
+        <Spinner android:id="@+id/spGroupSize" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btnDeadline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Select Deadline"/>
+        <EditText android:id="@+id/etScore" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Score" android:inputType="number"/>
+        <Button android:id="@+id/btnCreate" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Create Project"/>
+        <Button android:id="@+id/btnStudentPage" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Open Student Submission"/>
+        <TextView android:id="@+id/tvOutput" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+    </LinearLayout>
+</ScrollView>

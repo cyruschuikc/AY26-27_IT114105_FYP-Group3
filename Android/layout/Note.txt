@@ -1,0 +1,4 @@
+Add to android manifest:
+
+<activity android:name=".CreateProjectActivity"/>
+<activity android:name=".SubmitProjectActivity"/>

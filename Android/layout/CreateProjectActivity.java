@@ -1,0 +1,7 @@
+package com.example.projectapp;
+import android.app.DatePickerDialog;import android.content.Intent;import android.os.Bundle;import android.widget.*;import androidx.appcompat.app.AppCompatActivity;import java.util.Calendar;
+public class CreateProjectActivity extends AppCompatActivity {String selectedDeadline="";@Override protected void onCreate(Bundle b){super.onCreate(b);setContentView(R.layout.activity_create_project);EditText etTitle=findViewById(R.id.etTitle),etScore=findViewById(R.id.etScore);Spinner sp=findViewById(R.id.spGroupSize);Button ddl=findViewById(R.id.btnDeadline),create=findViewById(R.id.btnCreate),student=findViewById(R.id.btnStudentPage);TextView out=findViewById(R.id.tvOutput);sp.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,new String[]{"1","2","3","4","5","6","7","8"}));ddl.setOnClickListener(v->{Calendar c=Calendar.getInstance();new DatePickerDialog(this,(vw,y,m,d)->{selectedDeadline=d+"/"+(m+1)+"/"+y;ddl.setText(selectedDeadline);},c.get(1),c.get(2),c.get(5)).show();});create.setOnClickListener(v->out.setText("Project Created
+Title: "+etTitle.getText()+"
+Group Size: "+sp.getSelectedItem()+"
+Deadline: "+selectedDeadline+"
+Score: "+etScore.getText()));student.setOnClickListener(v->startActivity(new Intent(this,SubmitProjectActivity.class)));}}
