@@ -123,11 +123,10 @@ if ($navTeacherId > 0) {
 
     // 还没交过任何文件的学生
     $stmt = mysqli_prepare($conn, "
-        SELECT COUNT(DISTINCT ce.student_id) AS c
-        FROM `course_enrollments` ce
-        INNER JOIN `projects` p ON p.course_id = ce.course_id
-        WHERE p.supervisor_id = ?
-          AND ce.student_id NOT IN (SELECT DISTINCT uploader_id FROM `files`)
+        SELECT COUNT(DISTINCT ts.student_id) AS c
+        FROM `teacher_student` ts
+        WHERE ts.teacher_id = ?
+          AND ts.student_id NOT IN (SELECT DISTINCT uploader_id FROM `files`)
     ");
     mysqli_stmt_bind_param($stmt, "i", $navTeacherId);
     mysqli_stmt_execute($stmt);

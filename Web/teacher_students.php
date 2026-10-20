@@ -1,7 +1,6 @@
 <?php
 $active = 'students';
 
-// ===== session + 数据库 =====
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -9,140 +8,281 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
 /** @var mysqli $conn */
 
-// 当前老师的 Teachers.id
-$teacherId = 0;
-if (isset($_SESSION['userID'])) {
-    $stmtT = mysqli_prepare($conn, "SELECT id FROM `teachers` WHERE user_id = ? LIMIT 1");
-    mysqli_stmt_bind_param($stmtT, "i", $_SESSION['userID']);
-    mysqli_stmt_execute($stmtT);
-    $rsT = mysqli_stmt_get_result($stmtT);
-    $rowT = mysqli_fetch_assoc($rsT);
-    mysqli_stmt_close($stmtT);
-    if ($rowT) { $teacherId = (int)$rowT['id']; }
+if (!isset($_SESSION['userID'])) {
+    header('Location: login.php');
+    exit;
 }
 
+$userID = (int) $_SESSION['userID'];
+$teacherId = 0;
+
+$stmt = mysqli_prepare($conn, "SELECT id FROM `teachers` WHERE user_id = ? LIMIT 1");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$row = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
+if ($row) {
+    $teacherId = (int) $row['id'];
+}
+
+if ($teacherId <= 0) {
+    header('Location: teacher_login.php');
+    exit;
+}
 
 // =========================================================
-// 汇总
+// Students assigned to this teacher
 // =========================================================
+$students = array();
 
-// Total Students
-$totalStudents = 0;
 $stmt = mysqli_prepare($conn, "
-    SELECT COUNT(DISTINCT ce.student_id) AS c
-    FROM `course_enrollments` ce
-    INNER JOIN `projects` p ON p.course_id = ce.course_id
-    WHERE p.supervisor_id = ?
+    SELECT DISTINCT
+        s.id,
+        s.student_number,
+        s.major,
+        s.grade_level,
+        u.username AS name,
+        c.class_code
+    FROM `teacher_student` ts
+    INNER JOIN `students` s ON s.id = ts.student_id
+    INNER JOIN `users` u    ON u.id = s.user_id
+    INNER JOIN `classes` c  ON c.id = s.class_id
+    WHERE ts.teacher_id = ?
+    ORDER BY u.username
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
-$rc = mysqli_fetch_assoc($rs);
-$totalStudents = (int)$rc['c'];
+while ($student = mysqli_fetch_assoc($rs)) {
+    $students[$student['id']] = $student;
+}
 mysqli_stmt_close($stmt);
 
-// Assigned
-$assignedStudents = 0;
+// =========================================================
+// Team memberships under this teacher
+// =========================================================
+$memberships = array();
+
 $stmt = mysqli_prepare($conn, "
-    SELECT COUNT(DISTINCT ce.student_id) AS c
-    FROM `course_enrollments` ce
-    INNER JOIN `projects` p ON p.course_id = ce.course_id
-    INNER JOIN `group_members` gm ON gm.student_id = ce.student_id
+    SELECT
+        gm.student_id,
+        gm.role,
+        g.id   AS team_id,
+        g.name AS team_name,
+        g.status AS team_status,
+        g.max_members,
+        p.id   AS project_id,
+        p.name AS project_name,
+        p.team_mode,
+        p.team_deadline
+    FROM `group_members` gm
+    INNER JOIN `groups` g   ON g.id = gm.group_id
+    INNER JOIN `projects` p ON p.id = g.project_id
     WHERE p.supervisor_id = ?
+      AND p.is_draft = 0
+    ORDER BY p.name, g.name
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
-$rc = mysqli_fetch_assoc($rs);
-$assignedStudents = (int)$rc['c'];
+while ($membership = mysqli_fetch_assoc($rs)) {
+    $sid = (int) $membership['student_id'];
+    $memberships[$sid][] = $membership;
+}
 mysqli_stmt_close($stmt);
 
-$unassignedStudents = $totalStudents - $assignedStudents;
+// =========================================================
+// Team formation settings for the teacher's projects
+// =========================================================
+$formationProjects = array();
 
-// At Risk
-$atRisk = 0;
 $stmt = mysqli_prepare($conn, "
-    SELECT COUNT(DISTINCT t.assigned_to) AS c
+    SELECT
+        p.id,
+        p.name,
+        p.course_id,
+        p.team_mode,
+        p.team_deadline
+    FROM `projects` p
+    WHERE p.supervisor_id = ?
+      AND p.is_draft = 0
+    ORDER BY p.name
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($project = mysqli_fetch_assoc($rs)) {
+    $formationProjects[] = $project;
+}
+mysqli_stmt_close($stmt);
+
+$formationDeadlineItems = array();
+$hasPassedFormationDeadline = false;
+$today = date('Y-m-d');
+
+foreach ($formationProjects as $project) {
+    if (empty($project['team_deadline'])) {
+        continue;
+    }
+
+    $passed = $today > $project['team_deadline'];
+    $hasPassedFormationDeadline = $hasPassedFormationDeadline || $passed;
+    $formationDeadlineItems[] = array(
+        'project_name' => $project['name'],
+        'deadline'     => $project['team_deadline'],
+        'passed'       => $passed,
+    );
+}
+
+usort($formationDeadlineItems, function ($a, $b) {
+    return strcmp($a['deadline'], $b['deadline']);
+});
+
+// =========================================================
+// Task metrics for each student within each team
+// =========================================================
+$metrics = array();
+
+$stmt = mysqli_prepare($conn, "
+    SELECT
+        t.group_id,
+        t.assigned_to AS student_id,
+        COUNT(DISTINCT t.id) AS total_tasks,
+        COUNT(DISTINCT CASE WHEN t.status = 'Completed' THEN t.id END) AS done_tasks,
+        COUNT(DISTINCT CASE
+            WHEN t.status <> 'Completed'
+             AND t.due_date IS NOT NULL
+             AND t.due_date < CURDATE()
+            THEN t.id END) AS overdue_tasks
     FROM `tasks` t
-    INNER JOIN `course_enrollments` ce ON ce.student_id = t.assigned_to
-    INNER JOIN `projects` p ON p.course_id = ce.course_id
+    INNER JOIN `groups` g   ON g.id = t.group_id
+    INNER JOIN `projects` p ON p.id = g.project_id
     WHERE p.supervisor_id = ?
-      AND t.status <> 'Completed'
-      AND t.due_date < CURDATE()
+      AND p.is_draft = 0
       AND t.assigned_to IS NOT NULL
+    GROUP BY t.group_id, t.assigned_to
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
-$rc = mysqli_fetch_assoc($rs);
-$atRisk = (int)$rc['c'];
+while ($metric = mysqli_fetch_assoc($rs)) {
+    $metrics[(int) $metric['group_id']][(int) $metric['student_id']] = $metric;
+}
 mysqli_stmt_close($stmt);
 
+$totalStudents = count($students);
+$assignedStudents = 0;
+$unassignedStudents = 0;
+$atRiskStudents = 0;
+$directoryStudents = array();
 
-// =========================================================
-// Assigned Students
-// =========================================================
-$assigned = array();
+foreach ($students as &$student) {
+    $sid = (int) $student['id'];
+    $student['teams'] = isset($memberships[$sid]) ? $memberships[$sid] : array();
+    $student['is_assigned'] = count($student['teams']) > 0;
+    $studentAtRisk = false;
+    $doneTasks = 0;
+    $totalTasks = 0;
+    $overdueTasks = 0;
 
-$sql = "
-    SELECT DISTINCT
-        s.id                AS student_id,
-        s.student_number,
-        s.major,
-        s.grade_level,
-        u.username          AS name,
-        g.name              AS team_name,
-        gm.role             AS team_role,
-        (SELECT COUNT(*) FROM `tasks` t
-            WHERE t.assigned_to = s.id
-              AND t.status = 'Completed') AS done_tasks,
-        (SELECT COUNT(*) FROM `tasks` t2
-            WHERE t2.assigned_to = s.id) AS total_tasks
-    FROM `course_enrollments` ce
-    INNER JOIN `projects` p ON p.course_id = ce.course_id
-    INNER JOIN `students` s ON s.id = ce.student_id
-    INNER JOIN `users`    u ON u.id = s.user_id
-    INNER JOIN `group_members` gm ON gm.student_id = s.id
-    INNER JOIN `groups` g ON g.id = gm.group_id
-    WHERE p.supervisor_id = ?
-    ORDER BY g.id, s.id
-";
+    usort($student['teams'], function ($a, $b) {
+        return strnatcasecmp($a['team_name'], $b['team_name']);
+    });
 
-$stmt = mysqli_prepare($conn, $sql);
-mysqli_stmt_bind_param($stmt, "i", $teacherId);
-mysqli_stmt_execute($stmt);
-$rs = mysqli_stmt_get_result($stmt);
-while ($row = mysqli_fetch_assoc($rs)) { $assigned[] = $row; }
-mysqli_stmt_close($stmt);
+    $searchParts = array(
+        $student['name'],
+        $student['student_number'],
+        formatClass($student['major'], $student['grade_level'], $student['class_code']),
+    );
+    foreach ($student['teams'] as $team) {
+        $searchParts[] = $team['team_name'];
+        $searchParts[] = $team['project_name'];
+        $teamId = (int) $team['team_id'];
+        $metric = isset($metrics[$teamId][$sid]) ? $metrics[$teamId][$sid] : null;
+        if ($metric) {
+            $doneTasks += (int) $metric['done_tasks'];
+            $totalTasks += (int) $metric['total_tasks'];
+            $overdueTasks += (int) $metric['overdue_tasks'];
+        }
+        if ($overdueTasks > 0) {
+            $studentAtRisk = true;
+        }
+    }
+    $student['search_text'] = strtolower(implode(' ', $searchParts));
+    $student['done_tasks'] = $doneTasks;
+    $student['total_tasks'] = $totalTasks;
+    $student['overdue_tasks'] = $overdueTasks;
 
+    $primaryTeam = null;
+    foreach ($student['teams'] as $team) {
+        if ($primaryTeam === null) {
+            $primaryTeam = $team;
+        }
+        if ($team['role'] === 'leader') {
+            $primaryTeam = $team;
+            break;
+        }
+    }
+    $student['primary_team_name'] = $primaryTeam ? $primaryTeam['team_name'] : '';
+    $student['primary_role'] = $primaryTeam ? $primaryTeam['role'] : '';
 
-// =========================================================
-// Unassigned Students
-// =========================================================
-$unassigned = array();
+    if ($student['is_assigned']) {
+        $assignedStudents++;
+    } else {
+        $unassignedStudents++;
+    }
+    if ($studentAtRisk) {
+        $atRiskStudents++;
+    }
 
-$sql = "
-    SELECT DISTINCT
-        s.id                AS student_id,
-        s.student_number,
-        s.major,
-        s.grade_level,
-        u.username          AS name
-    FROM `course_enrollments` ce
-    INNER JOIN `projects` p ON p.course_id = ce.course_id
-    INNER JOIN `students` s ON s.id = ce.student_id
-    INNER JOIN `users`    u ON u.id = s.user_id
-    WHERE p.supervisor_id = ?
-      AND s.id NOT IN (SELECT DISTINCT student_id FROM `group_members`)
-    ORDER BY s.id
-";
+    $directoryStudents[] = $student;
+}
+unset($student);
 
-$stmt = mysqli_prepare($conn, $sql);
-mysqli_stmt_bind_param($stmt, "i", $teacherId);
-mysqli_stmt_execute($stmt);
-$rs = mysqli_stmt_get_result($stmt);
-while ($row = mysqli_fetch_assoc($rs)) { $unassigned[] = $row; }
-mysqli_stmt_close($stmt);
+// Flat directory order: primary team, leader first, then student name.
+// Unassigned students remain at the end.
+usort($directoryStudents, function ($a, $b) {
+    if ($a['is_assigned'] !== $b['is_assigned']) {
+        return $a['is_assigned'] ? -1 : 1;
+    }
+    if (!$a['is_assigned']) {
+        return strcasecmp($a['name'], $b['name']);
+    }
+
+    $teamCompare = strnatcasecmp($a['primary_team_name'], $b['primary_team_name']);
+    if ($teamCompare !== 0) {
+        return $teamCompare;
+    }
+
+    $aPriority = $a['primary_role'] === 'leader' ? 0 : 1;
+    $bPriority = $b['primary_role'] === 'leader' ? 0 : 1;
+    if ($aPriority !== $bPriority) {
+        return $aPriority - $bPriority;
+    }
+
+    return strcasecmp($a['name'], $b['name']);
+});
+
+$filterCounts = array(
+    'all'        => $totalStudents,
+    'assigned'   => $assignedStudents,
+    'unassigned' => $unassignedStudents,
+    'risk'       => $atRiskStudents,
+);
+
+if (!function_exists('studentInitials')) {
+    function studentInitials($name)
+    {
+        $parts = preg_split('/\s+/', trim((string) $name));
+        if (count($parts) >= 2) {
+            return strtoupper(substr($parts[0], 0, 1) . substr($parts[count($parts) - 1], 0, 1));
+        }
+        return strtoupper(substr((string) $name, 0, 2));
+    }
+}
+
+$avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -151,6 +291,229 @@ mysqli_stmt_close($stmt);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Students | TeamBox</title>
     <link rel="stylesheet" href="teacher.css?v=20261020d">
+    <style>
+        .student-toolbar { margin-bottom: 12px; }
+        .student-toolbar .field-search input {
+            width: 100%;
+            padding: 9px 11px;
+            border: 1px solid #dfe2e6;
+            border-radius: 7px;
+            font-size: 12.5px;
+        }
+
+        .student-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-bottom: 22px;
+        }
+        .student-filter {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border: 1px solid #e2e4e8;
+            border-radius: 999px;
+            background: #fff;
+            color: #6b6f78;
+            font-family: inherit;
+            font-size: 10.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .student-filter span { color: #9aa0a8; font-size: 9.5px; }
+        .student-filter:hover { border-color: #b9cfe9; color: #175196; }
+        .student-filter.active {
+            background: #175196;
+            border-color: #175196;
+            color: #fff;
+        }
+        .student-filter.active span { color: #cfe0f5; }
+
+        .formation-notice {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 12px;
+            padding: 10px 16px;
+            border: 1px solid #e3e7ec;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #5f6570;
+            font-size: 10.5px;
+            line-height: 1.5;
+        }
+        .formation-notice.passed {
+            border-color: #efd5d5;
+            background: #fffafa;
+            color: #8f3434;
+        }
+        .formation-notice strong { color: inherit; }
+        .formation-dates {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 5px;
+        }
+        .formation-date {
+            padding: 2px 7px;
+            border: 1px solid #dfe4ea;
+            border-radius: 999px;
+            background: #fff;
+            color: #6b6f78;
+            font-size: 9px;
+            white-space: nowrap;
+        }
+        .formation-date.passed { border-color: #efd0d0; color: #a33d3d; }
+
+        .students-card { overflow-x: auto; }
+        .student-head,
+        .student-row {
+            display: grid;
+            grid-template-columns: minmax(170px, 1.4fr) 52px minmax(96px, 0.9fr) 92px 62px 64px;
+            gap: 6px;
+            align-items: center;
+        }
+        .student-head {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eef0f2;
+            background: #f7f9fc;
+            color: #9aa0a8;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .student-row {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f2f3f5;
+            font-size: 11.5px;
+        }
+        .student-row:last-child { border-bottom: none; }
+        .student-row.alt { background: #f7f8fa; }
+        .student-row[hidden] { display: none; }
+
+        .student-main {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+        }
+        .student-avatar {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: #175196;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        .student-name {
+            overflow: hidden;
+            color: #2c2f36;
+            font-size: 12.5px;
+            font-weight: 600;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .student-number {
+            margin-top: 2px;
+            color: #9aa0a8;
+            font-size: 9.5px;
+        }
+        .student-class { color: #6b6f78; font-size: 10.5px; }
+
+        .student-team,
+        .student-role {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 3px;
+            min-width: 0;
+        }
+        .team-link {
+            color: #175196;
+            font-size: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .team-link:hover { text-decoration: underline; }
+        .team-separator {
+            color: #b8bdc5;
+            font-size: 10px;
+        }
+        .role-tag {
+            color: #6b6f78;
+            font-size: 10px;
+            text-decoration: underline dotted #b4bac3;
+            text-underline-offset: 3px;
+            white-space: nowrap;
+            cursor: help;
+        }
+        .role-tag.leader {
+            color: #3f444c;
+            font-weight: 700;
+        }
+        .unassigned-pill {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: #f4f6f8;
+            color: #8b8f98;
+            font-size: 9.5px;
+            font-weight: 600;
+        }
+
+        .student-task-count {
+            color: #4b5058;
+            font-size: 10.5px;
+            white-space: nowrap;
+        }
+        .student-task-bar {
+            width: 58px;
+            height: 4px;
+            margin-top: 4px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #eef0f3;
+        }
+        .student-task-bar i {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            background: #175196;
+        }
+
+        .risk-pill {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: #fdecec;
+            color: #b02a2a;
+            font-size: 9.5px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .student-empty {
+            padding: 28px 16px;
+            color: #8b8f98;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        @media (max-width: 1080px) {
+            .formation-notice { flex-direction: column; gap: 6px; }
+            .formation-dates { justify-content: flex-start; }
+            .student-head,
+            .student-row { min-width: 590px; }
+        }
+    </style>
 </head>
 <body>
 
@@ -160,9 +523,8 @@ mysqli_stmt_close($stmt);
     <div class="content">
 
         <h1>Students</h1>
-        <p class="subtitle">Students under your courses · <?php echo $totalStudents; ?> students</p>
+        <p class="subtitle">Students assigned to you · <?php echo $totalStudents; ?> students</p>
 
-        <!-- Summary -->
         <div class="summary-grid">
             <div class="summary-item">
                 <div class="label">Total Students</div>
@@ -178,86 +540,218 @@ mysqli_stmt_close($stmt);
             </div>
             <div class="summary-item">
                 <div class="label">At Risk</div>
-                <div class="value"><?php echo $atRisk; ?></div>
+                <div class="value"><?php echo $atRiskStudents; ?></div>
             </div>
         </div>
 
-        <!-- Assigned Students -->
-        <h2>Assigned Students</h2>
-        <div class="card">
-            <table>
-                <tr>
-                    <th>Name</th>
-                    <th>Student Number</th>
-                    <th>Class</th>
-                    <th>Team</th>
-                    <th>Role</th>
-                    <th>Tasks</th>
-                    <th></th>
-                </tr>
-
-                <?php if (count($assigned) === 0): ?>
-                    <tr>
-                        <td colspan="7" class="muted" style="text-align: center; padding: 30px;">
-                            No assigned students yet.
-                        </td>
-                    </tr>
-                <?php endif; ?>
-
-                <?php foreach ($assigned as $s): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($s['name']); ?></td>
-                        <td><?php echo htmlspecialchars($s['student_number']); ?></td>
-                        <td><?php echo htmlspecialchars(formatClass($s['major'], $s['grade_level'])); ?></td>
-                        <td><?php echo htmlspecialchars($s['team_name']); ?></td>
-                        <td>
-                            <?php if ($s['team_role'] === 'leader'): ?>
-                                <span class="pill">Leader</span>
-                            <?php else: ?>
-                                <span class="muted">Member</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo (int)$s['done_tasks']; ?> / <?php echo (int)$s['total_tasks']; ?></td>
-                        <td><a href="#" class="link">View</a></td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
+        <div class="student-toolbar">
+            <div class="field field-search">
+                <label for="studentSearch">Search</label>
+                <input type="search" id="studentSearch"
+                       placeholder="Search name, student ID, class, team or project">
+            </div>
         </div>
 
-        <!-- Unassigned Students -->
-        <h2>Unassigned Students</h2>
-        <div class="card">
-            <table>
-                <tr>
-                    <th>Name</th>
-                    <th>Student Number</th>
-                    <th>Class</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
+        <div class="student-filters">
+            <?php
+            $filterDefs = array(
+                'all'        => 'All',
+                'assigned'   => 'Assigned',
+                'unassigned' => 'Unassigned',
+                'risk'       => 'At Risk',
+            );
+            foreach ($filterDefs as $key => $label):
+            ?>
+                <button type="button"
+                        class="student-filter <?php echo $key === 'all' ? 'active' : ''; ?>"
+                        data-filter="<?php echo $key; ?>">
+                    <?php echo htmlspecialchars($label); ?>
+                    <span><?php echo (int) $filterCounts[$key]; ?></span>
+                </button>
+            <?php endforeach; ?>
+        </div>
 
-                <?php if (count($unassigned) === 0): ?>
-                    <tr>
-                        <td colspan="5" class="muted" style="text-align: center; padding: 30px;">
-                            All students are assigned to teams. 🎉
-                        </td>
-                    </tr>
-                <?php endif; ?>
+        <?php if ($unassignedStudents > 0 && count($formationDeadlineItems) > 0): ?>
+            <div class="formation-notice <?php echo $hasPassedFormationDeadline ? 'passed' : ''; ?>">
+                <div>
+                    <?php if ($hasPassedFormationDeadline): ?>
+                        <strong>Team formation deadline has passed.</strong>
+                        Remaining students are now the teacher's responsibility to assign randomly.
+                    <?php else: ?>
+                        Unassigned students will be randomly assigned by the teacher after the
+                        team formation deadline.
+                    <?php endif; ?>
+                </div>
+                <div class="formation-dates">
+                    <?php foreach ($formationDeadlineItems as $deadlineItem): ?>
+                        <span class="formation-date <?php echo $deadlineItem['passed'] ? 'passed' : ''; ?>">
+                            <?php echo htmlspecialchars($deadlineItem['project_name']); ?> ·
+                            <?php echo date('d M Y', strtotime($deadlineItem['deadline'])); ?>
+                        </span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
 
-                <?php foreach ($unassigned as $s): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($s['name']); ?></td>
-                        <td><?php echo htmlspecialchars($s['student_number']); ?></td>
-                        <td><?php echo htmlspecialchars(formatClass($s['major'], $s['grade_level'])); ?></td>
-                        <td><span class="pill">Unassigned</span></td>
-                        <td><button class="link">Assign</button></td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
+        <div class="card students-card">
+            <div class="student-head">
+                <span>Student</span>
+                <span>Class</span>
+                <span>Team</span>
+                <span>Role</span>
+                <span>Tasks</span>
+                <span>Risk</span>
+            </div>
+
+            <?php foreach ($directoryStudents as $student): ?>
+                <?php
+                $initials = studentInitials($student['name']);
+                $avatarBg = $avatarPalette[abs(crc32($student['name'])) % count($avatarPalette)];
+                $pct = $student['total_tasks'] > 0
+                    ? (int) round($student['done_tasks'] / $student['total_tasks'] * 100)
+                    : 0;
+                $statusKey = $student['is_assigned'] ? 'assigned' : 'unassigned';
+                ?>
+                <div class="student-row"
+                     data-status="<?php echo $statusKey; ?>"
+                     data-risk="<?php echo $student['overdue_tasks'] > 0 ? '1' : '0'; ?>"
+                     data-search="<?php echo htmlspecialchars($student['search_text'] . ' ' . $statusKey); ?>">
+                    <div class="student-main">
+                        <div class="student-avatar" style="background: <?php echo $avatarBg; ?>;">
+                            <?php echo htmlspecialchars($initials); ?>
+                        </div>
+                        <div>
+                            <div class="student-name"><?php echo htmlspecialchars($student['name']); ?></div>
+                            <div class="student-number">
+                                <?php echo htmlspecialchars($student['student_number']); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="student-class">
+                        <?php echo htmlspecialchars(formatClass($student['major'], $student['grade_level'], $student['class_code'])); ?>
+                    </div>
+
+                    <div class="student-team">
+                        <?php if ($student['is_assigned']): ?>
+                            <?php foreach ($student['teams'] as $teamIndex => $team): ?>
+                                <?php if ($teamIndex > 0): ?>
+                                    <span class="team-separator">·</span>
+                                <?php endif; ?>
+                                <a class="team-link"
+                                   href="team_detail.php?id=<?php echo (int) $team['team_id']; ?>">
+                                    <?php echo htmlspecialchars($team['team_name']); ?>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <span class="unassigned-pill">Unassigned</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="student-role">
+                        <?php if ($student['is_assigned']): ?>
+                            <?php foreach ($student['teams'] as $teamIndex => $team): ?>
+                                <?php
+                                $roleLabel = ucfirst($team['role']);
+                                $roleTooltip = $team['team_name'] . ' - ' . $roleLabel;
+                                if ($teamIndex > 0):
+                                ?>
+                                    <span class="team-separator">·</span>
+                                <?php endif; ?>
+                                <span class="role-tag <?php echo htmlspecialchars($team['role']); ?>"
+                                      title="<?php echo htmlspecialchars($roleTooltip); ?>"
+                                      aria-label="<?php echo htmlspecialchars($roleTooltip); ?>">
+                                    <?php echo htmlspecialchars($roleLabel); ?>
+                                </span>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <span class="muted">—</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div>
+                        <?php if ($student['is_assigned']): ?>
+                            <span class="student-task-count">
+                                <?php echo $student['done_tasks']; ?> / <?php echo $student['total_tasks']; ?>
+                            </span>
+                            <div class="student-task-bar">
+                                <i style="width: <?php echo $pct; ?>%;"></i>
+                            </div>
+                        <?php else: ?>
+                            <span class="muted">—</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div>
+                        <?php if ($student['overdue_tasks'] > 0): ?>
+                            <span class="risk-pill">
+                                <?php echo $student['overdue_tasks']; ?> overdue
+                            </span>
+                        <?php else: ?>
+                            <span class="muted">—</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+
+            <div class="student-empty" id="studentEmpty" hidden>
+                No students match your search or filter.
+            </div>
         </div>
 
     </div>
 </main>
+
+<script>
+(function () {
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.student-row'));
+    var buttons = Array.prototype.slice.call(document.querySelectorAll('.student-filter'));
+    var search = document.getElementById('studentSearch');
+    var empty = document.getElementById('studentEmpty');
+    var current = 'all';
+
+    function applyFilters() {
+        var query = search.value.trim().toLowerCase();
+        var visible = 0;
+
+        rows.forEach(function (row) {
+            var status = row.getAttribute('data-status');
+            var risk = row.getAttribute('data-risk') === '1';
+            var matchesFilter = current === 'all'
+                || (current === 'risk' ? risk : status === current);
+            var matchesSearch = query === ''
+                || (row.getAttribute('data-search') || '').indexOf(query) !== -1;
+            var show = matchesFilter && matchesSearch;
+
+            row.hidden = !show;
+            if (show) {
+                row.classList.toggle('alt', visible % 2 === 1);
+                visible++;
+            } else {
+                row.classList.remove('alt');
+            }
+        });
+
+        empty.hidden = visible > 0;
+
+        buttons.forEach(function (button) {
+            var active = button.getAttribute('data-filter') === current;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            current = button.getAttribute('data-filter');
+            applyFilters();
+        });
+    });
+
+    search.addEventListener('input', applyFilters);
+    applyFilters();
+})();
+</script>
 
 </body>
 </html>

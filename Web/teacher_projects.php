@@ -44,6 +44,7 @@ $sql = "
         p.progress,
         p.period_end,
         p.period_start,
+        cl.class_code,
         u.username AS supervisor_name,
         (SELECT COUNT(*) FROM `Groups` g
             WHERE g.project_id = p.id) AS team_count,
@@ -53,6 +54,7 @@ $sql = "
     FROM `Projects` p
     LEFT JOIN `Teachers` t ON t.id = p.supervisor_id
     LEFT JOIN `Users`    u ON u.id = t.user_id
+    LEFT JOIN `classes`  cl ON cl.id = p.class_id
     WHERE p.status <> 'Archived'
       AND p.supervisor_id = ?
     ORDER BY p.id
@@ -81,6 +83,7 @@ $sql = "
         p.is_draft,
         p.progress,
         p.period_end,
+        cl.class_code,
         u.username AS supervisor_name,
         (SELECT GROUP_CONCAT(g.name SEPARATOR ', ')
             FROM `Groups` g
@@ -88,6 +91,7 @@ $sql = "
     FROM `Projects` p
     LEFT JOIN `Teachers` t ON t.id = p.supervisor_id
     LEFT JOIN `Users`    u ON u.id = t.user_id
+    LEFT JOIN `classes`  cl ON cl.id = p.class_id
     WHERE p.status = 'Archived'
       AND p.supervisor_id = ?
     ORDER BY p.id DESC
@@ -135,7 +139,8 @@ mysqli_stmt_close($stmt);
         <div class="card">
             <table>
                 <tr>
-                    <th style="width: 25%;">Project Name</th>
+                    <th style="width: 22%;">Project Name</th>
+                    <th style="width: 9%;">Class</th>
                     <th style="width: 10%;">Category</th>
                     <th style="width: 14%;">Team</th>
                     <th style="width: 9%;">Progress</th>
@@ -146,7 +151,7 @@ mysqli_stmt_close($stmt);
 
                 <?php if (count($activeProjects) === 0): ?>
                     <tr>
-                        <td colspan="7" class="muted" style="text-align: center; padding: 30px;">
+                        <td colspan="8" class="muted" style="text-align: center; padding: 30px;">
                             No active projects.
                         </td>
                     </tr>
@@ -155,6 +160,7 @@ mysqli_stmt_close($stmt);
                 <?php foreach ($activeProjects as $p): ?>
                     <tr>
                         <td title="<?php echo htmlspecialchars($p['name']); ?>"><?php echo htmlspecialchars($p['name']); ?></td>
+                        <td><?php echo !empty($p['class_code']) ? htmlspecialchars($p['class_code']) : '<span class="muted">—</span>'; ?></td>
                         <td title="<?php echo htmlspecialchars($p['category']); ?>"><?php echo htmlspecialchars($p['category']); ?></td>
                         <td>
                             <?php if (!empty($p['team_names'])): ?>
@@ -188,6 +194,7 @@ mysqli_stmt_close($stmt);
             <table>
                 <tr>
                     <th>Project Name</th>
+                    <th>Class</th>
                     <th>Team</th>
                     <th>Progress</th>
                     <th>Completed</th>
@@ -196,7 +203,7 @@ mysqli_stmt_close($stmt);
 
                 <?php if (count($archivedProjects) === 0): ?>
                     <tr>
-                        <td colspan="5" class="muted" style="text-align: center; padding: 30px;">
+                        <td colspan="6" class="muted" style="text-align: center; padding: 30px;">
                             No archived projects.
                         </td>
                     </tr>
@@ -205,6 +212,7 @@ mysqli_stmt_close($stmt);
                 <?php foreach ($archivedProjects as $p): ?>
                     <tr>
                         <td><?php echo htmlspecialchars($p['name']); ?></td>
+                        <td><?php echo !empty($p['class_code']) ? htmlspecialchars($p['class_code']) : '<span class="muted">—</span>'; ?></td>
                         <td>
                             <?php if (!empty($p['team_names'])): ?>
                                 <?php echo htmlspecialchars($p['team_names']); ?>

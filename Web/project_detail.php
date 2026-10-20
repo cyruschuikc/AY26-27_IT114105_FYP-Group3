@@ -120,6 +120,7 @@ $sql = "
         p.description,
         p.requirements,
         p.course_id,
+        p.class_id,
         p.team_mode,
         p.team_deadline,
         p.allow_cross_class,
@@ -132,11 +133,13 @@ $sql = "
         p.is_draft,
         c.code AS course_code,
         c.name AS course_name,
+        cl.class_code,
         u.username AS supervisor_name
     FROM `Projects` p
     LEFT JOIN `Teachers` t ON t.id = p.supervisor_id
     LEFT JOIN `Users`    u ON u.id = t.user_id
     LEFT JOIN `Courses`  c ON c.id = p.course_id
+    LEFT JOIN `classes`  cl ON cl.id = p.class_id
     WHERE p.id = ?
     LIMIT 1
 ";
@@ -347,13 +350,13 @@ $enrolledStudents  = 0;
 $assignedStudents  = 0;
 $groupCapacity     = 0;
 
-if (!empty($project['course_id'])) {
+if (!empty($project['class_id'])) {
     $stmt = mysqli_prepare($conn, "
-        SELECT COUNT(DISTINCT student_id) AS c
-        FROM `course_enrollments`
-        WHERE course_id = ?
+        SELECT COUNT(DISTINCT s.id) AS c
+        FROM `students` s
+        WHERE s.class_id = ?
     ");
-    mysqli_stmt_bind_param($stmt, "i", $project['course_id']);
+    mysqli_stmt_bind_param($stmt, "i", $project['class_id']);
     mysqli_stmt_execute($stmt);
     $rs = mysqli_stmt_get_result($stmt);
     $rc = mysqli_fetch_assoc($rs);
@@ -1414,8 +1417,16 @@ foreach ($tasks as $t) {
                     </span>
                 </div>
                 <div class="settings-item">
+                    <span class="settings-label">Class</span>
+                    <span class="settings-value">
+                        <?= !empty($project['class_code'])
+                            ? htmlspecialchars($project['class_code'])
+                            : '<span class="muted">—</span>' ?>
+                    </span>
+                </div>
+                <div class="settings-item">
                     <span class="settings-label">Student visibility</span>
-                    <span class="settings-value"><?= $project['visibility'] === 'All' ? 'All students' : 'Students in this course' ?></span>
+                    <span class="settings-value"><?= $project['visibility'] === 'All' ? 'All students' : 'Students in this class' ?></span>
                 </div>
                 <div class="settings-item">
                     <span class="settings-label">Team formation</span>

@@ -49,20 +49,27 @@ $isDuplicate = !$isEdit && $duplicateId > 0;
 $sourceId    = $isEdit ? $editId : $duplicateId;
 
 // =========================================================
-// Teacher's courses
+// Classes taught by this teacher
 // =========================================================
-$courses = array();
+$classes = array();
 $stmt = mysqli_prepare($conn, "
-    SELECT id, code, name, semester
-    FROM `courses`
-    WHERE teacher_id = ?
-    ORDER BY code
+    SELECT
+        cl.id,
+        cl.class_code,
+        cl.course_id,
+        c.code AS course_code,
+        c.name AS course_name,
+        c.semester
+    FROM `classes` cl
+    INNER JOIN `courses` c ON c.id = cl.course_id
+    WHERE cl.teacher_id = ?
+    ORDER BY cl.class_code
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 while ($row = mysqli_fetch_assoc($rs)) {
-    $courses[] = $row;
+    $classes[] = $row;
 }
 mysqli_stmt_close($stmt);
 
@@ -73,7 +80,8 @@ $defaultPermissions = array('invite', 'rename', 'assign', 'submit');
 
 $form = array(
     'name'                 => '',
-    'course_id'            => count($courses) > 0 ? (int) $courses[0]['id'] : 0,
+    'class_id'             => count($classes) > 0 ? (int) $classes[0]['id'] : 0,
+    'course_id'            => count($classes) > 0 ? (int) $classes[0]['course_id'] : 0,
     'category'             => 'Final Year Project',
     'description'          => '',
     'requirements'         => '',
@@ -124,6 +132,7 @@ if ($sourceId > 0) {
         $errors[] = 'Project not found, or you do not have permission to edit it.';
     } else {
         $form['name']                 = $source['name'];
+        $form['class_id']             = (int) $source['class_id'];
         $form['course_id']            = (int) $source['course_id'];
         $form['category']             = $source['category'];
         $form['description']          = $source['description'];
@@ -201,7 +210,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isDraft = ($action === 'draft');
 
     $form['name']                 = trim(isset($_POST['name']) ? $_POST['name'] : '');
-    $form['course_id']            = (int) (isset($_POST['courseId']) ? $_POST['courseId'] : 0);
+    $form['class_id']             = (int) (isset($_POST['classId']) ? $_POST['classId'] : 0);
+    $form['course_id']            = 0;
+    foreach ($classes as $classRow) {
+        if ((int) $classRow['id'] === $form['class_id']) {
+            $form['course_id'] = (int) $classRow['course_id'];
+            break;
+        }
+    }
     $form['category']             = trim(isset($_POST['category']) ? $_POST['category'] : '');
     $form['description']          = trim(isset($_POST['description']) ? $_POST['description'] : '');
     $form['requirements']         = trim(isset($_POST['requirements']) ? $_POST['requirements'] : '');
@@ -256,15 +272,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Project title must be 150 characters or fewer.';
     }
 
-    $courseValid = false;
-    foreach ($courses as $c) {
-        if ((int) $c['id'] === $form['course_id']) {
-            $courseValid = true;
-            break;
-        }
-    }
-    if (!$courseValid) {
-        $errors[] = 'Please choose a course that belongs to you.';
+    if ($form['course_id'] <= 0) {
+        $errors[] = 'Please choose a class that belongs to you.';
     }
 
     if (!$isDraft) {
@@ -352,11 +361,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $category          = ($form['category'] !== '') ? $form['category'] : null;
         $draftFlag         = $isDraft ? 1 : 0;
         $courseId          = $form['course_id'];
+        $classId           = $form['class_id'];
 
         if ($isEdit) {
             $stmt = mysqli_prepare($conn, "
                 UPDATE `projects`
-                SET name = ?, category = ?, course_id = ?, period_start = ?, period_end = ?,
+                SET name = ?, category = ?, course_id = ?, class_id = ?, period_start = ?, period_end = ?,
                     description = ?, requirements = ?, team_mode = ?, team_deadline = ?,
                     allow_cross_class = ?, default_max_members = ?, leader_permissions = ?,
                     post_deadline_action = ?, visibility = ?, reminder_days = ?,
@@ -365,8 +375,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             mysqli_stmt_bind_param(
                 $stmt,
-                "ssissssssiisssiiiii",
-                $form['name'], $category, $courseId, $startDate, $endDate,
+                "ssiissssssiisssiiiii",
+                $form['name'], $category, $courseId, $classId, $startDate, $endDate,
                 $desc, $reqs, $form['team_mode'], $teamDeadline,
                 $form['allow_cross_class'], $form['max_members'], $leaderPermissions,
                 $form['post_deadline_action'], $form['visibility'], $form['reminder_days'],
@@ -380,16 +390,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $stmt = mysqli_prepare($conn, "
                 INSERT INTO `projects`
-                    (name, category, course_id, supervisor_id, period_start, period_end,
+                    (name, category, course_id, class_id, supervisor_id, period_start, period_end,
                      status, progress, description, requirements, team_mode, team_deadline,
                      allow_cross_class, default_max_members, leader_permissions,
                      post_deadline_action, visibility, reminder_days, allow_extension, is_draft)
-                VALUES (?, ?, ?, ?, ?, ?, 'Recruiting', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'Recruiting', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             mysqli_stmt_bind_param(
                 $stmt,
-                "ssiissssssiisssiii",
-                $form['name'], $category, $courseId, $teacherId, $startDate, $endDate,
+                "ssiiissssssiisssiii",
+                $form['name'], $category, $courseId, $classId, $teacherId, $startDate, $endDate,
                 $desc, $reqs, $form['team_mode'], $teamDeadline,
                 $form['allow_cross_class'], $form['max_members'], $leaderPermissions,
                 $form['post_deadline_action'], $form['visibility'], $form['reminder_days'],
@@ -687,7 +697,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
             <!-- ================= Basics ================= -->
             <div class="pf-section">
                 <h2>Project Basics</h2>
-                <div class="pf-section-desc">What students will see, and which course the project belongs to.</div>
+                <div class="pf-section-desc">What students will see, and which class and subject the project belongs to.</div>
 
                 <div class="pf-grid">
                     <div class="pf-field full">
@@ -698,21 +708,24 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     </div>
 
                     <div class="pf-field">
-                        <label for="courseId">Course <span class="req">*</span></label>
-                        <select id="courseId" name="courseId" required>
-                            <?php if (count($courses) === 0): ?>
-                                <option value="0">No courses assigned to you</option>
+                        <label for="classId">Class <span class="req">*</span></label>
+                        <select id="classId" name="classId" required>
+                            <?php if (count($classes) === 0): ?>
+                                <option value="0">No classes assigned to you</option>
                             <?php endif; ?>
-                            <?php foreach ($courses as $c): ?>
-                                <option value="<?= (int) $c['id'] ?>"
-                                    <?= (int) $c['id'] === (int) $form['course_id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($c['code'] . ' — ' . $c['name']) ?>
-                                    <?= $c['semester'] ? ' (' . htmlspecialchars($c['semester']) . ')' : '' ?>
+                            <?php foreach ($classes as $classRow): ?>
+                                <option value="<?= (int) $classRow['id'] ?>"
+                                    <?= (int) $classRow['id'] === (int) $form['class_id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($classRow['class_code']) ?> —
+                                    <?= htmlspecialchars($classRow['course_code'] . ' ' . $classRow['course_name']) ?>
+                                    <?= $classRow['semester'] ? ' (' . htmlspecialchars($classRow['semester']) . ')' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <?php if (count($courses) === 0): ?>
-                            <span class="pf-help">Ask an administrator to assign a course to your teacher account first.</span>
+                        <?php if (count($classes) === 0): ?>
+                            <span class="pf-help">Ask an administrator to assign a class to your teacher account first.</span>
+                        <?php else: ?>
+                            <span class="pf-help">A project belongs to one class and one subject.</span>
                         <?php endif; ?>
                     </div>
 

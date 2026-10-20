@@ -176,6 +176,7 @@ $sql = "
         s.student_number,
         s.major,
         s.grade_level,
+        c.class_code,
         u.username      AS name,
         gm.role,
         (SELECT COUNT(*) FROM `Tasks` t
@@ -204,6 +205,7 @@ $sql = "
     FROM `Group_Members` gm
     INNER JOIN `Students` s ON s.id = gm.student_id
     INNER JOIN `Users`    u ON u.id = s.user_id
+    LEFT JOIN `classes`   c ON c.id = s.class_id
     WHERE gm.group_id = ?
     ORDER BY gm.role ASC, s.id
 ";
@@ -1884,7 +1886,7 @@ if (!$selectedMember && count($members) > 0) {
                                 </h3>
                                 <p>
                                     <?php echo htmlspecialchars($m['student_number']); ?>
-                                    · <?php echo htmlspecialchars(formatClass($m['major'], $m['grade_level'])); ?>
+        · <?php echo htmlspecialchars(formatClass($m['major'], $m['grade_level'], $m['class_code'] ?? null)); ?>
                                 </p>
                             </div>
                         </div>

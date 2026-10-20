@@ -18,7 +18,11 @@ if (!function_exists('timeAgo')) {
 }
 
 if (!function_exists('formatClass')) {
-    function formatClass($major, $gradeLevel) {
+    function formatClass($major, $gradeLevel, $classCode = null) {
+        if (!empty($classCode)) {
+            return $classCode;
+        }
+
         $majorShort = 'SE';
         if (stripos($major, 'Cloud') !== false)           $majorShort = 'CC';
         elseif (stripos($major, 'Information') !== false) $majorShort = 'IT';

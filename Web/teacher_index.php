@@ -29,13 +29,12 @@ if (isset($_SESSION['userID'])) {
 // 1. 汇总数字
 // =========================================================
 
-// My Students（我负责的项目所属课程下所有学生）
+// Students explicitly assigned to this teacher
 $totalStudents = 0;
 $stmt = mysqli_prepare($conn, "
-    SELECT COUNT(DISTINCT ce.student_id) AS c
-    FROM `course_enrollments` ce
-    INNER JOIN `projects` p ON p.course_id = ce.course_id
-    WHERE p.supervisor_id = ?
+    SELECT COUNT(DISTINCT student_id) AS c
+    FROM `teacher_student`
+    WHERE teacher_id = ?
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
@@ -154,14 +153,13 @@ foreach ($teams as $t) {
     $overdueTaskCount    += (int) $t['overdue_count'];
 }
 
-// Students in my courses who have never uploaded any file
+// Assigned students who have never uploaded any file
 $notSubmittedStudents = 0;
 $stmt = mysqli_prepare($conn, "
-    SELECT COUNT(DISTINCT ce.student_id) AS c
-    FROM `course_enrollments` ce
-    INNER JOIN `projects` p ON p.course_id = ce.course_id
-    WHERE p.supervisor_id = ?
-      AND ce.student_id NOT IN (SELECT DISTINCT uploader_id FROM `files`)
+    SELECT COUNT(DISTINCT ts.student_id) AS c
+    FROM `teacher_student` ts
+    WHERE ts.teacher_id = ?
+      AND ts.student_id NOT IN (SELECT DISTINCT uploader_id FROM `files`)
 ");
 mysqli_stmt_bind_param($stmt, "i", $teacherId);
 mysqli_stmt_execute($stmt);
@@ -515,7 +513,7 @@ mysqli_stmt_close($stmt);
         <!-- Summary -->
         <div class="summary-grid">
             <div class="summary-item">
-                <div class="label">Students in Courses</div>
+                <div class="label">Assigned Students</div>
                 <div class="value"><?php echo $totalStudents; ?></div>
             </div>
             <div class="summary-item">
@@ -556,7 +554,7 @@ mysqli_stmt_close($stmt);
                 <div class="attention-icon">STU</div>
                 <div class="attention-number"><?php echo (int) $notSubmittedStudents; ?></div>
                 <div class="attention-label">Students Not Submitted</div>
-                <div class="attention-sub">No uploads in your courses</div>
+                  <div class="attention-sub">No uploads in your projects</div>
             </a>
         </div>
 

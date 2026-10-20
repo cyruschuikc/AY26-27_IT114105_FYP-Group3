@@ -95,6 +95,7 @@ $sql = "
         s.student_number,
         s.major,
         s.grade_level,
+        c.class_code,
         u.username AS uploader_name,
         gm.role AS team_role,
         tu.username AS reviewer_name
@@ -103,6 +104,7 @@ $sql = "
     LEFT JOIN `Groups`    g ON g.id = f.group_id
     LEFT JOIN `Students`  s ON s.id = f.uploader_id
     LEFT JOIN `Users`     u ON u.id = s.user_id
+    LEFT JOIN `classes`   c ON c.id = s.class_id
     LEFT JOIN `Group_Members` gm ON gm.group_id = g.id AND gm.student_id = s.id
     LEFT JOIN `Teachers`  t ON t.id = f.reviewed_by
     LEFT JOIN `Users`    tu ON tu.id = t.user_id
@@ -259,7 +261,7 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
                     </tr>
                     <tr>
                         <td>Class</td>
-                        <td><?php echo htmlspecialchars(formatClass($file['major'], $file['grade_level'])); ?></td>
+                    <td><?php echo htmlspecialchars(formatClass($file['major'], $file['grade_level'], $file['class_code'] ?? null)); ?></td>
                     </tr>
                     <tr>
                         <td>Team</td>
