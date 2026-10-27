@@ -723,7 +723,7 @@ if (!$selectedMember && count($members) > 0) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($team['team_name']); ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020d">
+    <link rel="stylesheet" href="teacher.css?v=20261028a">
 
     <style>
         .page-head {

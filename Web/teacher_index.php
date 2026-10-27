@@ -117,6 +117,16 @@ $sql = "
     LEFT JOIN `students` s ON s.id = g.leader_id
     LEFT JOIN `users`    u ON u.id = s.user_id
     WHERE p.supervisor_id = ?
+      AND (
+          g.status <> 'Recruiting'
+          OR EXISTS (
+              SELECT 1
+              FROM `group_requests` submitted
+              WHERE submitted.project_id = g.project_id
+                AND submitted.group_name = g.name
+                AND submitted.status = 'Pending'
+          )
+      )
     ORDER BY g.id
 ";
 
@@ -170,7 +180,6 @@ mysqli_stmt_close($stmt);
 
 // Formation status
 $formationCounts = array(
-    'Recruiting'       => 0,
     'Waiting Approval' => 0,
     'Voting'           => 0,
     'Executing'        => 0,
@@ -179,8 +188,6 @@ $formationCounts = array(
 foreach ($teams as $t) {
     if ((int) $t['pending_requests'] > 0) {
         $formationCounts['Waiting Approval']++;
-    } elseif ($t['status'] === 'Recruiting') {
-        $formationCounts['Recruiting']++;
     } elseif ($t['status'] === 'Voting') {
         $formationCounts['Voting']++;
     } elseif ($t['status'] === 'Executing') {
@@ -202,10 +209,6 @@ foreach ($teams as $t) {
         $n = (int) $t['overdue_count'];
         $reasons[] = $n . ' overdue task' . ($n === 1 ? '' : 's');
         $priority  = min($priority, 2);
-    }
-    if ($t['status'] === 'Recruiting') {
-        $reasons[] = 'Recruiting';
-        $priority  = min($priority, 3);
     }
     if (empty($t['last_activity'])
         || strtotime($t['last_activity']) < strtotime('-7 days')) {
@@ -325,7 +328,7 @@ mysqli_stmt_close($stmt);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TeamBox | Instructor</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020d">
+    <link rel="stylesheet" href="teacher.css?v=20261028a">
     <style>
         .summary-grid { grid-template-columns: repeat(3, 1fr); }
         .summary-item .summary-note {
@@ -465,7 +468,6 @@ mysqli_stmt_close($stmt);
             height: 8px;
             border-radius: 50%;
         }
-        .formation-dot.recruiting { background: #c9ccd1; }
         .formation-dot.waiting { background: #e0a030; }
         .formation-dot.voting { background: #8b6fd6; }
         .formation-dot.executing { background: #175196; }
@@ -595,19 +597,15 @@ mysqli_stmt_close($stmt);
                 <h2>Group Formation</h2>
                 <div class="card compact-card">
                     <div class="formation-row">
-                        <span><i class="formation-dot recruiting"></i>Recruiting</span>
-                        <strong><?php echo (int) $formationCounts['Recruiting']; ?></strong>
-                    </div>
-                    <div class="formation-row">
-                        <span><i class="formation-dot waiting"></i>Waiting Approval</span>
+                        <span><i class="formation-dot waiting"></i>Approval Pending</span>
                         <strong><?php echo (int) $formationCounts['Waiting Approval']; ?></strong>
                     </div>
                     <div class="formation-row">
-                        <span><i class="formation-dot voting"></i>Voting</span>
+                        <span><i class="formation-dot voting"></i>Choosing Leader</span>
                         <strong><?php echo (int) $formationCounts['Voting']; ?></strong>
                     </div>
                     <div class="formation-row">
-                        <span><i class="formation-dot executing"></i>Executing</span>
+                        <span><i class="formation-dot executing"></i>Work in Progress</span>
                         <strong><?php echo (int) $formationCounts['Executing']; ?></strong>
                     </div>
                 </div>

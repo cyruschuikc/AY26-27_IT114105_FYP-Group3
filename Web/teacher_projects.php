@@ -39,6 +39,8 @@ $sql = "
         p.id,
         p.name,
         p.category,
+        p.assessment_scope,
+        p.assessment_weight,
         p.status,
         p.is_draft,
         p.progress,
@@ -106,6 +108,28 @@ while ($row = mysqli_fetch_assoc($rs)) {
 }
 mysqli_stmt_close($stmt);
 
+$draftProjectCount = 0;
+$publishedProjectCount = 0;
+$activeTeamCount = 0;
+
+foreach ($activeProjects as $project) {
+    if (!empty($project['is_draft'])) {
+        $draftProjectCount++;
+    } else {
+        $publishedProjectCount++;
+    }
+    $activeTeamCount += (int) $project['team_count'];
+}
+
+$projectStatusLabels = array(
+    'Recruiting'   => 'Forming Team',
+    'Waiting_Send' => 'Ready for Approval',
+    'Voting'       => 'Choosing Leader',
+    'Executing'    => 'Work in Progress',
+    'Completed'    => 'Completed',
+    'Archived'     => 'Archived',
+);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -113,7 +137,7 @@ mysqli_stmt_close($stmt);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projects | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020d">
+    <link rel="stylesheet" href="teacher.css?v=20261028a">
 </head>
 <body>
 
@@ -134,103 +158,149 @@ mysqli_stmt_close($stmt);
             <div class="project-flash success">Project saved as a draft. Students cannot see it until you publish it.</div>
         <?php endif; ?>
 
-        <!-- Active Projects -->
-        <h2>Active Projects</h2>
-        <div class="card">
-            <table>
-                <tr>
-                    <th style="width: 22%;">Project Name</th>
-                    <th style="width: 9%;">Class</th>
-                    <th style="width: 10%;">Category</th>
-                    <th style="width: 14%;">Team</th>
-                    <th style="width: 9%;">Progress</th>
-                    <th style="width: 12%;">Deadline</th>
-                    <th style="width: 16%;">Status</th>
-                    <th style="width: 90px;"></th>
-                </tr>
+        <div class="projects-kpi">
+            <div class="kpi-item">
+                <span class="kpi-label">Active Projects</span>
+                <strong class="kpi-value"><?php echo $publishedProjectCount; ?></strong>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Team Groups</span>
+                <strong class="kpi-value"><?php echo $activeTeamCount; ?></strong>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Drafts</span>
+                <strong class="kpi-value"><?php echo $draftProjectCount; ?></strong>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Archived</span>
+                <strong class="kpi-value"><?php echo count($archivedProjects); ?></strong>
+            </div>
+        </div>
 
-                <?php if (count($activeProjects) === 0): ?>
-                    <tr>
-                        <td colspan="8" class="muted" style="text-align: center; padding: 30px;">
-                            No active projects.
-                        </td>
-                    </tr>
-                <?php endif; ?>
+        <div class="section-heading">
+            <h2>Active Projects</h2>
+            <span><?php echo $publishedProjectCount; ?> published · <?php echo $draftProjectCount; ?> drafts</span>
+        </div>
 
+        <?php if (count($activeProjects) === 0): ?>
+            <div class="projects-empty">No active projects yet.</div>
+        <?php else: ?>
+            <div class="projects-grid">
                 <?php foreach ($activeProjects as $p): ?>
-                    <tr>
-                        <td title="<?php echo htmlspecialchars($p['name']); ?>"><?php echo htmlspecialchars($p['name']); ?></td>
-                        <td><?php echo !empty($p['class_code']) ? htmlspecialchars($p['class_code']) : '<span class="muted">—</span>'; ?></td>
-                        <td title="<?php echo htmlspecialchars($p['category']); ?>"><?php echo htmlspecialchars($p['category']); ?></td>
-                        <td>
-                            <?php if (!empty($p['team_names'])): ?>
-                                <span title="<?php echo htmlspecialchars($p['team_names']); ?>"><?php echo htmlspecialchars($p['team_names']); ?></span>
-                            <?php else: ?>
-                                <span class="muted">—</span>
+                    <?php
+                    $isDraft = !empty($p['is_draft']);
+                    $progress = max(0, min(100, (int) $p['progress']));
+                    $statusLabel = $isDraft
+                        ? 'Draft'
+                        : ($projectStatusLabels[$p['status']] ?? $p['status']);
+                    $deadlineDate = $p['period_end'] ? date('d M Y', strtotime($p['period_end'])) : 'Not set';
+                    $weightLabel = $p['assessment_weight'] !== null
+                        ? (string) (int) $p['assessment_weight']
+                        : '';
+                    $deadlineMeta = '';
+                    $deadlineClass = '';
+                    if (!empty($p['period_end'])) {
+                        $daysLeft = (int) floor((strtotime($p['period_end']) - strtotime(date('Y-m-d'))) / 86400);
+                        if ($daysLeft < 0) {
+                            $deadlineMeta = abs($daysLeft) . ' days overdue';
+                            $deadlineClass = 'danger';
+                        } elseif ($daysLeft === 0) {
+                            $deadlineMeta = 'Due today';
+                            $deadlineClass = 'warning';
+                        } else {
+                            $deadlineMeta = $daysLeft . ' days left';
+                        }
+                    }
+                    ?>
+                    <article class="project-card <?php echo $isDraft ? 'is-draft' : ''; ?>">
+                        <div class="project-card-head">
+                            <div class="project-title-block">
+                                <span class="project-id">Project <?php echo str_pad((string) $p['id'], 2, '0', STR_PAD_LEFT); ?></span>
+                                <h3>
+                                    <a href="project_detail.php?id=<?php echo (int) $p['id']; ?>">
+                                        <?php echo htmlspecialchars($p['name']); ?>
+                                    </a>
+                                </h3>
+                            </div>
+                            <span class="project-status <?php echo $isDraft ? 'status-draft' : ''; ?>">
+                                <?php echo htmlspecialchars($statusLabel); ?>
+                            </span>
+                        </div>
+
+                        <div class="project-tags">
+                            <span class="class-tag"><?php echo htmlspecialchars($p['class_code'] ?: 'No class'); ?></span>
+                            <span><?php echo htmlspecialchars($p['category'] ?: 'Uncategorised'); ?></span>
+                            <?php if (!empty($p['assessment_scope']) && $weightLabel !== ''): ?>
+                                <span class="weight-tag">
+                                    <?php echo htmlspecialchars($weightLabel); ?>% of
+                                    <?php echo htmlspecialchars($p['assessment_scope']); ?>
+                                </span>
                             <?php endif; ?>
-                        </td>
-                        <td><?php echo (int)$p['progress']; ?>%</td>
-                        <td class="muted">
-                            <?php echo $p['period_end'] ? date('d M Y', strtotime($p['period_end'])) : '—'; ?>
-                        </td>
-                        <td>
-                            <?php if (!empty($p['is_draft'])): ?>
-                                <span class="pill pill-draft">Draft</span>
-                            <?php else: ?>
-                                <span class="pill"><?php echo htmlspecialchars($p['status']); ?></span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <a href="project_detail.php?id=<?php echo (int)$p['id']; ?>" class="link">View</a>
-                        </td>
-                    </tr>
+                        </div>
+
+                        <div class="project-overview">
+                            <div class="project-metrics">
+                                <span>Teams</span>
+                                <strong><?php echo (int) $p['team_count']; ?></strong>
+                            </div>
+                            <div class="progress-cluster">
+                                <div class="progress-ring"
+                                     style="--progress: <?php echo $progress; ?>;"
+                                     role="progressbar"
+                                     aria-label="<?php echo htmlspecialchars($p['name']); ?> progress"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100"
+                                     aria-valuenow="<?php echo $progress; ?>">
+                                    <span><?php echo $progress; ?>%</span>
+                                </div>
+                                <span class="progress-caption">Progress</span>
+                            </div>
+                        </div>
+
+                        <div class="project-card-footer">
+                            <div class="project-deadline <?php echo $deadlineClass; ?>">
+                                <span>Deadline</span>
+                                <strong><?php echo htmlspecialchars($deadlineDate); ?></strong>
+                                <?php if ($deadlineMeta !== ''): ?>
+                                    <small><?php echo htmlspecialchars($deadlineMeta); ?></small>
+                                <?php endif; ?>
+                            </div>
+                            <a href="project_detail.php?id=<?php echo (int) $p['id']; ?>" class="project-open">
+                                Open Project
+                            </a>
+                        </div>
+                    </article>
                 <?php endforeach; ?>
-            </table>
+            </div>
+        <?php endif; ?>
+
+        <div class="section-heading archived-heading">
+            <h2>Archived Projects</h2>
+            <span><?php echo count($archivedProjects); ?> archived</span>
         </div>
 
-        <!-- Archived Projects -->
-        <h2>Archived Projects</h2>
-        <div class="card">
-            <table>
-                <tr>
-                    <th>Project Name</th>
-                    <th>Class</th>
-                    <th>Team</th>
-                    <th>Progress</th>
-                    <th>Completed</th>
-                    <th style="width: 70px;"></th>
-                </tr>
-
-                <?php if (count($archivedProjects) === 0): ?>
-                    <tr>
-                        <td colspan="6" class="muted" style="text-align: center; padding: 30px;">
-                            No archived projects.
-                        </td>
-                    </tr>
-                <?php endif; ?>
-
+        <?php if (count($archivedProjects) === 0): ?>
+            <div class="archived-empty">
+                <strong>No archived projects</strong>
+                <span>Completed projects will appear here.</span>
+            </div>
+        <?php else: ?>
+            <div class="archived-list">
                 <?php foreach ($archivedProjects as $p): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($p['name']); ?></td>
-                        <td><?php echo !empty($p['class_code']) ? htmlspecialchars($p['class_code']) : '<span class="muted">—</span>'; ?></td>
-                        <td>
-                            <?php if (!empty($p['team_names'])): ?>
-                                <?php echo htmlspecialchars($p['team_names']); ?>
-                            <?php else: ?>
-                                <span class="muted">—</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo (int)$p['progress']; ?>%</td>
-                        <td class="muted">
-                            <?php echo $p['period_end'] ? date('M Y', strtotime($p['period_end'])) : '—'; ?>
-                        </td>
-                        <td>
-                            <a href="project_detail.php?id=<?php echo (int)$p['id']; ?>" class="link">View</a>
-                        </td>
-                    </tr>
+                    <div class="archived-row">
+                        <div>
+                            <a href="project_detail.php?id=<?php echo (int) $p['id']; ?>">
+                                <?php echo htmlspecialchars($p['name']); ?>
+                            </a>
+                            <span><?php echo htmlspecialchars($p['class_code'] ?: 'No class'); ?></span>
+                        </div>
+                        <div><?php echo (int) $p['progress']; ?>% complete</div>
+                        <div><?php echo $p['period_end'] ? date('M Y', strtotime($p['period_end'])) : '—'; ?></div>
+                        <a href="project_detail.php?id=<?php echo (int) $p['id']; ?>">View</a>
+                    </div>
                 <?php endforeach; ?>
-            </table>
-        </div>
+            </div>
+        <?php endif; ?>
 
     </div>
 </main>
@@ -241,22 +311,339 @@ mysqli_stmt_close($stmt);
     align-items: flex-start;
     justify-content: space-between;
     gap: 20px;
-    margin-bottom: 8px;
+    margin-bottom: 22px;
 }
-.page-head-simple .subtitle { margin-bottom: 34px; }
+.page-head-simple .subtitle { margin-bottom: 0; }
 .create-project-btn {
-    display: inline-block;
-    padding: 10px 16px;
-    border-radius: 8px;
-    background: #175196;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 8px 14px;
+    border: 1px solid #1f4d78;
+    border-radius: 6px;
+    background: #1f4d78;
     color: #fff;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
 }
-.create-project-btn:hover { background: #123f76; }
-.pill-draft { background: #fdf3e2; color: #9a6a13; }
+.create-project-btn:hover { background: #183d61; border-color: #183d61; }
+.create-project-btn:focus-visible,
+.project-title-block a:focus-visible,
+.project-open:focus-visible,
+.archived-row a:focus-visible {
+    outline: 2px solid #6da5de;
+    outline-offset: 2px;
+}
+
+.projects-kpi {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: hidden;
+    margin-bottom: 22px;
+    border: 1px solid #17191d;
+    border-radius: 9px;
+    background: #17191d;
+}
+.kpi-item {
+    min-width: 0;
+    padding: 13px 16px;
+    border-right: 1px solid #2b3038;
+}
+.kpi-item:last-child { border-right: none; }
+.kpi-label {
+    display: block;
+    overflow: hidden;
+    color: #abb1ba;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.kpi-value {
+    display: block;
+    margin-top: 4px;
+    color: #fff;
+    font-size: 25px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+    line-height: 1.1;
+}
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 9px;
+}
+.section-heading h2 {
+    margin: 0;
+    color: #343b45;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.section-heading span {
+    color: #858b94;
+    font-size: 10.5px;
+}
+.archived-heading { margin-top: 24px; }
+
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.project-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 15px;
+    border: 1px solid #e1e5ea;
+    border-radius: 9px;
+    background: #fff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.project-card:hover {
+    border-color: #c9d2dc;
+    box-shadow: 0 5px 18px rgba(30, 41, 59, 0.06);
+}
+.project-card.is-draft { background: #fbfcfd; }
+.project-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.project-title-block { min-width: 0; }
+.project-id {
+    display: block;
+    margin-bottom: 3px;
+    color: #858b94;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.project-title-block h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+.project-title-block a {
+    color: #22262d;
+    text-decoration: none;
+}
+.project-title-block a:hover { color: #175196; text-decoration: underline; }
+.project-status {
+    flex-shrink: 0;
+    padding: 3px 7px;
+    border: 1px solid #e1e5ea;
+    border-radius: 4px;
+    background: #f7f8fa;
+    color: #59616c;
+    font-size: 9px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.status-draft {
+    border-color: #d8dde4;
+    background: #f2f4f6;
+    color: #6b7280;
+}
+.project-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 10px;
+    color: #7f858e;
+    font-size: 10px;
+}
+.class-tag {
+    padding: 2px 6px;
+    border: 1px solid #dde2e8;
+    border-radius: 4px;
+    color: #4f5965;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 9px;
+    font-weight: 600;
+}
+.weight-tag {
+    padding: 2px 6px;
+    border: 1px solid #dfe4ea;
+    border-radius: 4px;
+    background: #f5f7f9;
+    color: #59616c;
+    font-size: 9px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.project-overview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-top: 16px;
+}
+.project-metrics { min-width: 0; }
+.project-metrics span {
+    display: block;
+    color: #858b94;
+    font-size: 9.5px;
+}
+.project-metrics strong {
+    display: block;
+    margin-top: 3px;
+    color: #303741;
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+}
+.progress-cluster {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+.progress-ring {
+    position: relative;
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: conic-gradient(
+        #2f6fa8 calc(var(--progress) * 1%),
+        #e9edf1 0
+    );
+}
+.progress-ring::before {
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: #fff;
+    content: "";
+}
+.progress-ring span {
+    position: relative;
+    color: #303741;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+}
+.progress-caption {
+    color: #858b94;
+    font-size: 9.5px;
+}
+.project-card-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 17px;
+    padding-top: 12px;
+    border-top: 1px solid #eef1f4;
+}
+.project-deadline span {
+    display: block;
+    color: #858b94;
+    font-size: 9px;
+}
+.project-deadline strong {
+    display: block;
+    margin-top: 2px;
+    color: #424a55;
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+}
+.project-deadline small {
+    display: block;
+    margin-top: 2px;
+    color: #8b9199;
+    font-size: 9px;
+}
+.project-deadline.danger strong,
+.project-deadline.danger small { color: #b42318; }
+.project-deadline.warning small { color: #8a651d; }
+.project-open {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 31px;
+    padding: 6px 10px;
+    border: 1px solid #1f4d78;
+    border-radius: 5px;
+    background: #1f4d78;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.project-open:hover { border-color: #183d61; background: #183d61; }
+
+.archived-empty {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px;
+    border: 1px solid #e1e5ea;
+    border-radius: 9px;
+    background: #fff;
+}
+.archived-empty strong {
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 600;
+}
+.archived-empty span { color: #858b94; font-size: 10.5px; }
+.archived-list {
+    overflow: hidden;
+    border: 1px solid #e1e5ea;
+    border-radius: 9px;
+    background: #fff;
+}
+.archived-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) 110px 100px 50px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid #edf0f3;
+    color: #6b7280;
+    font-size: 10px;
+}
+.archived-row:last-child { border-bottom: none; }
+.archived-row > div:first-child a {
+    display: block;
+    color: #303741;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.archived-row > div:first-child span {
+    display: block;
+    margin-top: 2px;
+    color: #858b94;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 9px;
+}
+.archived-row > a {
+    color: #1f4d78;
+    font-weight: 600;
+    text-decoration: none;
+}
+.archived-row > a:hover { text-decoration: underline; }
+
 .project-flash {
     padding: 11px 15px;
     border-radius: 8px;
@@ -268,9 +655,19 @@ mysqli_stmt_close($stmt);
     border: 1px solid #bfe4cd;
     color: #256b3f;
 }
-@media (max-width: 700px) {
+@media (max-width: 900px) {
     .page-head-simple { flex-direction: column; gap: 6px; }
-    .page-head-simple .subtitle { margin-bottom: 18px; }
+    .projects-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi-item:nth-child(2) { border-right: none; }
+    .kpi-item:nth-child(-n+2) { border-bottom: 1px solid #2b3038; }
+    .projects-grid { grid-template-columns: 1fr; }
+    .archived-empty { align-items: flex-start; flex-direction: column; gap: 5px; }
+    .archived-row {
+        grid-template-columns: 1fr auto;
+        gap: 6px 12px;
+    }
+    .archived-row > div:nth-child(2),
+    .archived-row > div:nth-child(3) { display: none; }
 }
 </style>
 

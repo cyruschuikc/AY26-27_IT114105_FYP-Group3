@@ -1138,3 +1138,195 @@ ul li:last-child {
         width: auto;
     }
 }
+
+/* =========================================================
+   Teacher navigation shell
+   ========================================================= */
+.sidebar {
+    transition: width 0.18s ease, transform 0.2s ease;
+}
+
+.main {
+    transition: margin-left 0.18s ease;
+}
+
+.sidebar-menu a {
+    position: relative;
+    gap: 10px;
+}
+
+.nav-icon {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.nav-label {
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-toggle {
+    position: fixed;
+    top: 16px;
+    left: 232px;
+    z-index: 90;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid #dce1e7;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #46505c;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(22, 32, 45, 0.06);
+    transition: left 0.18s ease, border-color 0.15s, color 0.15s;
+}
+
+.sidebar-toggle:hover {
+    border-color: #aebbc8;
+    color: #1f4d78;
+}
+
+.sidebar-toggle:focus-visible {
+    outline: 2px solid #6da5de;
+    outline-offset: 2px;
+}
+
+.sidebar-toggle svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+}
+.sidebar-toggle .toggle-close-icon { display: none; }
+
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: none;
+    background: rgba(10, 14, 20, 0.46);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+body.sidebar-collapsed .sidebar { width: 72px; }
+body.sidebar-collapsed .main { margin-left: 72px; }
+body.sidebar-collapsed .sidebar-toggle { left: 84px; }
+body.sidebar-collapsed .sidebar-user {
+    justify-content: center;
+    padding: 10px 0;
+    margin-right: 8px;
+    margin-left: 8px;
+}
+body.sidebar-collapsed .sidebar-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+}
+body.sidebar-collapsed .sidebar-user-info,
+body.sidebar-collapsed .nav-label { display: none; }
+body.sidebar-collapsed .sidebar-menu a {
+    justify-content: center;
+    padding-right: 0;
+    padding-left: 0;
+}
+body.sidebar-collapsed .nav-dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 6px;
+    height: 6px;
+    box-shadow: none;
+}
+body.sidebar-collapsed .sidebar-footer {
+    padding-right: 0;
+    padding-left: 0;
+}
+body.sidebar-collapsed .sidebar-logout {
+    justify-content: center;
+    padding: 9px 0;
+}
+body.sidebar-collapsed .sidebar-logout span { display: none; }
+
+@media (max-width: 900px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 80;
+        width: 260px;
+        height: 100vh;
+        min-height: 100vh;
+        transform: translateX(-100%);
+        box-shadow: 18px 0 42px rgba(8, 12, 18, 0.25);
+    }
+
+    body.sidebar-drawer-open .sidebar { transform: translateX(0); }
+    body.sidebar-drawer-open { overflow: hidden; }
+    body.sidebar-collapsed .sidebar { width: 260px; }
+    body.sidebar-collapsed .sidebar-user-info { display: block; }
+    body.sidebar-collapsed .nav-label,
+    body.sidebar-collapsed .sidebar-logout span { display: inline; }
+    body.sidebar-collapsed .sidebar-user {
+        justify-content: flex-start;
+        padding: 10px 12px;
+        margin-right: 10px;
+        margin-left: 10px;
+    }
+    body.sidebar-collapsed .sidebar-avatar {
+        width: 44px;
+        height: 44px;
+        font-size: 15px;
+    }
+    body.sidebar-collapsed .sidebar-menu a {
+        justify-content: space-between;
+        padding: 12px 24px;
+    }
+    body.sidebar-collapsed .nav-dot {
+        position: static;
+        width: 8px;
+        height: 8px;
+        box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18);
+    }
+    body.sidebar-collapsed .sidebar-footer { padding: 14px 24px 8px; }
+    body.sidebar-collapsed .sidebar-logout {
+        justify-content: flex-start;
+        padding: 8px 0;
+    }
+
+    .main {
+        margin-left: 0;
+        padding: 34px 28px;
+    }
+    .content { padding-top: 46px; }
+    .sidebar-toggle {
+        top: 16px;
+        left: 16px;
+    }
+    body.sidebar-drawer-open .sidebar-toggle {
+        left: 212px;
+        border-color: #3a414b;
+        background: #20242b;
+        color: #fff;
+    }
+    body.sidebar-drawer-open .toggle-menu-icon { display: none; }
+    body.sidebar-drawer-open .toggle-close-icon { display: block; }
+    .sidebar-backdrop { display: block; }
+    body.sidebar-drawer-open .sidebar-backdrop {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}

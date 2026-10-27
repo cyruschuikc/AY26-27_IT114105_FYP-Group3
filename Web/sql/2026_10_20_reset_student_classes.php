@@ -126,6 +126,22 @@ try {
     if (!columnExists($conn, 'projects', 'class_id')) {
         runQuery($conn, "ALTER TABLE `projects` ADD COLUMN `class_id` INT(11) NULL AFTER `course_id`", 'Added projects.class_id');
     }
+    if (!columnExists($conn, 'projects', 'assessment_scope')) {
+        runQuery(
+            $conn,
+            "ALTER TABLE `projects`
+             ADD COLUMN `assessment_scope` VARCHAR(30) NULL AFTER `category`",
+            'Added projects.assessment_scope'
+        );
+    }
+    if (!columnExists($conn, 'projects', 'assessment_weight')) {
+        runQuery(
+            $conn,
+            "ALTER TABLE `projects`
+             ADD COLUMN `assessment_weight` TINYINT UNSIGNED NULL AFTER `assessment_scope`",
+            'Added projects.assessment_weight'
+        );
+    }
     if (!columnExists($conn, 'group_members', 'project_id')) {
         runQuery($conn, "ALTER TABLE `group_members` ADD COLUMN `project_id` INT(11) NULL AFTER `student_id`", 'Added group_members.project_id');
     }

@@ -77,12 +77,16 @@ mysqli_stmt_close($stmt);
 // Defaults
 // =========================================================
 $defaultPermissions = array('invite', 'rename', 'assign', 'submit');
+$allowedCategories = array('CA', 'EA', 'Assignment', 'Final Year Project');
+$allowedAssessmentScopes = array('CA', 'EA', 'This Semester', 'Full Year');
 
 $form = array(
     'name'                 => '',
     'class_id'             => count($classes) > 0 ? (int) $classes[0]['id'] : 0,
     'course_id'            => count($classes) > 0 ? (int) $classes[0]['course_id'] : 0,
-    'category'             => 'Final Year Project',
+    'category'             => '',
+    'assessment_scope'     => '',
+    'assessment_weight'    => '',
     'description'          => '',
     'requirements'         => '',
     'period_start'         => date('Y-m-d'),
@@ -134,7 +138,13 @@ if ($sourceId > 0) {
         $form['name']                 = $source['name'];
         $form['class_id']             = (int) $source['class_id'];
         $form['course_id']            = (int) $source['course_id'];
-        $form['category']             = $source['category'];
+        $form['category']             = in_array($source['category'], $allowedCategories, true)
+            ? $source['category']
+            : '';
+        $form['assessment_scope']     = (string) ($source['assessment_scope'] ?? '');
+        $form['assessment_weight']    = $source['assessment_weight'] !== null
+            ? (string) (int) $source['assessment_weight']
+            : '';
         $form['description']          = $source['description'];
         $form['requirements']         = $source['requirements'];
         $form['period_start']         = $source['period_start'];
@@ -219,16 +229,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     $form['category']             = trim(isset($_POST['category']) ? $_POST['category'] : '');
+    $form['assessment_scope']     = trim(isset($_POST['assessmentScope']) ? $_POST['assessmentScope'] : '');
+    $form['assessment_weight']    = trim(isset($_POST['assessmentWeight']) ? $_POST['assessmentWeight'] : '');
     $form['description']          = trim(isset($_POST['description']) ? $_POST['description'] : '');
     $form['requirements']         = trim(isset($_POST['requirements']) ? $_POST['requirements'] : '');
     $form['period_start']         = trim(isset($_POST['periodStart']) ? $_POST['periodStart'] : '');
     $form['period_end']           = trim(isset($_POST['periodEnd']) ? $_POST['periodEnd'] : '');
     $form['visibility']           = isset($_POST['visibility']) ? $_POST['visibility'] : 'Course';
-    $form['team_mode']            = isset($_POST['teamMode']) ? $_POST['teamMode'] : 'Free';
+    $form['team_mode']            = isset($_POST['teamMode']) ? trim($_POST['teamMode']) : '';
     $form['team_deadline']        = trim(isset($_POST['teamDeadline']) ? $_POST['teamDeadline'] : '');
-    $form['max_members']          = (int) (isset($_POST['maxMembers']) ? $_POST['maxMembers'] : 4);
+    $form['max_members']          = (int) (isset($_POST['maxMembers']) ? $_POST['maxMembers'] : 0);
     $form['allow_cross_class']    = isset($_POST['allowCrossClass']) ? 1 : 0;
-    $form['post_deadline_action'] = isset($_POST['postDeadlineAction']) ? $_POST['postDeadlineAction'] : 'Lock';
+    $form['post_deadline_action'] = isset($_POST['postDeadlineAction']) ? trim($_POST['postDeadlineAction']) : '';
     $form['reminder_days']        = (int) (isset($_POST['reminderDays']) ? $_POST['reminderDays'] : 3);
     $form['allow_extension']      = isset($_POST['allowExtension']) ? 1 : 0;
 
@@ -275,6 +287,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($form['course_id'] <= 0) {
         $errors[] = 'Please choose a class that belongs to you.';
     }
+    if (!in_array($form['category'], $allowedCategories, true)) {
+        $errors[] = 'Please choose a valid project category.';
+    }
+    $hasAssessmentScope = ($form['assessment_scope'] !== '');
+    $hasAssessmentWeight = ($form['assessment_weight'] !== '');
+    if ($hasAssessmentScope !== $hasAssessmentWeight) {
+        $errors[] = 'Assessment scope and percentage must be filled in together.';
+    } elseif ($hasAssessmentScope) {
+        if (!in_array($form['assessment_scope'], $allowedAssessmentScopes, true)) {
+            $errors[] = 'Please choose a valid assessment scope.';
+        }
+        if (!preg_match('/^\d+$/', $form['assessment_weight'])
+            || (int) $form['assessment_weight'] < 0
+            || (int) $form['assessment_weight'] > 100) {
+            $errors[] = 'Assessment percentage must be a whole number between 0 and 100.';
+        }
+    }
 
     if (!$isDraft) {
         if ($form['description'] === '') {
@@ -297,6 +326,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($form['period_end'] !== '' && strtotime($form['team_deadline']) > strtotime($form['period_end'])) {
             $errors[] = 'Team formation deadline cannot be after the project deadline.';
         }
+    } else {
+        $errors[] = 'Team formation deadline is required.';
     }
 
     if ($form['max_members'] < 2 || $form['max_members'] > 10) {
@@ -307,10 +338,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $form['visibility'] = 'Course';
     }
     if (!in_array($form['team_mode'], array('Free', 'Random', 'Teacher_Assigned'), true)) {
-        $form['team_mode'] = 'Free';
+        $errors[] = 'Please choose a valid team formation method.';
     }
     if (!in_array($form['post_deadline_action'], array('Lock', 'Notify'), true)) {
-        $form['post_deadline_action'] = 'Lock';
+        $errors[] = 'Please choose what happens after the team deadline.';
     }
     if ($form['reminder_days'] < 0 || $form['reminder_days'] > 60) {
         $errors[] = 'Reminder days must be between 0 and 60.';
@@ -413,6 +444,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (count($errors) === 0 && $projectId > 0) {
+            $assessmentScope = $form['assessment_scope'] !== '' ? $form['assessment_scope'] : null;
+            $assessmentWeight = $form['assessment_weight'] !== ''
+                ? (int) $form['assessment_weight']
+                : null;
+            $weightStmt = mysqli_prepare($conn, "
+                UPDATE `projects`
+                SET assessment_scope = ?, assessment_weight = ?
+                WHERE id = ? AND supervisor_id = ?
+            ");
+            mysqli_stmt_bind_param(
+                $weightStmt,
+                "sdii",
+                $assessmentScope,
+                $assessmentWeight,
+                $projectId,
+                $teacherId
+            );
+            if (!mysqli_stmt_execute($weightStmt)) {
+                $errors[] = 'Could not save the assessment weighting: ' . mysqli_stmt_error($weightStmt);
+            }
+            mysqli_stmt_close($weightStmt);
 
             // ---------- Milestones: replace ----------
             $del = mysqli_prepare($conn, "DELETE FROM `milestones` WHERE project_id = ?");
@@ -596,21 +648,65 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020d">
+    <link rel="stylesheet" href="teacher.css?v=20261028a">
     <style>
         .pf-wrap { max-width: 980px; }
-        .pf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 26px; }
+        .pf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
         .pf-head h1 { margin-bottom: 5px; }
         .pf-head .subtitle { margin-bottom: 0; }
         .pf-section { background: #fff; border: 1px solid #e6e8eb; border-radius: 10px; padding: 22px 24px; margin-bottom: 22px; }
-        .pf-section h2 { margin: 0 0 16px; }
-        .pf-section .pf-section-desc { margin: -8px 0 18px; color: #8b8f98; font-size: 12px; }
+        .pf-section h2 { margin: 0 0 16px; color: #252a31; font-size: 13.5px; font-weight: 700; }
+        .pf-section .pf-section-desc { margin: -8px 0 18px; color: #69717b; font-size: 12px; }
+        .pf-section.pf-disclosure { padding: 0; overflow: hidden; }
+        .pf-disclosure > summary {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 20px 24px;
+            cursor: pointer;
+            list-style: none;
+        }
+        .pf-disclosure > summary::-webkit-details-marker { display: none; }
+        .pf-disclosure > summary::after {
+            flex: 0 0 auto;
+            margin-left: auto;
+            color: #7f858e;
+            font-size: 18px;
+            font-weight: 400;
+            content: "+";
+        }
+        .pf-disclosure[open] > summary {
+            border-bottom: 1px solid #edf0f3;
+        }
+        .pf-disclosure[open] > summary::after { content: "−"; }
+        .pf-disclosure > summary h2 { margin: 0; }
+        .pf-disclosure > summary .pf-section-desc { margin: 4px 0 0; }
+        .pf-disclosure > summary .optional-badge { margin-left: 0; }
+        .pf-disclosure-body { padding: 20px 24px 24px; }
         .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .pf-grid.three { grid-template-columns: 1fr 1fr 1fr; }
         .pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
         .pf-field.full { grid-column: 1 / -1; }
-        .pf-field label { font-size: 12px; font-weight: 600; color: #4b5058; }
-        .pf-field .req { color: #d32f2f; }
+        .pf-field label { color: #303640; font-size: 12.5px; font-weight: 600; }
+        .pf-field > label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        .pf-field .req { color: #b42318; }
+        .optional-badge {
+            margin-left: auto;
+            padding: 2px 6px;
+            border: 1px solid #d9dee4;
+            border-radius: 4px;
+            background: #f4f6f8;
+            color: #646b75;
+            font-size: 8.5px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
         .pf-field input[type=text], .pf-field input[type=date], .pf-field input[type=datetime-local],
         .pf-field input[type=number], .pf-field select, .pf-field textarea {
             width: 100%; padding: 9px 11px; border: 1px solid #dfe2e6; border-radius: 7px;
@@ -620,9 +716,26 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
         .pf-field input:focus, .pf-field select:focus, .pf-field textarea:focus {
             outline: none; border-color: #8db8ea; box-shadow: 0 0 0 3px rgba(141, 184, 234, 0.2);
         }
-        .pf-help { font-size: 11px; color: #9aa0a8; line-height: 1.5; }
+        .pf-help { color: #69717b; font-size: 11.5px; line-height: 1.5; }
+        .assessment-weight-row {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) 110px;
+            gap: 8px;
+        }
+        .assessment-percent { position: relative; }
+        .assessment-percent input { padding-right: 28px; }
+        .pf-field select.is-placeholder { color: #9aa0a8; }
+        .assessment-percent span {
+            position: absolute;
+            top: 50%;
+            right: 11px;
+            color: #6b6f78;
+            font-size: 12px;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
         .pf-checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-        .pf-checks label { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #4b5058; font-weight: 500; }
+        .pf-checks label { display: inline-flex; align-items: center; gap: 7px; color: #3d444e; font-size: 12.5px; font-weight: 500; }
         .pf-inline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #4b5058; }
         .pf-ms-row { display: grid; grid-template-columns: 1.6fr 1fr 1fr 34px; gap: 10px; margin-bottom: 10px; align-items: center; }
         .pf-ms-row input { width: 100%; padding: 8px 10px; border: 1px solid #dfe2e6; border-radius: 7px; font-size: 12.5px; }
@@ -649,6 +762,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
         .pf-note { font-size: 11.5px; color: #8b8f98; background: #f7f9fc; border-radius: 7px; padding: 9px 12px; line-height: 1.5; }
         @media (max-width: 760px) {
             .pf-grid, .pf-grid.three { grid-template-columns: 1fr; }
+            .assessment-weight-row { grid-template-columns: 1fr; }
             .pf-ms-row { grid-template-columns: 1fr; }
             .pf-icon-btn { width: 100%; }
         }
@@ -666,15 +780,6 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
         <div class="pf-head">
             <div>
                 <h1><?= htmlspecialchars($pageTitle) ?></h1>
-                <p class="subtitle">
-                    <?php if ($isEdit): ?>
-                        Update project details, team rules, milestones and announcements.
-                    <?php elseif ($isDuplicate): ?>
-                        Review the copied settings, then save it as a draft or publish a new project.
-                    <?php else: ?>
-                        Set up a project, its team rules, milestones and first announcement.
-                    <?php endif; ?>
-                </p>
             </div>
         </div>
 
@@ -730,10 +835,40 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     </div>
 
                     <div class="pf-field">
-                        <label for="category">Category</label>
-                        <input type="text" id="category" name="category" maxlength="100"
-                               value="<?= htmlspecialchars($form['category']) ?>"
-                               placeholder="e.g. Web Application">
+                        <label for="category">Category <span class="req">*</span></label>
+                        <select id="category" name="category" required>
+                            <option value="">Select Category</option>
+                            <?php foreach ($allowedCategories as $category): ?>
+                                <option value="<?= htmlspecialchars($category) ?>"
+                                    <?= $form['category'] === $category ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($category) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="pf-field full">
+                        <label for="assessmentScope">Assessment Weight</label>
+                        <div class="assessment-weight-row">
+                            <select id="assessmentScope" name="assessmentScope"
+                                    class="<?= $form['assessment_scope'] === '' ? 'is-placeholder' : '' ?>">
+                                <option value="">e.g. CA</option>
+                                <?php foreach ($allowedAssessmentScopes as $scope): ?>
+                                    <option value="<?= htmlspecialchars($scope) ?>"
+                                        <?= $form['assessment_scope'] === $scope ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($scope) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="assessment-percent">
+                                <input type="number" id="assessmentWeight" name="assessmentWeight"
+                                       min="0" max="100" step="1" inputmode="numeric"
+                                       value="<?= htmlspecialchars($form['assessment_weight']) ?>"
+                                       placeholder="e.g. 20">
+                                <span>%</span>
+                            </div>
+                        </div>
+                        <span class="pf-help">This project contributes this percentage toward the selected assessment scope.</span>
                     </div>
 
                     <div class="pf-field full">
@@ -741,12 +876,6 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                         <textarea id="description" name="description"
                                   placeholder="Describe the project idea, the problem it solves and what students will build."><?= htmlspecialchars($form['description']) ?></textarea>
                         <span class="pf-help">Shown to students on the project page.</span>
-                    </div>
-
-                    <div class="pf-field full">
-                        <label for="requirements">Requirements &amp; deliverables</label>
-                        <textarea id="requirements" name="requirements"
-                                  placeholder="Required features, expected deliverables, assessment criteria, technical constraints..."><?= htmlspecialchars($form['requirements']) ?></textarea>
                     </div>
 
                     <div class="pf-field">
@@ -759,26 +888,18 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                         <input type="date" id="periodEnd" name="periodEnd" value="<?= htmlspecialchars($form['period_end']) ?>">
                     </div>
 
-                    <div class="pf-field full">
-                        <label for="visibility">Student visibility</label>
-                        <select id="visibility" name="visibility">
-                            <option value="Course" <?= $form['visibility'] === 'Course' ? 'selected' : '' ?>>Students enrolled in this course only</option>
-                            <option value="All" <?= $form['visibility'] === 'All' ? 'selected' : '' ?>>All students</option>
-                        </select>
-                        <span class="pf-help">Draft projects are never visible to students.</span>
-                    </div>
                 </div>
             </div>
 
             <!-- ================= Team formation ================= -->
             <div class="pf-section">
                 <h2>Team Formation</h2>
-                <div class="pf-section-desc">How teams are formed and what team leaders are allowed to do.</div>
+                <div class="pf-section-desc">How teams are formed, distributed and handled after the deadline.</div>
 
                 <div class="pf-grid">
                     <div class="pf-field">
-                        <label for="teamMode">Formation method</label>
-                        <select id="teamMode" name="teamMode">
+                        <label for="teamMode">Formation method <span class="req">*</span></label>
+                        <select id="teamMode" name="teamMode" required>
                             <option value="Free" <?= $form['team_mode'] === 'Free' ? 'selected' : '' ?>>Free — students form their own teams</option>
                             <option value="Random" <?= $form['team_mode'] === 'Random' ? 'selected' : '' ?>>Random assignment</option>
                             <option value="Teacher_Assigned" <?= $form['team_mode'] === 'Teacher_Assigned' ? 'selected' : '' ?>>Teacher assigns members</option>
@@ -786,13 +907,14 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     </div>
 
                     <div class="pf-field">
-                        <label for="teamDeadline">Team formation deadline</label>
-                        <input type="date" id="teamDeadline" name="teamDeadline" value="<?= htmlspecialchars($form['team_deadline']) ?>">
+                        <label for="teamDeadline">Team formation deadline <span class="req">*</span></label>
+                        <input type="date" id="teamDeadline" name="teamDeadline"
+                               value="<?= htmlspecialchars($form['team_deadline']) ?>" required>
                     </div>
 
                     <div class="pf-field">
-                        <label for="maxMembers">Maximum team size</label>
-                        <select id="maxMembers" name="maxMembers">
+                        <label for="maxMembers">Maximum team size <span class="req">*</span></label>
+                        <select id="maxMembers" name="maxMembers" required>
                             <?php for ($i = 2; $i <= 10; $i++): ?>
                                 <option value="<?= $i ?>" <?= (int) $form['max_members'] === $i ? 'selected' : '' ?>><?= $i ?> members</option>
                             <?php endfor; ?>
@@ -800,8 +922,8 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     </div>
 
                     <div class="pf-field">
-                        <label for="postDeadlineAction">After the team deadline</label>
-                        <select id="postDeadlineAction" name="postDeadlineAction">
+                        <label for="postDeadlineAction">After the team deadline <span class="req">*</span></label>
+                        <select id="postDeadlineAction" name="postDeadlineAction" required>
                             <option value="Lock" <?= $form['post_deadline_action'] === 'Lock' ? 'selected' : '' ?>>Lock Team — requires teacher approval</option>
                             <option value="Notify" <?= $form['post_deadline_action'] === 'Notify' ? 'selected' : '' ?>>Notify the teacher only</option>
                         </select>
@@ -815,16 +937,6 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                         <span class="pf-help">When unchecked, teams should only contain students from the same class.</span>
                     </div>
 
-                    <div class="pf-field full">
-                        <label>Team leader permissions</label>
-                        <div class="pf-checks">
-                            <label><input type="checkbox" name="leaderPerms[]" value="invite" <?= in_array('invite', $form['leader_permissions'], true) ? 'checked' : '' ?>> Invite members</label>
-                            <label><input type="checkbox" name="leaderPerms[]" value="remove" <?= in_array('remove', $form['leader_permissions'], true) ? 'checked' : '' ?>> Remove members</label>
-                            <label><input type="checkbox" name="leaderPerms[]" value="rename" <?= in_array('rename', $form['leader_permissions'], true) ? 'checked' : '' ?>> Rename team</label>
-                            <label><input type="checkbox" name="leaderPerms[]" value="assign" <?= in_array('assign', $form['leader_permissions'], true) ? 'checked' : '' ?>> Assign tasks</label>
-                            <label><input type="checkbox" name="leaderPerms[]" value="submit" <?= in_array('submit', $form['leader_permissions'], true) ? 'checked' : '' ?>> Submit files</label>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -846,34 +958,18 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
 
                 <button type="button" class="pf-btn secondary" id="addMilestone">+ Add milestone</button>
 
-                <div class="pf-grid" style="margin-top: 18px;">
-                    <div class="pf-field">
-                        <label for="reminderDays">Deadline reminder</label>
-                        <select id="reminderDays" name="reminderDays">
-                            <?php foreach (array(0, 1, 3, 5, 7, 14) as $d): ?>
-                                <option value="<?= $d ?>" <?= (int) $form['reminder_days'] === $d ? 'selected' : '' ?>>
-                                    <?= $d === 0 ? 'No automatic reminder' : $d . ' day(s) before the deadline' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <span class="pf-help">Students receive an in-app reminder once per day inside this window.</span>
-                    </div>
-
-                    <div class="pf-field">
-                        <label class="pf-inline" style="margin-top: 24px;">
-                            <input type="checkbox" name="allowExtension" value="1" <?= (int) $form['allow_extension'] === 1 ? 'checked' : '' ?>>
-                            Allow students to request a deadline extension
-                        </label>
-                        <span class="pf-help">Requests appear on the project page for you to approve or reject.</span>
-                    </div>
-                </div>
             </div>
 
             <!-- ================= Announcement ================= -->
-            <div class="pf-section">
-                <h2>Announcement</h2>
-                <div class="pf-section-desc">Optional. Write it here, preview it, then send now or schedule it.</div>
-
+            <details class="pf-section pf-disclosure">
+                <summary>
+                    <div>
+                        <h2>Announcement</h2>
+                        <div class="pf-section-desc">Write it here, preview it, then send now or schedule it.</div>
+                    </div>
+                    <span class="optional-badge">Optional</span>
+                </summary>
+                <div class="pf-disclosure-body">
                 <div class="pf-grid">
                     <div>
                         <div class="pf-field">
@@ -887,11 +983,6 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                             <label for="annMessage">Message</label>
                             <textarea id="annMessage" name="annMessage"
                                       placeholder="Write the announcement students will receive..."><?= htmlspecialchars($form['ann_message']) ?></textarea>
-                        </div>
-
-                        <div class="pf-field">
-                            <label>Delivery channels</label>
-                            <div class="pf-note">In-app notification only. Announcements appear in each student's TeamBox notification list.</div>
                         </div>
 
                         <div class="pf-grid">
@@ -924,33 +1015,80 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- ================= Attachments ================= -->
-            <div class="pf-section">
-                <h2>Project Attachments</h2>
-                <div class="pf-section-desc">Brief, template or reference files. PDF, Office, text, ZIP and images up to 5 MB each.</div>
-
-                <?php if (count($existingAttachments) > 0): ?>
-                    <?php foreach ($existingAttachments as $att): ?>
-                        <div class="pf-attach">
-                            <span>
-                                <strong><?= htmlspecialchars($att['display_name'] ?: $att['file_name']) ?></strong>
-                                <span class="muted"> · <?= htmlspecialchars($att['file_size']) ?> · <?= htmlspecialchars(timeAgo($att['uploaded_at'])) ?></span>
-                            </span>
-                            <label>
-                                <input type="checkbox" name="removeAttachment[]" value="<?= (int) $att['id'] ?>">
-                                Remove
-                            </label>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-
-                <div class="pf-field">
-                    <label for="attachments">Upload files</label>
-                    <input type="file" id="attachments" name="attachments[]" multiple>
                 </div>
-            </div>
+            </details>
+
+            <!-- ================= Advanced settings ================= -->
+            <details class="pf-section pf-disclosure">
+                <summary>
+                    <div>
+                        <h2>Advanced Settings</h2>
+                        <div class="pf-section-desc">Optional requirements, reminders, permissions and attachments.</div>
+                    </div>
+                    <span class="optional-badge">Optional</span>
+                </summary>
+                <div class="pf-disclosure-body">
+                    <div class="pf-grid">
+                        <div class="pf-field full">
+                            <label for="requirements">Requirements &amp; deliverables</label>
+                            <textarea id="requirements" name="requirements"
+                                      placeholder="Required features, expected deliverables, assessment criteria, technical constraints..."><?= htmlspecialchars($form['requirements']) ?></textarea>
+                        </div>
+
+                        <div class="pf-field full">
+                            <label>Team leader permissions</label>
+                            <div class="pf-checks">
+                                <label><input type="checkbox" name="leaderPerms[]" value="invite" <?= in_array('invite', $form['leader_permissions'], true) ? 'checked' : '' ?>> Invite members</label>
+                                <label><input type="checkbox" name="leaderPerms[]" value="remove" <?= in_array('remove', $form['leader_permissions'], true) ? 'checked' : '' ?>> Remove members</label>
+                                <label><input type="checkbox" name="leaderPerms[]" value="rename" <?= in_array('rename', $form['leader_permissions'], true) ? 'checked' : '' ?>> Rename team</label>
+                                <label><input type="checkbox" name="leaderPerms[]" value="assign" <?= in_array('assign', $form['leader_permissions'], true) ? 'checked' : '' ?>> Assign tasks</label>
+                                <label><input type="checkbox" name="leaderPerms[]" value="submit" <?= in_array('submit', $form['leader_permissions'], true) ? 'checked' : '' ?>> Submit files</label>
+                            </div>
+                        </div>
+
+                        <div class="pf-field">
+                            <label for="reminderDays">Deadline reminder</label>
+                            <select id="reminderDays" name="reminderDays">
+                                <?php foreach (array(0, 1, 3, 5, 7, 14) as $d): ?>
+                                    <option value="<?= $d ?>" <?= (int) $form['reminder_days'] === $d ? 'selected' : '' ?>>
+                                        <?= $d === 0 ? 'No automatic reminder' : $d . ' day(s) before the deadline' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <span class="pf-help">Students receive an in-app reminder inside this window.</span>
+                        </div>
+
+                        <div class="pf-field">
+                            <label class="pf-inline" style="margin-top: 24px;">
+                                <input type="checkbox" name="allowExtension" value="1" <?= (int) $form['allow_extension'] === 1 ? 'checked' : '' ?>>
+                                Allow students to request a deadline extension
+                            </label>
+                            <span class="pf-help">Requests appear on the project page for your approval.</span>
+                        </div>
+
+                        <?php if (count($existingAttachments) > 0): ?>
+                            <?php foreach ($existingAttachments as $att): ?>
+                                <div class="pf-attach full">
+                                    <span>
+                                        <strong><?= htmlspecialchars($att['display_name'] ?: $att['file_name']) ?></strong>
+                                        <span class="muted"> · <?= htmlspecialchars($att['file_size']) ?> · <?= htmlspecialchars(timeAgo($att['uploaded_at'])) ?></span>
+                                    </span>
+                                    <label>
+                                        <input type="checkbox" name="removeAttachment[]" value="<?= (int) $att['id'] ?>">
+                                        Remove
+                                    </label>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <div class="pf-field full">
+                            <label for="attachments">Project attachments</label>
+                            <input type="file" id="attachments" name="attachments[]" multiple>
+                            <span class="pf-help">PDF, Office, text, ZIP and images up to 5 MB each.</span>
+                        </div>
+                    </div>
+                </div>
+            </details>
 
             <!-- ================= Actions ================= -->
             <div class="pf-actions">
@@ -973,6 +1111,16 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
 
 <script>
 (function () {
+    // Make required and optional fields visually consistent.
+    document.querySelectorAll('.pf-field > label').forEach(function (label) {
+        if (!label.querySelector('.req') && !label.querySelector('.optional-badge')) {
+            var badge = document.createElement('span');
+            badge.className = 'optional-badge';
+            badge.textContent = 'Optional';
+            label.appendChild(badge);
+        }
+    });
+
     // Milestones
     var rows = document.getElementById('msRows');
     var tpl  = document.getElementById('msTemplate');
@@ -988,6 +1136,14 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
             }
         }
     });
+
+    // Keep the empty assessment-scope option styled like a placeholder.
+    var assessmentScope = document.getElementById('assessmentScope');
+    function syncAssessmentScopeStyle() {
+        assessmentScope.classList.toggle('is-placeholder', assessmentScope.value === '');
+    }
+    assessmentScope.addEventListener('change', syncAssessmentScopeStyle);
+    syncAssessmentScopeStyle();
 
     // Announcement live preview
     var title    = document.getElementById('annTitle');

@@ -179,7 +179,7 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
 <!-- =========================================================
      Sidebar
      ========================================================= -->
-<aside class="sidebar">
+<aside class="sidebar" id="teacherSidebar">
 
     <!-- 顶部：用户卡片 -->
     <div class="sidebar-user">
@@ -194,40 +194,84 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
 
     <!-- 菜单 -->
     <nav class="sidebar-menu">
-        <a href="teacher_index.php"          class="<?= $active==='dashboard'?'active':'' ?>">Dashboard</a>
-        <a href="teacher_projects.php"       class="<?= $active==='projects'?'active':'' ?>">Projects</a>
-        <a href="teacher_teams.php"          class="<?= $active==='teams'?'active':'' ?>">
-            <span>Teams</span>
+        <a href="teacher_index.php" class="<?= $active==='dashboard'?'active':'' ?>" title="Dashboard" aria-label="Dashboard">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+            </svg>
+            <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="teacher_projects.php" class="<?= $active==='projects'?'active':'' ?>" title="Projects" aria-label="Projects">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"></path>
+            </svg>
+            <span class="nav-label">Projects</span>
+        </a>
+        <a href="teacher_teams.php" class="<?= $active==='teams'?'active':'' ?>" title="Teams" aria-label="Teams">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span class="nav-label">Teams</span>
             <?php if ($navOverdueTasks > 0): ?>
                 <span class="nav-dot" title="<?= (int) $navOverdueTasks ?> overdue task<?= $navOverdueTasks === 1 ? '' : 's' ?>" aria-label="<?= (int) $navOverdueTasks ?> overdue tasks"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_students.php"       class="<?= $active==='students'?'active':'' ?>">
-            <span>Students</span>
+        <a href="teacher_students.php" class="<?= $active==='students'?'active':'' ?>" title="Students" aria-label="Students">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m2 9 10-5 10 5-10 5z"></path>
+                <path d="M6 11.5V16c2.5 2 9.5 2 12 0v-4.5M22 9v6"></path>
+            </svg>
+            <span class="nav-label">Students</span>
             <?php if ($navUnsubmittedStudents > 0): ?>
                 <span class="nav-dot" title="<?= (int) $navUnsubmittedStudents ?> student<?= $navUnsubmittedStudents === 1 ? '' : 's' ?> with no submissions" aria-label="<?= (int) $navUnsubmittedStudents ?> students with no submissions"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_review.php"         class="<?= $active==='review'?'active':'' ?>">
-            <span>Review Center</span>
+        <a href="teacher_review.php" class="<?= $active==='review'?'active':'' ?>" title="Review Center" aria-label="Review Center">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+                <path d="m8 12 2.2 2.2L16 9"></path>
+            </svg>
+            <span class="nav-label">Review Center</span>
             <?php if ($navReviewCount > 0): ?>
                 <span class="nav-dot" title="<?= (int) $navReviewCount ?> item<?= $navReviewCount === 1 ? '' : 's' ?> waiting for review" aria-label="<?= (int) $navReviewCount ?> items waiting for review"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_files.php"          class="<?= $active==='files'?'active':'' ?>">
-            <span>Files</span>
+        <a href="teacher_files.php" class="<?= $active==='files'?'active':'' ?>" title="Files" aria-label="Files">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <path d="M14 2v6h6M8 13h8M8 17h6"></path>
+            </svg>
+            <span class="nav-label">Files</span>
             <?php if ($navPendingFiles > 0): ?>
                 <span class="nav-dot" title="<?= (int) $navPendingFiles ?> unviewed file<?= $navPendingFiles === 1 ? '' : 's' ?>" aria-label="<?= (int) $navPendingFiles ?> unviewed files"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_messages.php"       class="<?= $active==='messages'?'active':'' ?>">
-            <span>Messages</span>
+        <a href="teacher_messages.php" class="<?= $active==='messages'?'active':'' ?>" title="Messages" aria-label="Messages">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 15a4 4 0 0 1-4 4H8l-5 2 1.5-4A4 4 0 0 1 3 14V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+            </svg>
+            <span class="nav-label">Messages</span>
             <?php if ($navUnreadMessages > 0): ?>
                 <span class="nav-dot" title="<?= (int) $navUnreadMessages ?> unread message<?= $navUnreadMessages === 1 ? '' : 's' ?>" aria-label="<?= (int) $navUnreadMessages ?> unread messages"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_announcements.php"  class="<?= $active==='announcements'?'active':'' ?>">Announcements</a>
-        <a href="teacher_profile.php"        class="<?= $active==='profile'?'active':'' ?>">Profile</a>
+        <a href="teacher_announcements.php" class="<?= $active==='announcements'?'active':'' ?>" title="Announcements" aria-label="Announcements">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m3 11 18-7-5 16-4-5-5-1zM12 15l4 1"></path>
+            </svg>
+            <span class="nav-label">Announcements</span>
+        </a>
+        <a href="teacher_profile.php" class="<?= $active==='profile'?'active':'' ?>" title="Profile" aria-label="Profile">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4 21a8 8 0 0 1 16 0"></path>
+            </svg>
+            <span class="nav-label">Profile</span>
+        </a>
     </nav>
 
     <!-- 底部：退出登录 -->
@@ -245,5 +289,88 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
     </div>
 
 </aside>
+
+<button type="button" class="sidebar-toggle" id="sidebarToggle"
+        aria-controls="teacherSidebar" aria-expanded="true" aria-label="Collapse navigation">
+    <svg class="toggle-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7h16M4 12h16M4 17h16"></path>
+    </svg>
+    <svg class="toggle-close-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m6 6 12 12M18 6 6 18"></path>
+    </svg>
+</button>
+<div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+<script>
+(function () {
+    var body = document.body;
+    var toggle = document.getElementById('sidebarToggle');
+    var backdrop = document.getElementById('sidebarBackdrop');
+    var shell = document.getElementById('teacherSidebar');
+    var desktop = window.matchMedia('(min-width: 901px)');
+    var storageKey = 'teambox-teacher-sidebar-collapsed';
+
+    if (!toggle || !shell) return;
+
+    function setDesktopCollapsed(collapsed) {
+        body.classList.toggle('sidebar-collapsed', collapsed);
+        toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        toggle.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+        try { localStorage.setItem(storageKey, collapsed ? '1' : '0'); } catch (error) {}
+    }
+
+    function setDrawerOpen(open) {
+        body.classList.toggle('sidebar-drawer-open', open);
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        toggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+    }
+
+    if (desktop.matches) {
+        try {
+            setDesktopCollapsed(localStorage.getItem(storageKey) === '1');
+        } catch (error) {}
+    } else {
+        setDrawerOpen(false);
+    }
+
+    toggle.addEventListener('click', function () {
+        if (desktop.matches) {
+            setDesktopCollapsed(!body.classList.contains('sidebar-collapsed'));
+        } else {
+            setDrawerOpen(!body.classList.contains('sidebar-drawer-open'));
+        }
+    });
+
+    backdrop.addEventListener('click', function () {
+        setDrawerOpen(false);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && body.classList.contains('sidebar-drawer-open')) {
+            setDrawerOpen(false);
+            toggle.focus();
+        }
+    });
+
+    shell.querySelectorAll('.sidebar-menu a').forEach(function (link) {
+        link.addEventListener('click', function () {
+            if (!desktop.matches) setDrawerOpen(false);
+        });
+    });
+
+    desktop.addEventListener('change', function () {
+        if (desktop.matches) {
+            setDrawerOpen(false);
+            try {
+                setDesktopCollapsed(localStorage.getItem(storageKey) === '1');
+            } catch (error) {}
+        } else {
+            body.classList.remove('sidebar-collapsed');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', 'Open navigation');
+        }
+    });
+})();
+</script>
 
 <?php include __DIR__ . '/teacher_notifications.php'; ?>

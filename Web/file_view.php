@@ -139,7 +139,7 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review File | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020d">
+    <link rel="stylesheet" href="teacher.css?v=20261028a">
 
     <style>
         /* 兜底：任何带 hidden 属性的元素都不显示 */

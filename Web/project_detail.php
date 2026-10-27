@@ -113,6 +113,8 @@ $sql = "
         p.id,
         p.name,
         p.category,
+        p.assessment_scope,
+        p.assessment_weight,
         p.status,
         p.progress,
         p.period_start,
@@ -330,7 +332,7 @@ $sql = "
     LEFT JOIN `Users` u ON u.id = a.actor_id
     WHERE a.project_id = ?
     ORDER BY a.created_at DESC
-    LIMIT 10
+    LIMIT 5
 ";
 
 $stmt = mysqli_prepare($conn, $sql);
@@ -609,7 +611,7 @@ foreach ($tasks as $t) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($project['name']); ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261020d">
+    <link rel="stylesheet" href="teacher.css?v=20261028a">
 
     <style>
         .page-head {
@@ -648,6 +650,148 @@ foreach ($tasks as $t) {
             gap: 30px;
             margin-bottom: 30px;
         }
+
+        .project-description {
+            max-width: 860px;
+            margin: -3px 0 22px;
+            color: #6b6f78;
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        .status-strip {
+            display: grid;
+            grid-template-columns: 1.35fr repeat(3, 1fr);
+            overflow: hidden;
+            margin-bottom: 30px;
+            background: #fff;
+            border: 1px solid #e3e6ea;
+            border-radius: 10px;
+        }
+
+        .status-metric {
+            min-width: 0;
+            padding: 15px 18px;
+            border-right: 1px solid #eef0f2;
+        }
+
+        .status-metric:last-child { border-right: none; }
+
+        .status-metric > span {
+            display: block;
+            margin-bottom: 5px;
+            color: #8b8f98;
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .status-metric strong {
+            color: #2c2f36;
+            font-size: 21px;
+            font-weight: 650;
+            line-height: 1.1;
+        }
+
+        .status-metric small {
+            margin-left: 4px;
+            color: #8b8f98;
+            font-size: 11.5px;
+            font-weight: 500;
+        }
+
+        .status-metric .mini-progress {
+            height: 5px;
+            margin-top: 9px;
+            overflow: hidden;
+            background: #eef0f3;
+            border-radius: 999px;
+        }
+
+        .status-metric .mini-progress > span {
+            display: block;
+            height: 100%;
+            background: #175196;
+            border-radius: inherit;
+        }
+
+        .status-metric.is-warning strong { color: #b02a2a; }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .section-head h2 { margin-bottom: 12px; }
+
+        .section-head .section-note {
+            margin-bottom: 12px;
+            color: #8b8f98;
+            font-size: 11.5px;
+        }
+
+        .detail-section {
+            margin: 0 0 30px;
+        }
+
+        .detail-section > summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 14px 2px;
+            color: #2c2f36;
+            font-size: 15px;
+            font-weight: 650;
+            cursor: pointer;
+            list-style: none;
+            border-bottom: 1px solid #e3e6ea;
+        }
+
+        .detail-section > summary::-webkit-details-marker { display: none; }
+
+        .detail-section > summary::after {
+            content: "›";
+            flex: 0 0 auto;
+            color: #8b8f98;
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1;
+            transform: rotate(90deg);
+            transition: transform 0.18s ease;
+        }
+
+        .detail-section[open] > summary::after {
+            transform: rotate(-90deg);
+        }
+
+        .detail-section > summary .summary-note {
+            margin-left: auto;
+            color: #8b8f98;
+            font-size: 11.5px;
+            font-weight: 400;
+        }
+
+        .detail-section[open] > summary { margin-bottom: 12px; }
+
+        .milestone-row {
+            display: grid;
+            grid-template-columns: minmax(180px, 1.5fr) minmax(170px, 1fr) 110px;
+            align-items: center;
+            gap: 16px;
+            padding: 13px 16px;
+            border-bottom: 1px solid #f2f3f5;
+            font-size: 13px;
+        }
+
+        .milestone-row:last-child { border-bottom: none; }
+        .milestone-row.is-late { background: #fff8f8; }
+        .milestone-name { color: #2c2f36; font-weight: 550; }
+        .milestone-dates { color: #8b8f98; font-size: 11.5px; }
+        .milestone-state { text-align: right; }
 
         .progress-table td { white-space: normal; }
 
@@ -691,6 +835,12 @@ foreach ($tasks as $t) {
             color: #a8acb4;
             margin-top: 3px;
         }
+
+        .task-row.is-late {
+            background: #fff8f8;
+        }
+
+        .task-row.is-late .task-due { color: #b02a2a; }
 
         .activity-list {
             list-style: none;
@@ -1005,12 +1155,12 @@ foreach ($tasks as $t) {
 
         .btn-secondary {
             display: inline-block;
-            padding: 8px 13px;
+            padding: 7px 10px;
             border: 1px solid #c9d8ea;
             border-radius: 7px;
             background: #fff;
             color: #175196;
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 600;
             text-decoration: none;
         }
@@ -1315,6 +1465,9 @@ foreach ($tasks as $t) {
             .gantt-label { width: 100%; padding: 0 0 6px 0; }
             .review-cta { flex-direction: column; align-items: flex-start; }
             .board-stats { grid-template-columns: repeat(2, 1fr); }
+            .status-strip { grid-template-columns: repeat(2, 1fr); }
+            .status-metric:nth-child(2) { border-right: none; }
+            .status-metric:nth-child(-n+2) { border-bottom: 1px solid #eef0f2; }
         }
 
         @media (max-width: 800px) {
@@ -1326,6 +1479,13 @@ foreach ($tasks as $t) {
             .page-head-actions { justify-content: flex-start; }
             .settings-grid { grid-template-columns: 1fr; }
             .settings-item:nth-child(odd) { border-right: none; }
+            .status-strip { grid-template-columns: 1fr; }
+            .status-metric { border-right: none; border-bottom: 1px solid #eef0f2; }
+            .status-metric:last-child { border-bottom: none; }
+            .milestone-row { grid-template-columns: 1fr; gap: 5px; }
+            .milestone-state { text-align: left; }
+            .detail-section > summary .summary-note { display: none; }
+            .task-row { align-items: flex-start; gap: 14px; }
         }
     </style>
 </head>
@@ -1359,147 +1519,48 @@ foreach ($tasks as $t) {
             <div>
                 <h1><?php echo htmlspecialchars($project['name']); ?></h1>
                 <div class="meta">
+                    <?= !empty($project['is_draft']) ? 'Draft' : htmlspecialchars($project['status']) ?> ·
                     <?php echo htmlspecialchars($project['category']); ?> ·
+                    <?= !empty($project['class_code']) ? htmlspecialchars($project['class_code']) . ' · ' : '' ?>
                     Supervisor: <?php echo htmlspecialchars($project['supervisor']); ?>
+                    · <?php echo date('d M Y', $projStart); ?> – <?php echo date('d M Y', $projEnd); ?>
                     <?php if ($lateCount > 0): ?>
                         · <span class="gantt-late-text"><?php echo $lateCount; ?> milestone<?php echo $lateCount > 1 ? 's' : ''; ?> late</span>
                     <?php endif; ?>
                 </div>
             </div>
             <div class="page-head-actions">
-                <?php if (!empty($project['is_draft'])): ?>
-                    <span class="pill pill-draft">Draft</span>
-                <?php else: ?>
-                    <span class="pill"><?php echo htmlspecialchars($project['status']); ?></span>
-                <?php endif; ?>
+                <a href="teacher_review.php" class="btn-secondary">Review Center</a>
                 <a href="teacher_project_create.php?id=<?= (int) $project['id'] ?>" class="btn-secondary">Edit Project</a>
                 <a href="teacher_project_create.php?duplicate=<?= (int) $project['id'] ?>" class="btn-secondary">Duplicate</a>
             </div>
         </div>
 
-        <!-- Overview -->
-        <h2>Overview</h2>
-        <div class="card">
-            <table>
-                <tr>
-                    <th>Category</th>
-                    <th>Supervisor</th>
-                    <th>Project Period</th>
-                    <th>Teams</th>
-                </tr>
-                <tr>
-                    <td><?php echo htmlspecialchars($project['category']); ?></td>
-                    <td><?php echo htmlspecialchars($project['supervisor']); ?></td>
-                    <td>
-                        <?php echo date('M Y', $projStart); ?>
-                        –
-                        <?php echo date('M Y', $projEnd); ?>
-                    </td>
-                    <td><?php echo count($teams); ?> teams</td>
-                </tr>
-            </table>
-        </div>
+        <?php if (!empty(trim((string) $project['description']))): ?>
+            <p class="project-description"><?= htmlspecialchars($project['description']) ?></p>
+        <?php endif; ?>
 
-        <p class="muted" style="margin: -10px 0 30px;">
-            <?php echo htmlspecialchars($project['description']); ?>
-        </p>
-
-        <!-- Project settings -->
-        <h2>Project Settings</h2>
-        <div class="card settings-card">
-            <div class="settings-grid">
-                <div class="settings-item">
-                    <span class="settings-label">Course</span>
-                    <span class="settings-value">
-                        <?= $project['course_code']
-                            ? htmlspecialchars($project['course_code'] . ' — ' . $project['course_name'])
-                            : '<span class="muted">—</span>' ?>
-                    </span>
+        <div class="status-strip" aria-label="Project status summary">
+            <div class="status-metric">
+                <span>Project progress</span>
+                <strong><?= (int) $project['progress'] ?>%</strong>
+                <div class="mini-progress" aria-hidden="true">
+                    <span style="width: <?= (int) $project['progress'] ?>%"></span>
                 </div>
-                <div class="settings-item">
-                    <span class="settings-label">Class</span>
-                    <span class="settings-value">
-                        <?= !empty($project['class_code'])
-                            ? htmlspecialchars($project['class_code'])
-                            : '<span class="muted">—</span>' ?>
-                    </span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">Student visibility</span>
-                    <span class="settings-value"><?= $project['visibility'] === 'All' ? 'All students' : 'Students in this class' ?></span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">Team formation</span>
-                    <span class="settings-value">
-                        <?php
-                        $teamModeLabels = array(
-                            'Free'             => 'Free — students form teams',
-                            'Random'           => 'Random assignment',
-                            'Teacher_Assigned' => 'Teacher assigns members',
-                        );
-                        echo htmlspecialchars($teamModeLabels[$project['team_mode']] ?? $project['team_mode']);
-                        ?>
-                    </span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">Team formation deadline</span>
-                    <span class="settings-value">
-                        <?= $project['team_deadline'] ? date('d M Y', strtotime($project['team_deadline'])) : '<span class="muted">—</span>' ?>
-                    </span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">Maximum team size</span>
-                    <span class="settings-value"><?= (int) $project['default_max_members'] ?> members</span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">Cross-class teams</span>
-                    <span class="settings-value"><?= !empty($project['allow_cross_class']) ? 'Allowed' : 'Not allowed' ?></span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">After team deadline</span>
-                    <span class="settings-value">
-                        <?php
-                        $postLabels = array(
-                            'Lock'   => 'Lock Team — requires teacher approval',
-                            'Notify' => 'Notify teacher only',
-                        );
-                        echo htmlspecialchars($postLabels[$project['post_deadline_action']] ?? $project['post_deadline_action']);
-                        ?>
-                    </span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">Leader permissions</span>
-                    <span class="settings-value">
-                        <?php
-                        $perms = json_decode((string) $project['leader_permissions'], true);
-                        $permLabels = array(
-                            'invite' => 'Invite', 'remove' => 'Remove', 'rename' => 'Rename',
-                            'assign' => 'Assign tasks', 'submit' => 'Submit files',
-                        );
-                        if (is_array($perms) && count($perms) > 0) {
-                            $out = array();
-                            foreach ($perms as $p) {
-                                $out[] = isset($permLabels[$p]) ? $permLabels[$p] : $p;
-                            }
-                            echo htmlspecialchars(implode(', ', $out));
-                        } else {
-                            echo '<span class="muted">No special permissions</span>';
-                        }
-                        ?>
-                    </span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">Deadline reminder</span>
-                    <span class="settings-value">
-                        <?= (int) $project['reminder_days'] > 0
-                            ? (int) $project['reminder_days'] . ' day(s) before the deadline'
-                            : 'Disabled' ?>
-                    </span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">Extension requests</span>
-                    <span class="settings-value"><?= !empty($project['allow_extension']) ? 'Allowed' : 'Not allowed' ?></span>
-                </div>
+            </div>
+            <div class="status-metric">
+                <span>Teams</span>
+                <strong><?= count($teams) ?></strong>
+                <small><?= (int) $assignedStudents ?> students assigned</small>
+            </div>
+            <div class="status-metric">
+                <span>Tasks completed</span>
+                <strong><?= (int) $doneTasks ?><small>/ <?= (int) $totalTasks ?></small></strong>
+            </div>
+            <div class="status-metric <?= $lateCount > 0 ? 'is-warning' : '' ?>">
+                <span>Milestones late</span>
+                <strong><?= (int) $lateCount ?></strong>
+                <small><?= $lateCount > 0 ? 'Needs attention' : 'On track' ?></small>
             </div>
         </div>
 
@@ -1510,24 +1571,23 @@ foreach ($tasks as $t) {
             </div>
         <?php endif; ?>
 
-        <!-- Team formation board -->
-        <h2>Team Formation Progress</h2>
+        <h2>Team Formation</h2>
         <div class="card board-card">
             <div class="board-stats">
                 <div class="board-stat">
-                    <span>Enrolled students</span>
+                    <span>Enrolled</span>
                     <strong><?= (int) $enrolledStudents ?></strong>
                 </div>
                 <div class="board-stat">
-                    <span>Assigned to a team</span>
+                    <span>Assigned</span>
                     <strong><?= (int) $assignedStudents ?></strong>
                 </div>
                 <div class="board-stat">
-                    <span>Not assigned yet</span>
+                    <span>Unassigned</span>
                     <strong><?= (int) $unassignedStudents ?></strong>
                 </div>
                 <div class="board-stat">
-                    <span>Teams / capacity</span>
+                    <span>Capacity</span>
                     <strong><?= count($teams) ?> / <?= (int) $groupCapacity ?></strong>
                 </div>
             </div>
@@ -1564,47 +1624,43 @@ foreach ($tasks as $t) {
             </div>
         <?php endif; ?>
 
-        <?php if (!empty($project['allow_extension']) || count($extensionRequests) > 0): ?>
-            <h2>Deadline Extension Requests</h2>
+        <?php if (count($extensionRequests) > 0): ?>
+            <h2>Extension Requests</h2>
             <div class="card">
-                <?php if (count($extensionRequests) === 0): ?>
-                    <div class="empty-note">No extension requests yet.</div>
-                <?php else: ?>
-                    <div class="ext-list">
-                        <?php foreach ($extensionRequests as $req): ?>
-                            <div class="ext-item">
-                                <div class="ext-top">
-                                    <div>
-                                        <div class="ext-name">
-                                            <?= htmlspecialchars($req['student_name']) ?>
-                                            <span class="muted"> · <?= htmlspecialchars($req['student_number']) ?></span>
-                                        </div>
-                                        <div class="ext-meta">
-                                            Requested deadline: <strong><?= date('d M Y', strtotime($req['requested_end'])) ?></strong>
-                                            · submitted <?= htmlspecialchars(timeAgo($req['created_at'])) ?>
-                                        </div>
+                <div class="ext-list">
+                    <?php foreach ($extensionRequests as $req): ?>
+                        <div class="ext-item">
+                            <div class="ext-top">
+                                <div>
+                                    <div class="ext-name">
+                                        <?= htmlspecialchars($req['student_name']) ?>
+                                        <span class="muted"> · <?= htmlspecialchars($req['student_number']) ?></span>
                                     </div>
-                                    <span class="pill pill-<?= strtolower($req['status']) ?>"><?= htmlspecialchars($req['status']) ?></span>
+                                    <div class="ext-meta">
+                                        Requested deadline: <strong><?= date('d M Y', strtotime($req['requested_end'])) ?></strong>
+                                        · submitted <?= htmlspecialchars(timeAgo($req['created_at'])) ?>
+                                    </div>
                                 </div>
-
-                                <?php if (!empty($req['reason'])): ?>
-                                    <div class="ext-reason"><?= htmlspecialchars($req['reason']) ?></div>
-                                <?php endif; ?>
-
-                                <?php if ($req['status'] === 'Pending'): ?>
-                                    <form method="post" class="ext-review-form" action="project_detail.php?id=<?= (int) $projectId ?>">
-                                        <input type="hidden" name="requestId" value="<?= (int) $req['id'] ?>">
-                                        <input type="text" name="reviewNote" placeholder="Optional note to the student">
-                                        <button type="submit" name="extensionAction" value="approve" class="btn-approve">Approve</button>
-                                        <button type="submit" name="extensionAction" value="reject" class="btn-reject">Reject</button>
-                                    </form>
-                                <?php elseif (!empty($req['review_note'])): ?>
-                                    <div class="ext-meta">Note: <?= htmlspecialchars($req['review_note']) ?></div>
-                                <?php endif; ?>
+                                <span class="pill pill-<?= strtolower($req['status']) ?>"><?= htmlspecialchars($req['status']) ?></span>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+
+                            <?php if (!empty($req['reason'])): ?>
+                                <div class="ext-reason"><?= htmlspecialchars($req['reason']) ?></div>
+                            <?php endif; ?>
+
+                            <?php if ($req['status'] === 'Pending'): ?>
+                                <form method="post" class="ext-review-form" action="project_detail.php?id=<?= (int) $projectId ?>">
+                                    <input type="hidden" name="requestId" value="<?= (int) $req['id'] ?>">
+                                    <input type="text" name="reviewNote" placeholder="Optional note to the student">
+                                    <button type="submit" name="extensionAction" value="approve" class="btn-approve">Approve</button>
+                                    <button type="submit" name="extensionAction" value="reject" class="btn-reject">Reject</button>
+                                </form>
+                            <?php elseif (!empty($req['review_note'])): ?>
+                                <div class="ext-meta">Note: <?= htmlspecialchars($req['review_note']) ?></div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
         <?php endif; ?>
 
@@ -1623,31 +1679,16 @@ foreach ($tasks as $t) {
                             </span>
                         </div>
                         <div class="ann-row-msg"><?= nl2br(htmlspecialchars($ann['message'])) ?></div>
-                        <div class="ann-row-meta">
-                            Channels: <?= $ann['channels'] === 'email' ? 'Email' : ($ann['channels'] === 'email,inapp' || $ann['channels'] === 'inapp,email' ? 'In-app + Email' : 'In-app') ?>
-                        </div>
+                        <div class="ann-row-meta">In-app announcement</div>
                     </div>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
 
-        <!-- Review Center CTA -->
-        <div class="review-cta">
-            <div>
-                <h3>Review Center</h3>
-                <p>
-                    Check files uploaded by this project's teams, approve or
-                    reject them, and review group formation requests. Rejected
-                    files will be sent back to the students for revision.
-                </p>
-            </div>
-            <div class="cta-actions">
-                <a href="teacher_review.php" class="btn-primary">Open Review Center</a>
-            </div>
+        <div class="section-head">
+            <h2>Teams</h2>
+            <span class="section-note"><?= count($teams) ?> teams · <?= (int) $assignedStudents ?> students</span>
         </div>
-
-        <!-- Teams -->
-        <h2>Teams in this Project</h2>
         <div class="card">
             <table>
                 <tr>
@@ -1661,7 +1702,7 @@ foreach ($tasks as $t) {
 
                 <?php if (count($teams) === 0): ?>
                     <tr>
-                        <td colspan="6" class="muted" style="text-align: center; padding: 30px;">
+                        <td colspan="6" class="muted" style="text-align: center; padding: 24px;">
                             No teams in this project yet.
                         </td>
                     </tr>
@@ -1671,261 +1712,332 @@ foreach ($tasks as $t) {
                     <tr>
                         <td><?php echo htmlspecialchars($t['name']); ?></td>
                         <td><?php echo htmlspecialchars($t['leader_name'] ?: '—'); ?></td>
-                        <td>
-                            <?php echo (int)$t['member_count']; ?> / <?php echo (int)$t['max_members']; ?>
-                        </td>
+                        <td><?php echo (int) $t['member_count']; ?> / <?php echo (int) $t['max_members']; ?></td>
                         <td>
                             <?php
-                            $done  = (int)$t['done_tasks'];
-                            $total = (int)$t['total_tasks'];
+                            $done  = (int) $t['done_tasks'];
+                            $total = (int) $t['total_tasks'];
                             echo $total > 0 ? ($done . ' / ' . $total) : '—';
                             ?>
                         </td>
                         <td><span class="pill"><?php echo htmlspecialchars($t['status']); ?></span></td>
-                        <td><a href="team_detail.php?id=<?php echo (int)$t['id']; ?>" class="link">View</a></td>
+                        <td><a href="team_detail.php?id=<?php echo (int) $t['id']; ?>" class="link">View</a></td>
                     </tr>
                 <?php endforeach; ?>
             </table>
         </div>
 
-        <!-- Progress + Milestones -->
-        <div class="info-grid">
-            <div>
-                <h2>Progress</h2>
-                <div class="card">
-                    <table class="progress-table">
-                        <tr>
-                            <td>Overall</td>
-                            <td>
-                                <span class="progress">
-                                    <span class="bar">
-                                        <span style="width: <?php echo (int)$project['progress']; ?>%"></span>
-                                    </span>
-                                    <?php echo (int)$project['progress']; ?>%
-                                </span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Teams Involved</td>
-                            <td><?php echo count($teams); ?></td>
-                        </tr>
-                        <tr>
-                            <td>Tasks Completed</td>
-                            <td><?php echo $doneTasks; ?> / <?php echo $totalTasks; ?></td>
-                        </tr>
-                        <tr>
-                            <td>Milestones Late</td>
-                            <td>
-                                <?php if ($lateCount > 0): ?>
-                                    <span class="gantt-late-text"><?php echo $lateCount; ?></span>
-                                <?php else: ?>
-                                    0
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Start Date</td>
-                            <td><?php echo date('d M Y', $projStart); ?></td>
-                        </tr>
-                        <tr>
-                            <td>Deadline</td>
-                            <td><?php echo date('d M Y', $projEnd); ?></td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-
-            <div>
-                <h2>Milestones</h2>
-                <div class="card">
-                    <table class="progress-table">
-                        <?php if (count($milestones) === 0): ?>
-                            <tr>
-                                <td colspan="2" class="muted" style="text-align: center;">
-                                    No milestones.
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-
-                        <?php foreach ($milestones as $m): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($m['name']); ?></td>
-                                <td>
-                                    <?php echo htmlspecialchars($m['status']); ?>
-                                    <span class="muted">· <?php echo date('d M Y', strtotime($m['end'])); ?></span>
-                                    <?php if ($m['is_late']): ?>
-                                        · <span class="gantt-late-text">Late</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </table>
-                </div>
-            </div>
+        <div class="section-head">
+            <h2>Milestones</h2>
+            <span class="section-note"><?= date('d M Y', $projStart) ?> – <?= date('d M Y', $projEnd) ?></span>
         </div>
-
-        <!-- Calendar -->
-        <h2>Project Calendar</h2>
-        <div class="card cal-card">
-            <div class="cal-toolbar">
-                <a class="cal-nav" href="project_detail.php?id=<?= (int) $projectId ?>&amp;month=<?= htmlspecialchars($calPrev) ?>" title="Previous month">‹</a>
-                <div class="cal-title"><?= date('F Y', $calFirstTs) ?></div>
-                <a class="cal-nav" href="project_detail.php?id=<?= (int) $projectId ?>&amp;month=<?= htmlspecialchars($calNext) ?>" title="Next month">›</a>
-                <a class="cal-today-link" href="project_detail.php?id=<?= (int) $projectId ?>&amp;month=<?= date('Y-m') ?>">Today</a>
-            </div>
-
-            <div class="cal-scroll">
-                <div class="cal-grid cal-head">
-                    <div>Mon</div>
-                    <div>Tue</div>
-                    <div>Wed</div>
-                    <div>Thu</div>
-                    <div>Fri</div>
-                    <div>Sat</div>
-                    <div>Sun</div>
-                </div>
-
-                <div class="cal-grid">
-                    <?php for ($i = 0; $i < $calLeading; $i++): ?>
-                        <div class="cal-day cal-empty"></div>
-                    <?php endfor; ?>
-
-                    <?php for ($day = 1; $day <= $calDays; $day++): ?>
-                        <?php
-                        $dayDate   = sprintf('%s-%02d', $calendarMonth, $day);
-                        $dayTs     = strtotime($dayDate);
-                        $isToday   = ($dayDate === $calToday);
-                        $isWeekend = ((int) date('N', $dayTs) >= 6);
-                        ?>
-                        <div class="cal-day <?= $isToday ? 'today' : '' ?> <?= $isWeekend ? 'weekend' : '' ?>">
-                            <span class="cal-daynum"><?= $day ?></span>
-                            <?php if (isset($calEvents[$day])): ?>
-                                <?php foreach ($calEvents[$day] as $ev): ?>
-                                    <span class="cal-event <?= htmlspecialchars($ev['class']) ?>"
-                                          title="<?= htmlspecialchars($ev['title']) ?>">
-                                        <?= htmlspecialchars($ev['label']) ?>
-                                    </span>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </div>
-                    <?php endfor; ?>
-
-                    <?php $calTrailing = (7 - (($calLeading + $calDays) % 7)) % 7; ?>
-                    <?php for ($i = 0; $i < $calTrailing; $i++): ?>
-                        <div class="cal-day cal-empty"></div>
-                    <?php endfor; ?>
-                </div>
-            </div>
-
-            <?php if ($calEventCount === 0): ?>
-                <div class="cal-empty-note">No milestones or deadlines in this month.</div>
-            <?php endif; ?>
-
-            <div class="cal-legend">
-                <span><i class="cal-dot pending"></i>Pending</span>
-                <span><i class="cal-dot active"></i>In Progress</span>
-                <span><i class="cal-dot done"></i>Completed</span>
-                <span><i class="cal-dot late"></i>Late</span>
-                <span><i class="cal-dot deadline"></i>Project deadline</span>
-                <span><i class="cal-dot start"></i>Project start</span>
-            </div>
-        </div>
-
-        <!-- Tasks -->
-        <h2>Tasks</h2>
         <div class="card">
-            <?php if (count($tasks) === 0): ?>
-                <div class="muted" style="text-align: center; padding: 30px;">
-                    No tasks yet.
-                </div>
+            <?php if (count($milestones) === 0): ?>
+                <div class="empty-note">No milestones yet.</div>
             <?php endif; ?>
+            <?php foreach ($milestones as $m): ?>
+                <div class="milestone-row <?= !empty($m['is_late']) ? 'is-late' : '' ?>">
+                    <div class="milestone-name"><?= htmlspecialchars($m['name']) ?></div>
+                    <div class="milestone-dates">
+                        <?= date('d M', strtotime($m['start'])) ?>
+                        → <?= date('d M Y', strtotime($m['end'])) ?>
+                    </div>
+                    <div class="milestone-state">
+                        <?php if (!empty($m['is_late'])): ?>
+                            <span class="pill pill-rejected">Late</span>
+                        <?php elseif ($m['status'] === 'Completed'): ?>
+                            <span class="pill pill-approved">Completed</span>
+                        <?php else: ?>
+                            <span class="pill pill-<?= $m['status'] === 'In Progress' ? 'pending' : 'draft' ?>">
+                                <?= htmlspecialchars($m['status']) ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
 
-            <?php foreach ($tasks as $t): ?>
-                <div class="task-row">
+        <?php
+        $activeTasks = array();
+        foreach ($tasks as $taskItem) {
+            if ($taskItem['status'] !== 'Completed') {
+                $activeTasks[] = $taskItem;
+            }
+        }
+        ?>
+        <div class="section-head">
+            <h2>Active Tasks</h2>
+            <span class="section-note"><?= (int) $doneTasks ?> completed tasks hidden</span>
+        </div>
+        <div class="card">
+            <?php if (count($activeTasks) === 0): ?>
+                <div class="empty-note">No active tasks. All tasks are completed.</div>
+            <?php endif; ?>
+            <?php foreach ($activeTasks as $t): ?>
+                <?php
+                $taskIsLate = !empty($t['due_date'])
+                    && strtotime($t['due_date']) < strtotime(date('Y-m-d'))
+                    && $t['status'] !== 'Completed';
+                ?>
+                <div class="task-row <?= $taskIsLate ? 'is-late' : '' ?>">
                     <div>
-                        <div class="task-name"><?php echo htmlspecialchars($t['title']); ?></div>
+                        <div class="task-name"><?= htmlspecialchars($t['title']) ?></div>
                         <div class="task-owner">
-                            <?php echo htmlspecialchars($t['team_name'] ?: '—'); ?> ·
-                            <?php echo htmlspecialchars($t['owner_name'] ?: '—'); ?>
+                            <?= htmlspecialchars($t['team_name'] ?: '—') ?> ·
+                            <?= htmlspecialchars($t['owner_name'] ?: '—') ?>
                         </div>
                     </div>
                     <div class="task-right">
-                        <div><?php echo htmlspecialchars($t['status']); ?></div>
+                        <div><?= htmlspecialchars($t['status']) ?></div>
                         <div class="task-due">
-                            <?php echo $t['due_date'] ? date('d M Y', strtotime($t['due_date'])) : '—'; ?>
+                            <?= $t['due_date'] ? date('d M Y', strtotime($t['due_date'])) : '—' ?>
+                            <?= $taskIsLate ? ' · Late' : '' ?>
                         </div>
                     </div>
                 </div>
             <?php endforeach; ?>
         </div>
 
-        <!-- Files by Team -->
-        <h2>Files by Team</h2>
-
-        <?php if (count($fileGroups) === 0): ?>
-            <div class="card">
-                <div class="muted" style="text-align: center; padding: 30px;">
-                    No files uploaded yet.
-                </div>
+        <?php if (count($fileGroups) > 0): ?>
+            <h2>Team Files</h2>
+            <div class="file-groups">
+                <?php foreach ($fileGroups as $g): ?>
+                    <div class="file-group">
+                        <div class="file-group-head">
+                            <h3><?= htmlspecialchars($g['team']) ?></h3>
+                            <span class="file-group-meta"><?= (int) $g['file_count'] ?> files</span>
+                        </div>
+                        <div class="file-group-body">
+                            <ul>
+                                <?php foreach ($g['items'] as $f): ?>
+                                    <li>
+                                        <span><?= htmlspecialchars($f['file_name']) ?></span>
+                                        <span class="muted">
+                                            <?= htmlspecialchars($f['owner_name']) ?> ·
+                                            <?= htmlspecialchars($f['file_size']) ?> ·
+                                            <?= timeAgo($f['uploaded_at']) ?>
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <div class="file-group-foot">
+                            <span>Last: <?= htmlspecialchars($g['last_upload']) ?></span>
+                            <a href="teacher_files.php" class="link">View all</a>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
 
-        <div class="file-groups">
-            <?php foreach ($fileGroups as $g): ?>
-                <div class="file-group">
-
-                    <div class="file-group-head">
-                        <h3><?php echo htmlspecialchars($g['team']); ?></h3>
-                        <span class="file-group-meta">
-                            <?php echo (int)$g['file_count']; ?> files
+        <details class="detail-section">
+            <summary>
+                Project Settings
+                <span class="summary-note">Team rules, permissions and reminders</span>
+            </summary>
+            <div class="card settings-card">
+                <div class="settings-grid">
+                    <div class="settings-item">
+                        <span class="settings-label">Course</span>
+                        <span class="settings-value">
+                            <?= $project['course_code']
+                                ? htmlspecialchars($project['course_code'] . ' — ' . $project['course_name'])
+                                : '<span class="muted">—</span>' ?>
                         </span>
                     </div>
-
-                    <div class="file-group-body">
-                        <ul>
-                            <?php foreach ($g['items'] as $f): ?>
-                                <li>
-                                    <span><?php echo htmlspecialchars($f['file_name']); ?></span>
-                                    <span class="muted">
-                                        <?php echo htmlspecialchars($f['owner_name']); ?> ·
-                                        <?php echo htmlspecialchars($f['file_size']); ?> ·
-                                        <?php echo timeAgo($f['uploaded_at']); ?>
-                                    </span>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
+                    <div class="settings-item">
+                        <span class="settings-label">Class</span>
+                        <span class="settings-value">
+                            <?= !empty($project['class_code'])
+                                ? htmlspecialchars($project['class_code'])
+                                : '<span class="muted">—</span>' ?>
+                        </span>
                     </div>
-
-                    <div class="file-group-foot">
-                        <span>Last: <?php echo htmlspecialchars($g['last_upload']); ?></span>
-                        <a href="teacher_files.php" class="link">View all</a>
+                    <div class="settings-item">
+                        <span class="settings-label">Assessment weight</span>
+                        <span class="settings-value">
+                            <?php if (!empty($project['assessment_scope']) && $project['assessment_weight'] !== null): ?>
+                                <?= htmlspecialchars((string) (int) $project['assessment_weight'] . '% of ' . $project['assessment_scope']) ?>
+                            <?php else: ?>
+                                <span class="muted">Not set</span>
+                            <?php endif; ?>
+                        </span>
                     </div>
-
+                    <div class="settings-item">
+                        <span class="settings-label">Student visibility</span>
+                        <span class="settings-value"><?= $project['visibility'] === 'All' ? 'All students' : 'Students in this class' ?></span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Team formation</span>
+                        <span class="settings-value">
+                            <?php
+                            $teamModeLabels = array(
+                                'Free'             => 'Free — students form teams',
+                                'Random'           => 'Random assignment',
+                                'Teacher_Assigned' => 'Teacher assigns members',
+                            );
+                            echo htmlspecialchars($teamModeLabels[$project['team_mode']] ?? $project['team_mode']);
+                            ?>
+                        </span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Team formation deadline</span>
+                        <span class="settings-value">
+                            <?= $project['team_deadline'] ? date('d M Y', strtotime($project['team_deadline'])) : '<span class="muted">—</span>' ?>
+                        </span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Maximum team size</span>
+                        <span class="settings-value"><?= (int) $project['default_max_members'] ?> members</span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Cross-class teams</span>
+                        <span class="settings-value"><?= !empty($project['allow_cross_class']) ? 'Allowed' : 'Not allowed' ?></span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">After team deadline</span>
+                        <span class="settings-value">
+                            <?php
+                            $postLabels = array(
+                                'Lock'   => 'Lock Team — requires teacher approval',
+                                'Notify' => 'Notify teacher only',
+                            );
+                            echo htmlspecialchars($postLabels[$project['post_deadline_action']] ?? $project['post_deadline_action']);
+                            ?>
+                        </span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Leader permissions</span>
+                        <span class="settings-value">
+                            <?php
+                            $perms = json_decode((string) $project['leader_permissions'], true);
+                            $permLabels = array(
+                                'invite' => 'Invite', 'remove' => 'Remove', 'rename' => 'Rename',
+                                'assign' => 'Assign tasks', 'submit' => 'Submit files',
+                            );
+                            if (is_array($perms) && count($perms) > 0) {
+                                $out = array();
+                                foreach ($perms as $p) {
+                                    $out[] = isset($permLabels[$p]) ? $permLabels[$p] : $p;
+                                }
+                                echo htmlspecialchars(implode(', ', $out));
+                            } else {
+                                echo '<span class="muted">No special permissions</span>';
+                            }
+                            ?>
+                        </span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Deadline reminder</span>
+                        <span class="settings-value">
+                            <?= (int) $project['reminder_days'] > 0
+                                ? (int) $project['reminder_days'] . ' day(s) before the deadline'
+                                : 'Disabled' ?>
+                        </span>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-label">Extension requests</span>
+                        <span class="settings-value"><?= !empty($project['allow_extension']) ? 'Allowed' : 'Not allowed' ?></span>
+                    </div>
                 </div>
-            <?php endforeach; ?>
-        </div>
+            </div>
+        </details>
 
-        <!-- Activity -->
-        <h2 style="margin-top: 30px;">Activity</h2>
-        <div class="card">
-            <ul class="activity-list">
-                <?php if (count($activities) === 0): ?>
-                    <li class="muted">No activity yet.</li>
+        <details class="detail-section" <?= isset($_GET['month']) ? 'open' : '' ?>>
+            <summary>
+                Project Calendar
+                <span class="summary-note"><?= date('F Y', $calFirstTs) ?> · <?= (int) $calEventCount ?> scheduled items</span>
+            </summary>
+            <div class="card cal-card">
+                <div class="cal-toolbar">
+                    <a class="cal-nav" href="project_detail.php?id=<?= (int) $projectId ?>&amp;month=<?= htmlspecialchars($calPrev) ?>" title="Previous month">‹</a>
+                    <div class="cal-title"><?= date('F Y', $calFirstTs) ?></div>
+                    <a class="cal-nav" href="project_detail.php?id=<?= (int) $projectId ?>&amp;month=<?= htmlspecialchars($calNext) ?>" title="Next month">›</a>
+                    <a class="cal-today-link" href="project_detail.php?id=<?= (int) $projectId ?>&amp;month=<?= date('Y-m') ?>">Today</a>
+                </div>
+
+                <div class="cal-scroll">
+                    <div class="cal-grid cal-head">
+                        <div>Mon</div>
+                        <div>Tue</div>
+                        <div>Wed</div>
+                        <div>Thu</div>
+                        <div>Fri</div>
+                        <div>Sat</div>
+                        <div>Sun</div>
+                    </div>
+
+                    <div class="cal-grid">
+                        <?php for ($i = 0; $i < $calLeading; $i++): ?>
+                            <div class="cal-day cal-empty"></div>
+                        <?php endfor; ?>
+
+                        <?php for ($day = 1; $day <= $calDays; $day++): ?>
+                            <?php
+                            $dayDate   = sprintf('%s-%02d', $calendarMonth, $day);
+                            $dayTs     = strtotime($dayDate);
+                            $isToday   = ($dayDate === $calToday);
+                            $isWeekend = ((int) date('N', $dayTs) >= 6);
+                            ?>
+                            <div class="cal-day <?= $isToday ? 'today' : '' ?> <?= $isWeekend ? 'weekend' : '' ?>">
+                                <span class="cal-daynum"><?= $day ?></span>
+                                <?php if (isset($calEvents[$day])): ?>
+                                    <?php foreach ($calEvents[$day] as $ev): ?>
+                                        <span class="cal-event <?= htmlspecialchars($ev['class']) ?>"
+                                              title="<?= htmlspecialchars($ev['title']) ?>">
+                                            <?= htmlspecialchars($ev['label']) ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php endfor; ?>
+
+                        <?php $calTrailing = (7 - (($calLeading + $calDays) % 7)) % 7; ?>
+                        <?php for ($i = 0; $i < $calTrailing; $i++): ?>
+                            <div class="cal-day cal-empty"></div>
+                        <?php endfor; ?>
+                    </div>
+                </div>
+
+                <?php if ($calEventCount === 0): ?>
+                    <div class="cal-empty-note">No milestones or deadlines in this month.</div>
                 <?php endif; ?>
 
-                <?php foreach ($activities as $a): ?>
-                    <li>
-                        <span>
-                            <?php if (!empty($a['actor_name'])): ?>
-                                <strong><?php echo htmlspecialchars($a['actor_name']); ?></strong>
-                            <?php endif; ?>
-                            <?php echo htmlspecialchars($a['detail']); ?>
-                        </span>
-                        <span class="muted"><?php echo timeAgo($a['created_at']); ?></span>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
+                <div class="cal-legend">
+                    <span><i class="cal-dot pending"></i>Pending</span>
+                    <span><i class="cal-dot active"></i>In Progress</span>
+                    <span><i class="cal-dot done"></i>Completed</span>
+                    <span><i class="cal-dot late"></i>Late</span>
+                    <span><i class="cal-dot deadline"></i>Project deadline</span>
+                    <span><i class="cal-dot start"></i>Project start</span>
+                </div>
+            </div>
+        </details>
+
+        <details class="detail-section">
+            <summary>
+                Recent Activity
+                <span class="summary-note">Latest 5 project updates</span>
+            </summary>
+            <div class="card">
+                <ul class="activity-list">
+                    <?php if (count($activities) === 0): ?>
+                        <li class="muted">No activity yet.</li>
+                    <?php endif; ?>
+                    <?php foreach ($activities as $a): ?>
+                        <li>
+                            <span>
+                                <?php if (!empty($a['actor_name'])): ?>
+                                    <strong><?= htmlspecialchars($a['actor_name']) ?></strong>
+                                <?php endif; ?>
+                                <?= htmlspecialchars($a['detail']) ?>
+                            </span>
+                            <span class="muted"><?= timeAgo($a['created_at']) ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </details>
 
     </div>
 </main>
