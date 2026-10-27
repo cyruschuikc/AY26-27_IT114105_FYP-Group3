@@ -73,18 +73,33 @@ while ($row = mysqli_fetch_assoc($rs)) {
 }
 mysqli_stmt_close($stmt);
 
+// All classes are available as cross-class partners.
+$allClasses = array();
+$stmt = mysqli_query($conn, "
+    SELECT cl.id, cl.class_code, cl.course_id, c.code AS course_code
+    FROM `classes` cl
+    INNER JOIN `courses` c ON c.id = cl.course_id
+    ORDER BY cl.class_code
+");
+while ($row = mysqli_fetch_assoc($stmt)) {
+    $allClasses[] = $row;
+}
+mysqli_free_result($stmt);
+
 // =========================================================
 // Defaults
 // =========================================================
 $defaultPermissions = array('invite', 'rename', 'assign', 'submit');
 $allowedCategories = array('CA', 'EA', 'Assignment', 'Final Year Project');
 $allowedAssessmentScopes = array('CA', 'EA', 'This Semester', 'Full Year');
+$allowedTopicModes = array('Fixed', 'Multi', 'Self');
 
 $form = array(
     'name'                 => '',
     'class_id'             => count($classes) > 0 ? (int) $classes[0]['id'] : 0,
     'course_id'            => count($classes) > 0 ? (int) $classes[0]['course_id'] : 0,
     'category'             => '',
+    'topic_mode'           => 'Fixed',
     'assessment_scope'     => '',
     'assessment_weight'    => '',
     'description'          => '',
@@ -96,6 +111,7 @@ $form = array(
     'team_deadline'        => date('Y-m-d', strtotime('+2 weeks')),
     'max_members'          => 4,
     'allow_cross_class'    => 0,
+    'cross_class_ids'      => array(),
     'leader_permissions'   => $defaultPermissions,
     'post_deadline_action' => 'Lock',
     'reminder_days'        => 3,
@@ -109,6 +125,9 @@ $form = array(
 
 $milestones = array(
     array('name' => '', 'start' => '', 'end' => ''),
+);
+$topics = array(
+    array('id' => 0, 'title' => '', 'description' => ''),
 );
 
 $existingAttachments = array();
@@ -141,6 +160,9 @@ if ($sourceId > 0) {
         $form['category']             = in_array($source['category'], $allowedCategories, true)
             ? $source['category']
             : '';
+        $form['topic_mode']            = in_array($source['topic_mode'], $allowedTopicModes, true)
+            ? $source['topic_mode']
+            : 'Fixed';
         $form['assessment_scope']     = (string) ($source['assessment_scope'] ?? '');
         $form['assessment_weight']    = $source['assessment_weight'] !== null
             ? (string) (int) $source['assessment_weight']
@@ -192,6 +214,44 @@ if ($sourceId > 0) {
             $milestones = $loadedMs;
         }
 
+        // Topic options. Duplicate mode copies them as new rows.
+        $stmt = mysqli_prepare($conn, "
+            SELECT id, title, description
+            FROM `project_topics`
+            WHERE project_id = ? AND is_active = 1
+            ORDER BY position, id
+        ");
+        mysqli_stmt_bind_param($stmt, "i", $sourceId);
+        mysqli_stmt_execute($stmt);
+        $rs = mysqli_stmt_get_result($stmt);
+        $loadedTopics = array();
+        while ($row = mysqli_fetch_assoc($rs)) {
+            $loadedTopics[] = array(
+                'id' => $isDuplicate ? 0 : (int) $row['id'],
+                'title' => $row['title'],
+                'description' => (string) $row['description'],
+            );
+        }
+        mysqli_stmt_close($stmt);
+        if (count($loadedTopics) > 0) {
+            $topics = $loadedTopics;
+        }
+
+        $form['cross_class_ids'] = array();
+        $stmt = mysqli_prepare($conn, "
+            SELECT class_id
+            FROM `project_cross_classes`
+            WHERE project_id = ?
+            ORDER BY class_id
+        ");
+        mysqli_stmt_bind_param($stmt, "i", $sourceId);
+        mysqli_stmt_execute($stmt);
+        $rs = mysqli_stmt_get_result($stmt);
+        while ($row = mysqli_fetch_assoc($rs)) {
+            $form['cross_class_ids'][] = (int) $row['class_id'];
+        }
+        mysqli_stmt_close($stmt);
+
         // Attachments are only managed in edit mode, never copied on duplicate.
         if ($isEdit) {
             $stmt = mysqli_prepare($conn, "
@@ -222,13 +282,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['name']                 = trim(isset($_POST['name']) ? $_POST['name'] : '');
     $form['class_id']             = (int) (isset($_POST['classId']) ? $_POST['classId'] : 0);
     $form['course_id']            = 0;
+    $selectedClassCode            = '';
+    $selectedCourseCode           = '';
     foreach ($classes as $classRow) {
         if ((int) $classRow['id'] === $form['class_id']) {
             $form['course_id'] = (int) $classRow['course_id'];
+            $selectedClassCode = $classRow['class_code'];
+            $selectedCourseCode = $classRow['course_code'];
             break;
         }
     }
     $form['category']             = trim(isset($_POST['category']) ? $_POST['category'] : '');
+    $form['topic_mode']           = isset($_POST['topicMode']) ? trim($_POST['topicMode']) : 'Fixed';
     $form['assessment_scope']     = trim(isset($_POST['assessmentScope']) ? $_POST['assessmentScope'] : '');
     $form['assessment_weight']    = trim(isset($_POST['assessmentWeight']) ? $_POST['assessmentWeight'] : '');
     $form['description']          = trim(isset($_POST['description']) ? $_POST['description'] : '');
@@ -240,6 +305,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['team_deadline']        = trim(isset($_POST['teamDeadline']) ? $_POST['teamDeadline'] : '');
     $form['max_members']          = (int) (isset($_POST['maxMembers']) ? $_POST['maxMembers'] : 0);
     $form['allow_cross_class']    = isset($_POST['allowCrossClass']) ? 1 : 0;
+    $form['cross_class_ids']      = array();
+    if ($form['allow_cross_class'] && isset($_POST['crossClassIds']) && is_array($_POST['crossClassIds'])) {
+        foreach ($_POST['crossClassIds'] as $crossClassId) {
+            $crossClassId = (int) $crossClassId;
+            if ($crossClassId > 0) {
+                $form['cross_class_ids'][] = $crossClassId;
+            }
+        }
+        $form['cross_class_ids'] = array_values(array_unique($form['cross_class_ids']));
+    }
     $form['post_deadline_action'] = isset($_POST['postDeadlineAction']) ? trim($_POST['postDeadlineAction']) : '';
     $form['reminder_days']        = (int) (isset($_POST['reminderDays']) ? $_POST['reminderDays'] : 3);
     $form['allow_extension']      = isset($_POST['allowExtension']) ? 1 : 0;
@@ -277,9 +352,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $milestones[] = array('name' => '', 'start' => '', 'end' => '');
     }
 
+    // Topic allocation
+    $postedTopicIds   = isset($_POST['topicId']) && is_array($_POST['topicId']) ? $_POST['topicId'] : array();
+    $postedTopicNames = isset($_POST['topicTitle']) && is_array($_POST['topicTitle']) ? $_POST['topicTitle'] : array();
+    $postedTopicDescs = isset($_POST['topicDescription']) && is_array($_POST['topicDescription']) ? $_POST['topicDescription'] : array();
+    $topics = array();
+    $topicCount = max(count($postedTopicIds), count($postedTopicNames), count($postedTopicDescs));
+    for ($i = 0; $i < $topicCount; $i++) {
+        $topicTitle = trim(isset($postedTopicNames[$i]) ? $postedTopicNames[$i] : '');
+        if ($topicTitle === '') {
+            continue;
+        }
+        $topics[] = array(
+            'id' => isset($postedTopicIds[$i]) ? (int) $postedTopicIds[$i] : 0,
+            'title' => $topicTitle,
+            'description' => trim(isset($postedTopicDescs[$i]) ? $postedTopicDescs[$i] : ''),
+        );
+    }
+    if (count($topics) === 0) {
+        $topics[] = array('id' => 0, 'title' => '', 'description' => '');
+    }
+
+    if (in_array($form['topic_mode'], array('Multi', 'Self'), true)
+        && $selectedClassCode !== ''
+        && $selectedCourseCode !== ''
+        && in_array($form['category'], $allowedCategories, true)) {
+        $form['name'] = $selectedCourseCode . '_' . $selectedClassCode . '_' . $form['category'];
+    }
+
+    // Fixed topic and Project title are the same title.
+    if ($form['topic_mode'] === 'Fixed' && $form['name'] !== '') {
+        $fixedTopicId = count($topics) > 0 ? (int) $topics[0]['id'] : 0;
+        $topics = array(array(
+            'id' => $fixedTopicId,
+            'title' => $form['name'],
+            'description' => '',
+        ));
+    }
+
     // ---------- Validation ----------
     if ($form['name'] === '') {
-        $errors[] = 'Project title is required.';
+        $errors[] = in_array($form['topic_mode'], array('Multi', 'Self'), true)
+            ? 'The automatic project title could not be generated. Check the class and category.'
+            : 'Project title is required.';
     } elseif (strlen($form['name']) > 150) {
         $errors[] = 'Project title must be 150 characters or fewer.';
     }
@@ -289,6 +404,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!in_array($form['category'], $allowedCategories, true)) {
         $errors[] = 'Please choose a valid project category.';
+    }
+    if (!in_array($form['topic_mode'], $allowedTopicModes, true)) {
+        $errors[] = 'Please choose a valid topic allocation method.';
+    }
+    $namedTopics = array_values(array_filter($topics, function ($topic) {
+        return trim((string) $topic['title']) !== '';
+    }));
+    if ($form['topic_mode'] === 'Multi' && count($namedTopics) === 0) {
+        $errors[] = 'Add at least one topic option for multi-select mode.';
+    }
+    if ($form['topic_mode'] !== 'Self' && count($namedTopics) > 0) {
+        foreach ($namedTopics as $topic) {
+            if (mb_strlen($topic['title']) > 180) {
+                $errors[] = 'Each topic title must be 180 characters or fewer.';
+                break;
+            }
+        }
     }
     $hasAssessmentScope = ($form['assessment_scope'] !== '');
     $hasAssessmentWeight = ($form['assessment_weight'] !== '');
@@ -306,7 +438,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$isDraft) {
-        if ($form['description'] === '') {
+        if ($form['description'] === '' && $form['topic_mode'] !== 'Multi') {
             $errors[] = 'Project description is required before publishing.';
         }
         if ($form['period_start'] === '' || $form['period_end'] === '') {
@@ -342,6 +474,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!in_array($form['post_deadline_action'], array('Lock', 'Notify'), true)) {
         $errors[] = 'Please choose what happens after the team deadline.';
+    }
+    $allClassIds = array();
+    foreach ($allClasses as $classOption) {
+        $allClassIds[] = (int) $classOption['id'];
+    }
+    $form['cross_class_ids'] = array_values(array_intersect(
+        $form['cross_class_ids'],
+        $allClassIds
+    ));
+    $form['cross_class_ids'] = array_values(array_filter(
+        $form['cross_class_ids'],
+        function ($classId) use ($form) {
+            return (int) $classId !== (int) $form['class_id'];
+        }
+    ));
+    if (!$form['allow_cross_class']) {
+        $form['cross_class_ids'] = array();
+    } elseif (count($form['cross_class_ids']) === 0) {
+        $errors[] = 'Select at least one partner class for cross-class teams.';
     }
     if ($form['reminder_days'] < 0 || $form['reminder_days'] > 60) {
         $errors[] = 'Reminder days must be between 0 and 60.';
@@ -380,11 +531,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // One class may only have one active Final Year Project workspace.
+    if (!$isDraft
+        && $form['category'] === 'Final Year Project'
+        && $form['class_id'] > 0) {
+        $excludeProjectId = $isEdit ? $editId : 0;
+        $stmt = mysqli_prepare($conn, "
+            SELECT id
+            FROM `projects`
+            WHERE class_id = ?
+              AND category = 'Final Year Project'
+              AND is_draft = 0
+              AND status NOT IN ('Completed', 'Archived')
+              AND id <> ?
+            LIMIT 1
+        ");
+        mysqli_stmt_bind_param($stmt, "ii", $form['class_id'], $excludeProjectId);
+        mysqli_stmt_execute($stmt);
+        $rs = mysqli_stmt_get_result($stmt);
+        $conflict = mysqli_fetch_assoc($rs);
+        mysqli_stmt_close($stmt);
+        if ($conflict) {
+            $errors[] = 'This class already has an active Final Year Project. Complete or archive it before publishing another.';
+        }
+    }
+
     // ---------- Save ----------
     if (count($errors) === 0) {
 
         $leaderPermissions = json_encode($form['leader_permissions']);
-        $desc              = ($form['description'] !== '') ? $form['description'] : null;
+        $desc              = ($form['description'] !== '' && $form['topic_mode'] !== 'Multi')
+            ? $form['description']
+            : null;
         $reqs              = ($form['requirements'] !== '') ? $form['requirements'] : null;
         $startDate         = ($form['period_start'] !== '') ? $form['period_start'] : null;
         $endDate           = ($form['period_end'] !== '') ? $form['period_end'] : null;
@@ -466,6 +644,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             mysqli_stmt_close($weightStmt);
 
+            $topicModeStmt = mysqli_prepare($conn, "
+                UPDATE `projects`
+                SET topic_mode = ?
+                WHERE id = ? AND supervisor_id = ?
+            ");
+            mysqli_stmt_bind_param(
+                $topicModeStmt,
+                "sii",
+                $form['topic_mode'],
+                $projectId,
+                $teacherId
+            );
+            if (!mysqli_stmt_execute($topicModeStmt)) {
+                $errors[] = 'Could not save the topic allocation method: ' . mysqli_stmt_error($topicModeStmt);
+            }
+            mysqli_stmt_close($topicModeStmt);
+
             // ---------- Milestones: replace ----------
             $del = mysqli_prepare($conn, "DELETE FROM `milestones` WHERE project_id = ?");
             mysqli_stmt_bind_param($del, "i", $projectId);
@@ -484,6 +679,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_execute($ins);
             }
             mysqli_stmt_close($ins);
+
+            // ---------- Topic options: deactivate and synchronize ----------
+            $deactivateTopics = mysqli_prepare($conn, "
+                UPDATE `project_topics`
+                SET is_active = 0
+                WHERE project_id = ?
+            ");
+            mysqli_stmt_bind_param($deactivateTopics, "i", $projectId);
+            mysqli_stmt_execute($deactivateTopics);
+            mysqli_stmt_close($deactivateTopics);
+
+            if ($form['topic_mode'] !== 'Self') {
+                $updateTopic = mysqli_prepare($conn, "
+                    UPDATE `project_topics`
+                    SET title = ?, description = ?, position = ?, is_active = 1
+                    WHERE id = ? AND project_id = ?
+                ");
+                $insertTopic = mysqli_prepare($conn, "
+                    INSERT INTO `project_topics`
+                        (project_id, title, description, position, is_active)
+                    VALUES (?, ?, ?, ?, 1)
+                ");
+
+                foreach ($topics as $position => $topic) {
+                    if (trim((string) $topic['title']) === '') {
+                        continue;
+                    }
+                    $topicDescription = $topic['description'] !== ''
+                        ? $topic['description']
+                        : null;
+                    $topicId = (int) $topic['id'];
+                    if ($topicId > 0) {
+                        mysqli_stmt_bind_param(
+                            $updateTopic,
+                            "ssiii",
+                            $topic['title'],
+                            $topicDescription,
+                            $position,
+                            $topicId,
+                            $projectId
+                        );
+                        mysqli_stmt_execute($updateTopic);
+                    } else {
+                        mysqli_stmt_bind_param(
+                            $insertTopic,
+                            "issi",
+                            $projectId,
+                            $topic['title'],
+                            $topicDescription,
+                            $position
+                        );
+                        mysqli_stmt_execute($insertTopic);
+                    }
+                }
+                mysqli_stmt_close($updateTopic);
+                mysqli_stmt_close($insertTopic);
+            }
+
+            // ---------- Cross-class partner classes ----------
+            $clearCrossClasses = mysqli_prepare($conn, "
+                DELETE FROM `project_cross_classes`
+                WHERE project_id = ?
+            ");
+            mysqli_stmt_bind_param($clearCrossClasses, "i", $projectId);
+            mysqli_stmt_execute($clearCrossClasses);
+            mysqli_stmt_close($clearCrossClasses);
+
+            if ($form['allow_cross_class'] && count($form['cross_class_ids']) > 0) {
+                $insertCrossClass = mysqli_prepare($conn, "
+                    INSERT INTO `project_cross_classes` (project_id, class_id)
+                    VALUES (?, ?)
+                ");
+                foreach ($form['cross_class_ids'] as $crossClassId) {
+                    mysqli_stmt_bind_param($insertCrossClass, "ii", $projectId, $crossClassId);
+                    mysqli_stmt_execute($insertCrossClass);
+                }
+                mysqli_stmt_close($insertCrossClass);
+            }
 
             // ---------- Attachments ----------
             $uploadDir = __DIR__ . '/uploads/project_attachments';
@@ -648,7 +921,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028a">
+    <link rel="stylesheet" href="teacher.css?v=20261028b">
     <style>
         .pf-wrap { max-width: 980px; }
         .pf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
@@ -687,6 +960,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
         .pf-grid.three { grid-template-columns: 1fr 1fr 1fr; }
         .pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
         .pf-field.full { grid-column: 1 / -1; }
+        .pf-field[hidden], .pf-topic-note[hidden] { display: none !important; }
         .pf-field label { color: #303640; font-size: 12.5px; font-weight: 600; }
         .pf-field > label {
             display: flex;
@@ -717,6 +991,17 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
             outline: none; border-color: #8db8ea; box-shadow: 0 0 0 3px rgba(141, 184, 234, 0.2);
         }
         .pf-help { color: #69717b; font-size: 11.5px; line-height: 1.5; }
+        .auto-project-title-value {
+            padding: 10px 11px;
+            border: 1px solid #dce3ea;
+            border-radius: 7px;
+            background: #f5f8fb;
+            color: #30485f;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.5;
+        }
         .assessment-weight-row {
             display: grid;
             grid-template-columns: minmax(180px, 1fr) 110px;
@@ -736,9 +1021,80 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
         }
         .pf-checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
         .pf-checks label { display: inline-flex; align-items: center; gap: 7px; color: #3d444e; font-size: 12.5px; font-weight: 500; }
+        .cross-class-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .cross-class-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 36px;
+            padding: 7px 9px;
+            border: 1px solid #dfe3e8;
+            border-radius: 7px;
+            background: #fff;
+            color: #3f4751;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+        .cross-class-option.is-home {
+            border-color: #c9d8e8;
+            background: #f3f7fb;
+            color: #315d87;
+        }
+        .cross-class-option input { margin: 0; }
+        .cross-class-option.is-home::after {
+            margin-left: auto;
+            color: #718091;
+            font-family: inherit;
+            font-size: 8px;
+            font-weight: 600;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            content: "Home";
+        }
         .pf-inline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #4b5058; }
         .pf-ms-row { display: grid; grid-template-columns: 1.6fr 1fr 1fr 34px; gap: 10px; margin-bottom: 10px; align-items: center; }
         .pf-ms-row input { width: 100%; padding: 8px 10px; border: 1px solid #dfe2e6; border-radius: 7px; font-size: 12.5px; }
+        .pf-topic-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) 34px;
+            gap: 10px;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+        .pf-topic-row input,
+        .pf-topic-row textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #dfe2e6;
+            border-radius: 7px;
+            background: #fff;
+            color: #2c2f36;
+            font-family: inherit;
+            font-size: 12.5px;
+        }
+        .pf-topic-row textarea { min-height: 36px; resize: vertical; }
+        .pf-topic-note {
+            padding: 12px 14px;
+            border: 1px solid #dce7f3;
+            border-radius: 8px;
+            background: #f6f9fd;
+            color: #526273;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .pf-topic-note.full { grid-column: 1 / -1; }
+        .topic-editor-field {
+            padding: 13px;
+            border: 1px solid #e3e8ee;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
         .pf-icon-btn { width: 34px; height: 34px; border: 1px solid #e2e4e8; border-radius: 7px; background: #fff; color: #8b8f98; cursor: pointer; font-size: 16px; line-height: 1; }
         .pf-icon-btn:hover { color: #d32f2f; border-color: #f0b4b4; }
         .pf-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; }
@@ -764,6 +1120,8 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
             .pf-grid, .pf-grid.three { grid-template-columns: 1fr; }
             .assessment-weight-row { grid-template-columns: 1fr; }
             .pf-ms-row { grid-template-columns: 1fr; }
+            .pf-topic-row { grid-template-columns: 1fr; }
+            .cross-class-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .pf-icon-btn { width: 100%; }
         }
     </style>
@@ -806,10 +1164,80 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
 
                 <div class="pf-grid">
                     <div class="pf-field full">
+                        <label for="topicMode">Allocation method <span class="req">*</span></label>
+                        <select id="topicMode" name="topicMode" required>
+                            <option value="Fixed" <?= $form['topic_mode'] === 'Fixed' ? 'selected' : '' ?>>Fixed topic — Project title is the topic title</option>
+                            <option value="Multi" <?= $form['topic_mode'] === 'Multi' ? 'selected' : '' ?>>Multi-select topics — teams choose one and request approval</option>
+                            <option value="Self" <?= $form['topic_mode'] === 'Self' ? 'selected' : '' ?>>Self-selected topic — each team proposes its own title</option>
+                        </select>
+                        <span class="pf-help" id="topicModeHelp"></span>
+                    </div>
+
+                    <div class="pf-field" id="manualProjectTitleField"
+                         <?= $form['topic_mode'] !== 'Fixed' ? 'hidden' : '' ?>>
                         <label for="name">Project title <span class="req">*</span></label>
-                        <input type="text" id="name" name="name" maxlength="150" required
+                        <input type="text" id="name" name="name" maxlength="150"
                                value="<?= htmlspecialchars($form['name']) ?>"
                                placeholder="e.g. Smart Campus Assistant">
+                    </div>
+
+                    <div class="pf-field auto-project-title" id="autoProjectTitleField"
+                         <?= $form['topic_mode'] !== 'Self' ? 'hidden' : '' ?>>
+                        <label>Project title <span class="req">*</span></label>
+                        <div id="autoProjectTitlePreview" class="auto-project-title-value">
+                            Select a class and Category to generate the title.
+                        </div>
+                        <span class="pf-help">Generated automatically as CourseCode_ClassCode_Category.</span>
+                    </div>
+
+                    <div class="pf-field <?= $form['topic_mode'] === 'Multi' ? 'full' : '' ?>"
+                         id="assessmentWeightField">
+                        <label for="assessmentScope">Assessment Weight</label>
+                        <div class="assessment-weight-row">
+                            <select id="assessmentScope" name="assessmentScope"
+                                    class="<?= $form['assessment_scope'] === '' ? 'is-placeholder' : '' ?>">
+                                <option value=""
+                                    <?= $form['assessment_scope'] === '' ? 'selected' : '' ?>
+                                    disabled hidden>e.g. CA</option>
+                                <?php foreach ($allowedAssessmentScopes as $scope): ?>
+                                    <option value="<?= htmlspecialchars($scope) ?>"
+                                        <?= $form['assessment_scope'] === $scope ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($scope) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="assessment-percent">
+                                <input type="number" id="assessmentWeight" name="assessmentWeight"
+                                       min="0" max="100" step="1" inputmode="numeric"
+                                       value="<?= htmlspecialchars($form['assessment_weight']) ?>"
+                                       placeholder="e.g. 20">
+                                <span>%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pf-field full" id="projectDescriptionField"
+                         <?= $form['topic_mode'] === 'Multi' ? 'hidden' : '' ?>>
+                        <label for="description">Project description <span class="req">*</span></label>
+                        <textarea id="description" name="description"
+                                  placeholder="Describe the project idea, the problem it solves and what students will build."><?= htmlspecialchars($form['description']) ?></textarea>
+                        <span class="pf-help">Shown to students on the project page.</span>
+                    </div>
+
+                    <div class="pf-field full topic-editor-field" id="topicEditor" <?= $form['topic_mode'] !== 'Multi' ? 'hidden' : '' ?>>
+                        <div id="topicRows">
+                            <?php foreach ($topics as $topic): ?>
+                                <div class="pf-topic-row">
+                                    <input type="hidden" name="topicId[]" value="<?= (int) $topic['id'] ?>">
+                                    <input type="text" name="topicTitle[]" maxlength="180"
+                                           placeholder="Topic title" value="<?= htmlspecialchars($topic['title']) ?>">
+                                    <textarea name="topicDescription[]"
+                                              placeholder="Short description students will see"><?= htmlspecialchars($topic['description']) ?></textarea>
+                                    <button type="button" class="pf-icon-btn js-topic-remove" title="Remove topic">×</button>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <button type="button" class="pf-btn secondary" id="addTopic">+ Add topic option</button>
                     </div>
 
                     <div class="pf-field">
@@ -820,10 +1248,10 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                             <?php endif; ?>
                             <?php foreach ($classes as $classRow): ?>
                                 <option value="<?= (int) $classRow['id'] ?>"
+                                    data-class-code="<?= htmlspecialchars($classRow['class_code']) ?>"
+                                    data-course-code="<?= htmlspecialchars($classRow['course_code']) ?>"
                                     <?= (int) $classRow['id'] === (int) $form['class_id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($classRow['class_code']) ?> —
-                                    <?= htmlspecialchars($classRow['course_code'] . ' ' . $classRow['course_name']) ?>
-                                    <?= $classRow['semester'] ? ' (' . htmlspecialchars($classRow['semester']) . ')' : '' ?>
+                                    <?= htmlspecialchars($classRow['class_code']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -847,37 +1275,6 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                         </select>
                     </div>
 
-                    <div class="pf-field full">
-                        <label for="assessmentScope">Assessment Weight</label>
-                        <div class="assessment-weight-row">
-                            <select id="assessmentScope" name="assessmentScope"
-                                    class="<?= $form['assessment_scope'] === '' ? 'is-placeholder' : '' ?>">
-                                <option value="">e.g. CA</option>
-                                <?php foreach ($allowedAssessmentScopes as $scope): ?>
-                                    <option value="<?= htmlspecialchars($scope) ?>"
-                                        <?= $form['assessment_scope'] === $scope ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($scope) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="assessment-percent">
-                                <input type="number" id="assessmentWeight" name="assessmentWeight"
-                                       min="0" max="100" step="1" inputmode="numeric"
-                                       value="<?= htmlspecialchars($form['assessment_weight']) ?>"
-                                       placeholder="e.g. 20">
-                                <span>%</span>
-                            </div>
-                        </div>
-                        <span class="pf-help">This project contributes this percentage toward the selected assessment scope.</span>
-                    </div>
-
-                    <div class="pf-field full">
-                        <label for="description">Project description <span class="req">*</span></label>
-                        <textarea id="description" name="description"
-                                  placeholder="Describe the project idea, the problem it solves and what students will build."><?= htmlspecialchars($form['description']) ?></textarea>
-                        <span class="pf-help">Shown to students on the project page.</span>
-                    </div>
-
                     <div class="pf-field">
                         <label for="periodStart">Project start date <span class="req">*</span></label>
                         <input type="date" id="periodStart" name="periodStart" value="<?= htmlspecialchars($form['period_start']) ?>">
@@ -886,6 +1283,10 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     <div class="pf-field">
                         <label for="periodEnd">Project deadline <span class="req">*</span></label>
                         <input type="date" id="periodEnd" name="periodEnd" value="<?= htmlspecialchars($form['period_end']) ?>">
+                    </div>
+
+                    <div class="pf-topic-note full" id="selfTopicNote" <?= $form['topic_mode'] !== 'Self' ? 'hidden' : '' ?>>
+                        Each team leader submits a versioned Project title for teacher approval. Multiple Self-selected projects may use the same generated workspace title.
                     </div>
 
                 </div>
@@ -931,10 +1332,31 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
 
                     <div class="pf-field full">
                         <label class="pf-inline">
-                            <input type="checkbox" name="allowCrossClass" value="1" <?= (int) $form['allow_cross_class'] === 1 ? 'checked' : '' ?>>
+                            <input type="checkbox" id="allowCrossClass" name="allowCrossClass" value="1"
+                                <?= (int) $form['allow_cross_class'] === 1 ? 'checked' : '' ?>>
                             Allow cross-class teams
                         </label>
-                        <span class="pf-help">When unchecked, teams should only contain students from the same class.</span>
+                        <span class="pf-help">Select which partner classes may join teams from the home class.</span>
+
+                        <div id="crossClassOptions" <?= (int) $form['allow_cross_class'] !== 1 ? 'hidden' : '' ?>>
+                            <div class="cross-class-grid">
+                                <?php foreach ($allClasses as $classOption): ?>
+                                    <?php
+                                    $optionClassId = (int) $classOption['id'];
+                                    $isHomeClass = $optionClassId === (int) $form['class_id'];
+                                    $isPartnerClass = in_array($optionClassId, $form['cross_class_ids'], true);
+                                    ?>
+                                    <label class="cross-class-option <?= $isHomeClass ? 'is-home' : '' ?>">
+                                        <input type="checkbox" name="crossClassIds[]"
+                                               value="<?= $optionClassId ?>"
+                                               data-cross-class-id="<?= $optionClassId ?>"
+                                               <?= $isHomeClass || $isPartnerClass ? 'checked' : '' ?>
+                                               <?= $isHomeClass ? 'disabled' : '' ?>>
+                                        <span><?= htmlspecialchars($classOption['class_code']) ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -1109,6 +1531,15 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
     </div>
 </template>
 
+<template id="topicTemplate">
+    <div class="pf-topic-row">
+        <input type="hidden" name="topicId[]" value="0">
+        <input type="text" name="topicTitle[]" maxlength="180" placeholder="Topic title">
+        <textarea name="topicDescription[]" placeholder="Short description students will see"></textarea>
+        <button type="button" class="pf-icon-btn js-topic-remove" title="Remove topic">×</button>
+    </div>
+</template>
+
 <script>
 (function () {
     // Make required and optional fields visually consistent.
@@ -1144,6 +1575,106 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
     }
     assessmentScope.addEventListener('change', syncAssessmentScopeStyle);
     syncAssessmentScopeStyle();
+
+    // Topic allocation
+    var topicMode = document.getElementById('topicMode');
+    var topicEditor = document.getElementById('topicEditor');
+    var topicRows = document.getElementById('topicRows');
+    var topicTemplate = document.getElementById('topicTemplate');
+    var addTopic = document.getElementById('addTopic');
+    var selfTopicNote = document.getElementById('selfTopicNote');
+    var topicModeHelp = document.getElementById('topicModeHelp');
+    var nameInput = document.getElementById('name');
+    var classSelect = document.getElementById('classId');
+    var categorySelect = document.getElementById('category');
+    var manualProjectTitleField = document.getElementById('manualProjectTitleField');
+    var autoProjectTitleField = document.getElementById('autoProjectTitleField');
+    var autoProjectTitlePreview = document.getElementById('autoProjectTitlePreview');
+    var projectDescriptionField = document.getElementById('projectDescriptionField');
+    var assessmentWeightGroup = document.getElementById('assessmentWeightField');
+    var allowCrossClass = document.getElementById('allowCrossClass');
+    var crossClassOptions = document.getElementById('crossClassOptions');
+
+    function syncCrossClassOptions() {
+        var isEnabled = allowCrossClass.checked;
+        crossClassOptions.hidden = !isEnabled;
+        var homeClassId = classSelect.value;
+
+        crossClassOptions.querySelectorAll('[data-cross-class-id]').forEach(function (checkbox) {
+            var isHome = checkbox.getAttribute('data-cross-class-id') === homeClassId;
+            checkbox.disabled = isHome;
+            checkbox.checked = isHome || checkbox.checked;
+            checkbox.closest('.cross-class-option').classList.toggle('is-home', isHome);
+        });
+    }
+
+    function syncProjectTitle() {
+        var isFixed = topicMode.value === 'Fixed';
+        var isSelf = topicMode.value === 'Self';
+        var isMulti = topicMode.value === 'Multi';
+        manualProjectTitleField.hidden = !isFixed;
+        autoProjectTitleField.hidden = !isSelf;
+        projectDescriptionField.hidden = isMulti;
+        assessmentWeightGroup.classList.toggle('full', isMulti);
+        nameInput.required = isFixed;
+
+        if (!isSelf) return;
+
+        var classOption = classSelect.options[classSelect.selectedIndex];
+        var classCode = classOption ? (classOption.getAttribute('data-class-code') || '') : '';
+        var courseCode = classOption ? (classOption.getAttribute('data-course-code') || '') : '';
+        var category = categorySelect.value || '';
+
+        autoProjectTitlePreview.textContent = (courseCode && classCode && category)
+            ? courseCode + '_' + classCode + '_' + category
+            : 'Select a class and Category to generate the title.';
+    }
+
+    function syncTopicMode() {
+        var mode = topicMode.value;
+        var isSelf = mode === 'Self';
+        topicEditor.hidden = mode !== 'Multi';
+        selfTopicNote.hidden = !isSelf;
+        addTopic.style.display = mode === 'Multi' ? '' : 'none';
+
+        if (mode === 'Fixed') {
+            while (topicRows.querySelectorAll('.pf-topic-row').length > 1) {
+                topicRows.querySelector('.pf-topic-row:last-child').remove();
+            }
+        }
+
+        var help = {
+            Fixed: 'Project title is used as the topic title for every team. No separate topic approval is required.',
+            Multi: 'Add any number of topic options. Multiple teams may select the same topic.',
+            Self: 'No topics are pre-defined. Only a team leader may submit a topic proposal.'
+        };
+        topicModeHelp.textContent = help[mode] || '';
+        syncProjectTitle();
+    }
+
+    topicMode.addEventListener('change', syncTopicMode);
+    classSelect.addEventListener('change', function () {
+        syncProjectTitle();
+        syncCrossClassOptions();
+    });
+    categorySelect.addEventListener('change', syncProjectTitle);
+    allowCrossClass.addEventListener('change', syncCrossClassOptions);
+    syncTopicMode();
+    syncCrossClassOptions();
+
+    addTopic.addEventListener('click', function () {
+        topicRows.appendChild(topicTemplate.content.cloneNode(true));
+    });
+
+    topicRows.addEventListener('click', function (event) {
+        if (!event.target.classList.contains('js-topic-remove')) {
+            return;
+        }
+        var allRows = topicRows.querySelectorAll('.pf-topic-row');
+        if (allRows.length > 1) {
+            event.target.closest('.pf-topic-row').remove();
+        }
+    });
 
     // Announcement live preview
     var title    = document.getElementById('annTitle');

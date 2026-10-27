@@ -479,6 +479,23 @@ if (!function_exists('statusClass')) {
             color: #555 !important;
             cursor: not-allowed;
         }
+        .team-rule-readout {
+            min-height: 47px;
+            padding: 13px 14px;
+            border: 1px solid #dfe3e8;
+            border-radius: 8px;
+            background: #f7f9fb;
+            color: #4d5661;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .field-help {
+            display: block;
+            margin-top: 6px;
+            color: #777;
+            font-size: 11.5px;
+            line-height: 1.5;
+        }
 
         .invite-btn-main {
             width: 100%; height: 47px; padding: 0 20px;
@@ -869,6 +886,14 @@ if (!function_exists('statusClass')) {
             <div class="alert alert-error">Team is not full yet.</div>
         <?php elseif ($_GET['msg'] === 'notenrolled'): ?>
             <div class="alert alert-error">You are not enrolled in this course.</div>
+        <?php elseif ($_GET['msg'] === 'notfree'): ?>
+            <div class="alert alert-error">This project no longer allows student-created teams, or its team deadline has passed.</div>
+        <?php elseif ($_GET['msg'] === 'invalidteam'): ?>
+            <div class="alert alert-error">The team size configured by the teacher is invalid.</div>
+        <?php elseif ($_GET['msg'] === 'alreadyinproject'): ?>
+            <div class="alert alert-error">You are already in a team for this project.</div>
+        <?php elseif ($_GET['msg'] === 'crossclass'): ?>
+            <div class="alert alert-error">This student is not in the home class or an approved partner class for this project.</div>
         <?php elseif ($_GET['msg'] === 'notcreator'): ?>
             <div class="alert alert-error">Only the group creator can send to supervisor.</div>
         <?php elseif ($_GET['msg'] === 'notwaiting'): ?>
@@ -930,11 +955,39 @@ if (!function_exists('statusClass')) {
                         <option value="">-- Select Project --</option>
                         <?php
                         $stmtProj = mysqli_prepare($conn, "
-                            SELECT p.id, p.name, c.code AS course_code
+                            SELECT
+                                p.id,
+                                p.name,
+                                p.topic_mode,
+                                p.default_max_members,
+                                c.code AS course_code
                             FROM `projects` p
+                            INNER JOIN `students` st ON st.id = ?
                             LEFT JOIN `courses` c ON c.id = p.course_id
                             WHERE p.status <> 'Archived'
                               AND p.is_draft = 0
+                              AND p.team_mode = 'Free'
+                              AND (p.team_deadline IS NULL OR p.team_deadline >= CURDATE())
+                              AND (
+                                  p.class_id IS NULL
+                                  OR p.class_id = st.class_id
+                                  OR (
+                                      p.allow_cross_class = 1
+                                      AND EXISTS (
+                                          SELECT 1 FROM `project_cross_classes` pcc
+                                          WHERE pcc.project_id = p.id
+                                            AND pcc.class_id = st.class_id
+                                      )
+                                  )
+                              )
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM `group_members` existing_gm
+                                  INNER JOIN `groups` existing_g
+                                          ON existing_g.id = existing_gm.group_id
+                                  WHERE existing_gm.student_id = st.id
+                                    AND existing_g.project_id = p.id
+                              )
                               AND (
                                     p.visibility = 'All'
                                     OR p.course_id IN (
@@ -945,33 +998,43 @@ if (!function_exists('statusClass')) {
                                   )
                             ORDER BY p.name
                         ");
-                        mysqli_stmt_bind_param($stmtProj, "i", $studentID);
+                        mysqli_stmt_bind_param($stmtProj, "ii", $studentID, $studentID);
                         mysqli_stmt_execute($stmtProj);
                         $rsProj = mysqli_stmt_get_result($stmtProj);
+                        $availableProjects = array();
                         while ($p = mysqli_fetch_assoc($rsProj)) {
-                            echo '<option value="' . (int)$p['id'] . '">'
-                                    . htmlspecialchars($p['name'] . ($p['course_code'] ? ' (' . $p['course_code'] . ')' : ''))
-                                    . '</option>';
+                            $availableProjects[] = $p;
                         }
                         mysqli_stmt_close($stmtProj);
+                        if (count($availableProjects) === 0) {
+                            echo '<option value="" disabled>No eligible project available</option>';
+                        }
+                        foreach ($availableProjects as $p) {
+                            echo '<option value="' . (int)$p['id'] . '" data-max-members="' . (int)$p['default_max_members'] . '" data-topic-mode="' . htmlspecialchars($p['topic_mode']) . '">'
+                                . htmlspecialchars($p['name'] . ($p['course_code'] ? ' (' . $p['course_code'] . ')' : ''))
+                                . '</option>';
+                        }
                         ?>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="newMaxMembers">Maximum Members</label>
-                    <select id="newMaxMembers" name="newMaxMembers" required>
-                        <option value="2">2 Members</option>
-                        <option value="3">3 Members</option>
-                        <option value="4" selected>4 Members</option>
-                        <option value="5">5 Members</option>
-                        <option value="6">6 Members</option>
-                    </select>
+                    <label>Team Size</label>
+                    <div id="teamSizeReadout" class="team-rule-readout">
+                        Select a project to see the team size set by your teacher.
+                    </div>
+                    <span class="field-help">Only projects with free team formation are available here.</span>
                 </div>
 
             </div>
 
-            <button type="submit" class="primary-btn">Create Group</button>
+            <?php if (count($availableProjects) === 0): ?>
+                <div class="alert alert-error" style="margin-top: 8px; margin-bottom: 0;">
+                    No eligible project is available. You may already belong to a team, or the teacher has not opened free team formation.
+                </div>
+            <?php endif; ?>
+
+            <button type="submit" class="primary-btn" <?= count($availableProjects) === 0 ? 'disabled' : '' ?>>Create Group</button>
 
         </form>
 
@@ -1392,6 +1455,33 @@ if (!function_exists('statusClass')) {
 </form>
 
 <script>
+    (function () {
+        var projectSelect = document.getElementById('projectID');
+        var readout = document.getElementById('teamSizeReadout');
+        if (!projectSelect || !readout) return;
+
+        function syncTeamRule() {
+            var option = projectSelect.options[projectSelect.selectedIndex];
+            var maxMembers = option ? parseInt(option.getAttribute('data-max-members'), 10) : 0;
+            var topicMode = option ? option.getAttribute('data-topic-mode') : '';
+            if (!projectSelect.value || !maxMembers) {
+                readout.textContent = 'Select a project to see the team size set by your teacher.';
+                return;
+            }
+
+            var topicLabels = {
+                Fixed: 'Fixed topic',
+                Multi: 'Multi-select topics',
+                Self: 'Self-selected topic'
+            };
+            readout.innerHTML = '<strong>' + maxMembers + ' members per team</strong>'
+                + '<br>Set by your teacher · ' + (topicLabels[topicMode] || 'Topic allocation');
+        }
+
+        projectSelect.addEventListener('change', syncTeamRule);
+        syncTeamRule();
+    })();
+
     // Auto-fill Student Name
     (function () {
         var inputId   = document.getElementById('inviteStudentNo');

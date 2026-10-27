@@ -61,7 +61,7 @@ $inviteeUserID = 0;
 $inviteeName   = '';
 
 $stmt = mysqli_prepare($conn, "
-    SELECT s.id AS student_id, s.user_id, u.username
+    SELECT s.id AS student_id, s.user_id, s.class_id, u.username
     FROM `students` s
     JOIN `users` u ON u.id = s.user_id
     WHERE s.student_number = ?
@@ -81,6 +81,7 @@ if (!$rc) {
 $inviteeID     = (int) $rc['student_id'];
 $inviteeUserID = (int) $rc['user_id'];
 $inviteeName   = $rc['username'];
+$inviteeClassID = (int) $rc['class_id'];
 
 // 不能邀請自己
 if ($inviteeID === $inviterID) {
@@ -96,16 +97,21 @@ $groupStatus     = '';
 $groupMaxMembers = 0;
 $groupMemberCnt  = 0;
 $groupPendingCnt = 0;
+$homeClassID     = 0;
+$allowCrossClass = 0;
 
 $stmt = mysqli_prepare($conn, "
     SELECT
         g.name,
         g.status,
         g.max_members,
+        p.class_id AS home_class_id,
+        p.allow_cross_class,
         (SELECT COUNT(*) FROM `group_members` gm WHERE gm.group_id = g.id) AS member_count,
         (SELECT COUNT(*) FROM `invitations` i
             WHERE i.group_id = g.id AND i.status = 'Pending') AS pending_count
     FROM `groups` g
+    INNER JOIN `projects` p ON p.id = g.project_id
     WHERE g.id = ?
     LIMIT 1
 ");
@@ -125,10 +131,33 @@ $groupStatus     = $rc['status'];
 $groupMaxMembers = (int) $rc['max_members'];
 $groupMemberCnt  = (int) $rc['member_count'];
 $groupPendingCnt = (int) $rc['pending_count'];
+$homeClassID     = (int) $rc['home_class_id'];
+$allowCrossClass = (int) $rc['allow_cross_class'];
 
 // 只有 Recruiting 可以邀請
 if ($groupStatus !== 'Recruiting') {
     header('Location: student_create_group.php?msg=locked&group_id=' . $groupID);
+    exit;
+}
+
+// Invitees must belong to the home class or one of the selected partner classes.
+$inviteeClassAllowed = ($inviteeClassID === $homeClassID);
+if (!$inviteeClassAllowed && $allowCrossClass === 1) {
+    $stmt = mysqli_prepare($conn, "
+        SELECT 1
+        FROM `project_cross_classes`
+        WHERE project_id = ? AND class_id = ?
+        LIMIT 1
+    ");
+    $projectID = (int) $rc['project_id'];
+    mysqli_stmt_bind_param($stmt, "ii", $projectID, $inviteeClassID);
+    mysqli_stmt_execute($stmt);
+    $rsClass = mysqli_stmt_get_result($stmt);
+    $inviteeClassAllowed = (bool) mysqli_fetch_assoc($rsClass);
+    mysqli_stmt_close($stmt);
+}
+if (!$inviteeClassAllowed) {
+    header('Location: student_create_group.php?msg=crossclass&group_id=' . $groupID);
     exit;
 }
 

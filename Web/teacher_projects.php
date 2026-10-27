@@ -39,6 +39,7 @@ $sql = "
         p.id,
         p.name,
         p.category,
+        p.topic_mode,
         p.assessment_scope,
         p.assessment_weight,
         p.status,
@@ -82,6 +83,7 @@ $sql = "
         p.id,
         p.name,
         p.category,
+        p.topic_mode,
         p.is_draft,
         p.progress,
         p.period_end,
@@ -123,12 +125,24 @@ foreach ($activeProjects as $project) {
 
 $projectStatusLabels = array(
     'Recruiting'   => 'Forming Team',
-    'Waiting_Send' => 'Ready for Approval',
+    'Waiting_Send' => 'Ready to Submit',
     'Voting'       => 'Choosing Leader',
-    'Executing'    => 'Work in Progress',
+    'Executing'    => 'Active',
     'Completed'    => 'Completed',
     'Archived'     => 'Archived',
 );
+
+$flashMessage = '';
+$flashType = 'success';
+if (isset($_GET['msg'])) {
+    if ($_GET['msg'] === 'draft') {
+        $flashMessage = 'Project saved as a draft. Students cannot see it until it is published.';
+    } elseif ($_GET['msg'] === 'updated') {
+        $flashMessage = 'Project updated successfully.';
+    } elseif ($_GET['msg'] === 'created') {
+        $flashMessage = 'Project published successfully.';
+    }
+}
 
 ?>
 <!DOCTYPE html>
@@ -137,7 +151,8 @@ $projectStatusLabels = array(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projects | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028a">
+    <link rel="stylesheet" href="teacher.css?v=20261028b">
+    <link rel="stylesheet" href="teacher_ui.css?v=20261028b">
 </head>
 <body>
 
@@ -154,8 +169,10 @@ $projectStatusLabels = array(
             <a href="teacher_project_create.php" class="create-project-btn">+ Create Project</a>
         </div>
 
-        <?php if (isset($_GET['msg']) && $_GET['msg'] === 'draft'): ?>
-            <div class="project-flash success">Project saved as a draft. Students cannot see it until you publish it.</div>
+        <?php if ($draftProjectCount > 0): ?>
+            <div class="tb-alert tb-alert--warning">
+                <span><strong><?= (int) $draftProjectCount ?> draft project<?= $draftProjectCount === 1 ? '' : 's' ?></strong> are not visible to students.</span>
+            </div>
         <?php endif; ?>
 
         <div class="projects-kpi">
@@ -217,21 +234,38 @@ $projectStatusLabels = array(
                             <div class="project-title-block">
                                 <span class="project-id">Project <?php echo str_pad((string) $p['id'], 2, '0', STR_PAD_LEFT); ?></span>
                                 <h3>
-                                    <a href="project_detail.php?id=<?php echo (int) $p['id']; ?>">
+                                    <a href="project_detail.php?id=<?php echo (int) $p['id']; ?>"
+                                       data-tooltip-auto="<?= htmlspecialchars($p['name']) ?>">
                                         <?php echo htmlspecialchars($p['name']); ?>
                                     </a>
                                 </h3>
                             </div>
-                            <span class="project-status <?php echo $isDraft ? 'status-draft' : ''; ?>">
+                            <span class="project-status <?php echo $isDraft ? 'status-draft' : ''; ?>"
+                                  tabindex="0"
+                                  data-tooltip="Current project status: <?= htmlspecialchars($statusLabel) ?>">
                                 <?php echo htmlspecialchars($statusLabel); ?>
                             </span>
                         </div>
 
-                        <div class="project-tags">
-                            <span class="class-tag"><?php echo htmlspecialchars($p['class_code'] ?: 'No class'); ?></span>
-                            <span><?php echo htmlspecialchars($p['category'] ?: 'Uncategorised'); ?></span>
+                        <div class="project-context">
+                            <span class="class-tag">
+                                <?php echo htmlspecialchars($p['class_code'] ?: 'No class'); ?>
+                            </span>
+                            <span class="meta-separator">·</span>
+                            <span>
+                                <?php echo htmlspecialchars($p['category'] ?: 'Uncategorised'); ?>
+                            </span>
+                            <span class="meta-separator">·</span>
+                            <span>
+                                <?= htmlspecialchars(
+                                    $p['topic_mode'] === 'Multi'
+                                        ? 'Multi-select topics'
+                                        : ($p['topic_mode'] === 'Self' ? 'Self-selected topic' : 'Fixed topic')
+                                ) ?>
+                            </span>
                             <?php if (!empty($p['assessment_scope']) && $weightLabel !== ''): ?>
-                                <span class="weight-tag">
+                                <span class="meta-separator">·</span>
+                                <span class="weight-inline">
                                     <?php echo htmlspecialchars($weightLabel); ?>% of
                                     <?php echo htmlspecialchars($p['assessment_scope']); ?>
                                 </span>
@@ -246,6 +280,8 @@ $projectStatusLabels = array(
                             <div class="progress-cluster">
                                 <div class="progress-ring"
                                      style="--progress: <?php echo $progress; ?>;"
+                                     tabindex="0"
+                                     data-tooltip="<?php echo (int) $progress; ?>% overall project completion"
                                      role="progressbar"
                                      aria-label="<?php echo htmlspecialchars($p['name']); ?> progress"
                                      aria-valuemin="0"
@@ -311,7 +347,7 @@ $projectStatusLabels = array(
     align-items: flex-start;
     justify-content: space-between;
     gap: 20px;
-    margin-bottom: 22px;
+    margin-bottom: 16px;
 }
 .page-head-simple .subtitle { margin-bottom: 0; }
 .create-project-btn {
@@ -320,9 +356,9 @@ $projectStatusLabels = array(
     justify-content: center;
     min-height: 36px;
     padding: 8px 14px;
-    border: 1px solid #1f4d78;
+    border: 1px solid #175196;
     border-radius: 6px;
-    background: #1f4d78;
+    background: #175196;
     color: #fff;
     font-size: 12px;
     font-weight: 600;
@@ -342,7 +378,7 @@ $projectStatusLabels = array(
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     overflow: hidden;
-    margin-bottom: 22px;
+    margin-bottom: 16px;
     border: 1px solid #17191d;
     border-radius: 9px;
     background: #17191d;
@@ -357,7 +393,7 @@ $projectStatusLabels = array(
     display: block;
     overflow: hidden;
     color: #abb1ba;
-    font-size: 10px;
+    font-size: 11.5px;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-overflow: ellipsis;
@@ -427,7 +463,7 @@ $projectStatusLabels = array(
     margin-bottom: 3px;
     color: #858b94;
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
@@ -438,8 +474,12 @@ $projectStatusLabels = array(
     line-height: 1.35;
 }
 .project-title-block a {
+    display: block;
+    overflow: hidden;
     color: #22262d;
     text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .project-title-block a:hover { color: #175196; text-decoration: underline; }
 .project-status {
@@ -449,7 +489,7 @@ $projectStatusLabels = array(
     border-radius: 4px;
     background: #f7f8fa;
     color: #59616c;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -458,33 +498,32 @@ $projectStatusLabels = array(
     background: #f2f4f6;
     color: #6b7280;
 }
-.project-tags {
+.project-context {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin-top: 10px;
+    gap: 6px;
+    min-width: 0;
+    margin-top: 8px;
+    overflow: hidden;
     color: #7f858e;
     font-size: 10px;
+    white-space: nowrap;
 }
 .class-tag {
-    padding: 2px 6px;
-    border: 1px solid #dde2e8;
-    border-radius: 4px;
+    flex: 0 0 auto;
     color: #4f5965;
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 600;
 }
-.weight-tag {
-    padding: 2px 6px;
-    border: 1px solid #dfe4ea;
-    border-radius: 4px;
-    background: #f5f7f9;
+.meta-separator {
+    flex: 0 0 auto;
+    color: #b1b7bf;
+}
+.weight-inline {
+    flex: 0 0 auto;
     color: #59616c;
-    font-size: 9px;
     font-weight: 600;
-    white-space: nowrap;
 }
 .project-overview {
     display: flex;
@@ -497,7 +536,7 @@ $projectStatusLabels = array(
 .project-metrics span {
     display: block;
     color: #858b94;
-    font-size: 9.5px;
+    font-size: 10.5px;
 }
 .project-metrics strong {
     display: block;
@@ -541,7 +580,7 @@ $projectStatusLabels = array(
 }
 .progress-caption {
     color: #858b94;
-    font-size: 9.5px;
+    font-size: 10.5px;
 }
 .project-card-footer {
     display: flex;
@@ -555,20 +594,20 @@ $projectStatusLabels = array(
 .project-deadline span {
     display: block;
     color: #858b94;
-    font-size: 9px;
+    font-size: 10px;
 }
 .project-deadline strong {
     display: block;
     margin-top: 2px;
     color: #424a55;
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-variant-numeric: tabular-nums;
 }
 .project-deadline small {
     display: block;
     margin-top: 2px;
     color: #8b9199;
-    font-size: 9px;
+    font-size: 10px;
 }
 .project-deadline.danger strong,
 .project-deadline.danger small { color: #b42318; }
@@ -579,11 +618,11 @@ $projectStatusLabels = array(
     justify-content: center;
     min-height: 31px;
     padding: 6px 10px;
-    border: 1px solid #1f4d78;
+    border: 1px solid #175196;
     border-radius: 5px;
-    background: #1f4d78;
+    background: #175196;
     color: #fff;
-    font-size: 10px;
+    font-size: 11.5px;
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
@@ -638,23 +677,12 @@ $projectStatusLabels = array(
     font-size: 9px;
 }
 .archived-row > a {
-    color: #1f4d78;
+    color: #175196;
     font-weight: 600;
     text-decoration: none;
 }
 .archived-row > a:hover { text-decoration: underline; }
 
-.project-flash {
-    padding: 11px 15px;
-    border-radius: 8px;
-    font-size: 12.5px;
-    margin-bottom: 20px;
-}
-.project-flash.success {
-    background: #e8f6ee;
-    border: 1px solid #bfe4cd;
-    color: #256b3f;
-}
 @media (max-width: 900px) {
     .page-head-simple { flex-direction: column; gap: 6px; }
     .projects-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -670,6 +698,14 @@ $projectStatusLabels = array(
     .archived-row > div:nth-child(3) { display: none; }
 }
 </style>
+
+<script src="teacher_ui.js?v=20261028b"></script>
+<script>
+window.TEACHER_FLASH = <?= json_encode(
+    $flashMessage !== '' ? array('message' => $flashMessage, 'type' => $flashType) : null,
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+) ?>;
+</script>
 
 </body>
 </html>

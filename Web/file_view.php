@@ -26,8 +26,14 @@ $rs = mysqli_stmt_get_result($stmt);
 $row = mysqli_fetch_assoc($rs);
 mysqli_stmt_close($stmt);
 if ($row) { $teacherId = (int)$row['id']; }
+$teacherFlash = null;
+if (isset($_SESSION['teacher_flash'])) {
+    $teacherFlash = $_SESSION['teacher_flash'];
+    unset($_SESSION['teacher_flash']);
+}
 
 $fileId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
+$queueMode = isset($_GET['queue']) && $_GET['queue'] === '1';
 
 
 // =========================================================
@@ -64,9 +70,36 @@ if (isset($_POST['submitReview'])) {
         mysqli_stmt_bind_param($stmt, "iss", $userID, $actionWord, $fileId);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
+
+        $_SESSION['teacher_flash'] = array(
+            'message' => 'File review saved as ' . strtolower($newStatus) . '.',
+            'type' => $newStatus === 'Accepted' ? 'success' : 'warning',
+        );
     }
 
-    header('Location: teacher_review.php');
+    $nextFileId = 0;
+    if ($queueMode) {
+        $stmt = mysqli_prepare($conn, "
+            SELECT f.id
+            FROM `files` f
+            INNER JOIN `projects` p ON p.id = f.project_id
+            WHERE f.status = 'Unviewed'
+              AND f.task_id IS NOT NULL
+              AND p.supervisor_id = ?
+            ORDER BY f.uploaded_at ASC, f.id ASC
+            LIMIT 1
+        ");
+        mysqli_stmt_bind_param($stmt, "i", $teacherId);
+        mysqli_stmt_execute($stmt);
+        $rs = mysqli_stmt_get_result($stmt);
+        $nextFile = mysqli_fetch_assoc($rs);
+        mysqli_stmt_close($stmt);
+        if ($nextFile) $nextFileId = (int) $nextFile['id'];
+    }
+
+    header('Location: ' . ($nextFileId > 0
+        ? 'file_view.php?id=' . $nextFileId . '&queue=1'
+        : 'teacher_review.php'));
     exit;
 }
 
@@ -87,6 +120,24 @@ $sql = "
         f.uploaded_at,
         f.review_note,
         f.reviewed_at,
+        (SELECT COUNT(*) FROM `files` fv
+            WHERE fv.group_id = f.group_id
+              AND fv.uploader_id = f.uploader_id
+              AND COALESCE(fv.task_id, 0) = COALESCE(f.task_id, 0)
+              AND LOWER(TRIM(fv.file_name)) = LOWER(TRIM(f.file_name))) AS version_count,
+        (SELECT COUNT(*) FROM `files` fv
+            WHERE fv.group_id = f.group_id
+              AND fv.uploader_id = f.uploader_id
+              AND COALESCE(fv.task_id, 0) = COALESCE(f.task_id, 0)
+              AND LOWER(TRIM(fv.file_name)) = LOWER(TRIM(f.file_name))
+              AND fv.id <= f.id) AS version_number,
+        (SELECT COUNT(*) FROM `files` fv
+            WHERE fv.group_id = f.group_id
+              AND fv.uploader_id = f.uploader_id
+              AND COALESCE(fv.task_id, 0) = COALESCE(f.task_id, 0)
+              AND LOWER(TRIM(fv.file_name)) = LOWER(TRIM(f.file_name))
+              AND fv.id < f.id
+              AND fv.status = 'Rejected') AS prior_rejections,
         p.name  AS project_name,
         p.category AS project_category,
         g.id    AS group_id,
@@ -131,6 +182,38 @@ if (!empty($file['stored_name'])) {
     $filePath = __DIR__ . '/uploads/chat_files/' . basename($file['stored_name']);
 }
 $fileAvailable = ($filePath !== '' && is_file($filePath));
+$fileExtension = strtolower(pathinfo($file['file_name'], PATHINFO_EXTENSION));
+$previewType = 'none';
+if (in_array($fileExtension, array('png', 'jpg', 'jpeg', 'gif', 'webp'), true)) {
+    $previewType = 'image';
+} elseif (in_array($fileExtension, array('pdf', 'txt'), true)) {
+    $previewType = 'document';
+}
+
+$versionHistory = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT id, status, uploaded_at, reviewed_at, review_note
+    FROM `files`
+    WHERE group_id = ?
+      AND uploader_id = ?
+      AND COALESCE(task_id, 0) = COALESCE(?, 0)
+      AND LOWER(TRIM(file_name)) = LOWER(TRIM(?))
+    ORDER BY uploaded_at ASC, id ASC
+");
+mysqli_stmt_bind_param(
+    $stmt,
+    "iiis",
+    $file['group_id'],
+    $file['uploader_id'],
+    $file['task_id'],
+    $file['file_name']
+);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $versionHistory[] = $row;
+}
+mysqli_stmt_close($stmt);
 
 ?>
 <!DOCTYPE html>
@@ -139,7 +222,8 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review File | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028a">
+    <link rel="stylesheet" href="teacher.css?v=20261028b">
+    <link rel="stylesheet" href="teacher_ui.css?v=20261028b">
 
     <style>
         /* 兜底：任何带 hidden 属性的元素都不显示 */
@@ -195,6 +279,103 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
             font-size: 12.5px;
             line-height: 1.55;
         }
+        .file-preview-card {
+            margin-bottom: 24px;
+            overflow: hidden;
+            border: 1px solid #e2e6ea;
+            border-radius: 9px;
+            background: #fff;
+        }
+        .file-preview-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 14px;
+            border-bottom: 1px solid #edf0f3;
+            color: #39424d;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .file-preview-body {
+            display: grid;
+            min-height: 420px;
+            place-items: center;
+            padding: 12px;
+            background: #f7f8fa;
+        }
+        .file-preview-body iframe {
+            width: 100%;
+            height: 520px;
+            border: 0;
+            border-radius: 6px;
+            background: #fff;
+        }
+        .file-preview-body img {
+            display: block;
+            max-width: 100%;
+            max-height: 640px;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+        .version-badge {
+            display: inline-block;
+            margin-left: 7px;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: #edf4fb;
+            color: #315f87;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .version-history {
+            margin-bottom: 24px;
+            overflow: hidden;
+            border: 1px solid #e2e6ea;
+            border-radius: 9px;
+            background: #fff;
+        }
+        .version-row {
+            display: grid;
+            grid-template-columns: 84px minmax(0, 1fr) 90px;
+            gap: 12px;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid #eef0f2;
+            color: #59616b;
+            font-size: 11.5px;
+        }
+        .version-row:last-child { border-bottom: 0; }
+        .version-row.is-current { background: #f5f8fb; }
+        .version-row a { color: #315f87; font-weight: 600; text-decoration: none; }
+        .version-note {
+            grid-column: 2 / -1;
+            color: #7b838d;
+            font-size: 10.5px;
+            line-height: 1.45;
+        }
+        .quick-replies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .quick-reply-btn {
+            padding: 5px 8px;
+            border: 1px solid #d7dee5;
+            border-radius: 5px;
+            background: #fff;
+            color: #56616d;
+            font-family: inherit;
+            font-size: 10.5px;
+            cursor: pointer;
+        }
+        .quick-reply-btn:hover { border-color: #8fa7bd; background: #f5f8fb; }
+        .shortcut-hint {
+            margin-left: 8px;
+            color: #8b929b;
+            font-size: 10px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -215,7 +396,15 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
         <!-- Page head -->
         <div class="page-head">
             <div class="title-block">
-                <h1><?php echo htmlspecialchars($file['file_name']); ?></h1>
+                <h1>
+                    <?php echo htmlspecialchars($file['file_name']); ?>
+                    <?php if ((int) $file['version_count'] > 1): ?>
+                        <span class="version-badge">Version <?= (int) $file['version_number'] ?> of <?= (int) $file['version_count'] ?></span>
+                    <?php endif; ?>
+                    <?php if ((int) $file['prior_rejections'] > 0): ?>
+                        <span class="version-badge">Resubmitted</span>
+                    <?php endif; ?>
+                </h1>
                 <div class="meta">
                     Uploaded on <?php echo date('Y-m-d H:i', strtotime($file['uploaded_at'])); ?>
                     · <?php echo htmlspecialchars($file['file_size']); ?>
@@ -242,6 +431,24 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
                 This file record exists, but the uploaded file is missing from the server.
                 Ask the student to upload it again to preview or download it.
             </div>
+        <?php endif; ?>
+
+        <?php if ($fileAvailable && $previewType !== 'none'): ?>
+            <section class="file-preview-card">
+                <div class="file-preview-head">
+                    <span>File Preview</span>
+                    <a href="open_file.php?id=<?= (int) $file['id'] ?>" target="_blank" rel="noopener" class="link">Open in new tab</a>
+                </div>
+                <div class="file-preview-body">
+                    <?php if ($previewType === 'image'): ?>
+                        <img src="open_file.php?id=<?= (int) $file['id'] ?>"
+                             alt="Preview of <?= htmlspecialchars($file['file_name']) ?>">
+                    <?php else: ?>
+                        <iframe src="open_file.php?id=<?= (int) $file['id'] ?>"
+                                title="Preview of <?= htmlspecialchars($file['file_name']) ?>"></iframe>
+                    <?php endif; ?>
+                </div>
+            </section>
         <?php endif; ?>
 
         <!-- Uploader + File Information -->
@@ -309,6 +516,29 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
 
         </div>
 
+        <?php if (count($versionHistory) > 1): ?>
+            <h2>Version History</h2>
+            <div class="version-history">
+                <?php foreach ($versionHistory as $historyIndex => $version): ?>
+                    <div class="version-row <?= (int) $version['id'] === (int) $file['id'] ? 'is-current' : '' ?>">
+                        <span>Version <?= $historyIndex + 1 ?></span>
+                        <span>
+                            <?= date('d M Y H:i', strtotime($version['uploaded_at'])) ?>
+                            · <?= htmlspecialchars($version['status']) ?>
+                        </span>
+                        <?php if ((int) $version['id'] === (int) $file['id']): ?>
+                            <span>Current</span>
+                        <?php else: ?>
+                            <a href="file_view.php?id=<?= (int) $version['id'] ?><?= $queueMode ? '&queue=1' : '' ?>">View</a>
+                        <?php endif; ?>
+                        <?php if (!empty($version['review_note'])): ?>
+                            <div class="version-note"><?= htmlspecialchars($version['review_note']) ?></div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
         <!-- Previous Review Note（如果有） -->
         <?php if (!empty($file['review_note'])): ?>
             <h2>Previous Review Note</h2>
@@ -321,7 +551,10 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
         <form class="review-form" id="reviewForm" method="post" action="file_view.php?id=<?php echo (int)$file['id']; ?>">
 
             <div class="review-form-header">
-                <span class="form-title">Review Decision</span>
+                <span>
+                    <span class="form-title">Review Decision</span>
+                    <span class="shortcut-hint">Shortcuts: A approve · R reject</span>
+                </span>
 
                 <div class="status-inline">
                     <label for="reviewStatus">Status</label>
@@ -335,6 +568,12 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
 
             <div class="comment-block">
                 <label for="reviewNote">Comment for the student (optional)</label>
+                <div class="quick-replies" aria-label="Quick feedback templates">
+                    <button type="button" class="quick-reply-btn" data-reply="The required file is missing or incomplete.">Missing file</button>
+                    <button type="button" class="quick-reply-btn" data-reply="Please provide more detail and supporting evidence.">Insufficient detail</button>
+                    <button type="button" class="quick-reply-btn" data-reply="Please upload the correct version of the file.">Wrong version</button>
+                    <button type="button" class="quick-reply-btn" data-reply="Please cite your sources and explain how they support the work.">Add citations</button>
+                </div>
                 <textarea
                         id="reviewNote"
                         name="reviewNote"
@@ -344,7 +583,9 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
 
             <div class="review-actions">
                 <a href="teacher_review.php" class="btn-secondary">Cancel</a>
-                <button type="button" class="btn-primary" id="openConfirm">Submit</button>
+                <button type="button" class="btn-primary" id="openConfirm">
+                    <?= $queueMode ? 'Submit &amp; Next' : 'Submit' ?>
+                </button>
             </div>
 
             <input type="hidden" name="submitReview" value="1">
@@ -369,7 +610,13 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
     </div>
 </div>
 
+<script src="teacher_ui.js?v=20261028b"></script>
 <script>
+    window.TEACHER_FLASH = <?= json_encode(
+        $teacherFlash,
+        JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+    ) ?>;
+
     (function () {
         const openBtn      = document.getElementById('openConfirm');
         const modal        = document.getElementById('confirmModal');
@@ -382,24 +629,44 @@ $fileAvailable = ($filePath !== '' && is_file($filePath));
         openBtn.addEventListener('click', function () {
             const val = statusSelect.value;
             if (!val) {
-                alert('Please choose a status (Accept or Reject) before submitting.');
+                TeamBoxUI.toast('Please choose Accept or Reject before submitting.', 'warning');
                 statusSelect.focus();
                 return;
             }
             statusText.textContent = val;
-            modal.classList.add('open');
+            TeamBoxUI.openModal(modal);
         });
 
         cancelBtn.addEventListener('click', function () {
-            modal.classList.remove('open');
+            TeamBoxUI.closeModal(modal);
         });
 
         confirmBtn.addEventListener('click', function () {
             form.submit();
         });
 
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) { modal.classList.remove('open'); }
+        document.querySelectorAll('.quick-reply-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const note = document.getElementById('reviewNote');
+                note.value = button.getAttribute('data-reply') || '';
+                note.focus();
+            });
+        });
+
+        document.addEventListener('keydown', function (event) {
+            const tag = event.target.tagName;
+            if (event.ctrlKey || event.metaKey || event.altKey
+                || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                return;
+            }
+            const key = event.key.toLowerCase();
+            if (key === 'a') {
+                statusSelect.value = 'Accepted';
+                openBtn.click();
+            } else if (key === 'r') {
+                statusSelect.value = 'Rejected';
+                openBtn.click();
+            }
         });
     })();
 </script>

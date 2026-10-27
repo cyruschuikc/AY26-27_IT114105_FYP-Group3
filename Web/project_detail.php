@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/topic_helpers.php';
 /** @var mysqli $conn */
 
 $projectId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
@@ -114,6 +115,7 @@ $sql = "
         p.id,
         p.name,
         p.category,
+        p.topic_mode,
         p.assessment_scope,
         p.assessment_weight,
         p.status,
@@ -127,6 +129,10 @@ $sql = "
         p.team_mode,
         p.team_deadline,
         p.allow_cross_class,
+        (SELECT GROUP_CONCAT(cl2.class_code ORDER BY cl2.class_code SEPARATOR ', ')
+            FROM `project_cross_classes` pcc
+            INNER JOIN `classes` cl2 ON cl2.id = pcc.class_id
+            WHERE pcc.project_id = p.id) AS cross_class_codes,
         p.default_max_members,
         p.leader_permissions,
         p.post_deadline_action,
@@ -160,6 +166,18 @@ if (!$project) {
 }
 
 $project['supervisor'] = $project['supervisor_name'];
+$projectTopics = activeProjectTopics($conn, $projectId);
+foreach ($projectTopics as &$topicOption) {
+    $topicOption['selection_summary'] = null;
+    if ($project['topic_mode'] === 'Multi') {
+        $topicOption['selection_summary'] = topicSelectionSummary(
+            $conn,
+            $projectId,
+            (int) $topicOption['id']
+        );
+    }
+}
+unset($topicOption);
 
 
 // =========================================================
@@ -182,7 +200,17 @@ $sql = "
         (SELECT COUNT(*) FROM `Tasks` t3
             WHERE t3.group_id = g.id
               AND t3.status <> 'Completed'
-              AND t3.due_date < CURDATE()) AS overdue_tasks
+              AND t3.due_date < CURDATE()) AS overdue_tasks,
+        (SELECT tp.topic_title
+            FROM `team_topic_proposals` tp
+            WHERE tp.group_id = g.id
+            ORDER BY tp.version DESC, tp.id DESC
+            LIMIT 1) AS topic_title,
+        (SELECT tp.status
+            FROM `team_topic_proposals` tp
+            WHERE tp.group_id = g.id
+            ORDER BY tp.version DESC, tp.id DESC
+            LIMIT 1) AS topic_status
     FROM `Groups` g
     LEFT JOIN `Students` s ON s.id = g.leader_id
     LEFT JOIN `Users`    u ON u.id = s.user_id
@@ -629,7 +657,7 @@ foreach ($tasks as $t) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($project['name']); ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028a">
+    <link rel="stylesheet" href="teacher.css?v=20261028b">
 
     <style>
         .page-head {
@@ -794,6 +822,38 @@ foreach ($tasks as $t) {
             font-size: 11.5px;
         }
 
+        .topic-allocation-card {
+            overflow: hidden;
+            margin-bottom: 28px;
+            border: 1px solid #e2e6ea;
+            border-radius: 9px;
+            background: #fff;
+        }
+        .topic-allocation-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 13px 16px;
+            border-bottom: 1px solid #edf0f3;
+            background: #f8fafc;
+        }
+        .topic-allocation-head strong { color: #2d343d; font-size: 13px; }
+        .topic-allocation-head span { color: #78818b; font-size: 11px; }
+        .topic-option-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 14px;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f2f4;
+        }
+        .topic-option-row:last-child { border-bottom: 0; }
+        .topic-option-row strong { display: block; color: #323942; font-size: 12.5px; }
+        .topic-option-row small { display: block; margin-top: 3px; color: #858d96; font-size: 10.5px; line-height: 1.45; }
+        .topic-option-counts { color: #60798f; font-size: 10px; font-weight: 600; text-align: right; }
+        .topic-self-note { padding: 16px; color: #69737e; font-size: 12px; line-height: 1.6; }
+
         .detail-section {
             margin: 0 0 30px;
         }
@@ -923,6 +983,15 @@ foreach ($tasks as $t) {
             margin-top: 2px;
             color: #8b8f98;
             font-size: 10.5px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .team-card-topic {
+            overflow: hidden;
+            margin-top: 4px;
+            color: #5d6e7f;
+            font-size: 10px;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
@@ -1860,6 +1929,7 @@ foreach ($tasks as $t) {
                 <div class="meta">
                     <?= !empty($project['is_draft']) ? 'Draft' : htmlspecialchars($project['status']) ?> ·
                     <?php echo htmlspecialchars($project['category']); ?> ·
+                    <?= htmlspecialchars(topicModeLabel($project['topic_mode'])) ?> ·
                     <?= !empty($project['class_code']) ? htmlspecialchars($project['class_code']) . ' · ' : '' ?>
                     Supervisor: <?php echo htmlspecialchars($project['supervisor']); ?>
                     · <?php echo date('d M Y', $projStart); ?> – <?php echo date('d M Y', $projEnd); ?>
@@ -1918,6 +1988,41 @@ foreach ($tasks as $t) {
                 <?php echo nl2br(htmlspecialchars($project['requirements'])); ?>
             </div>
         <?php endif; ?>
+
+        <div class="section-head">
+            <h2>Topic Allocation</h2>
+            <span class="section-note"><?= htmlspecialchars(topicModeLabel($project['topic_mode'])) ?></span>
+        </div>
+        <div class="topic-allocation-card">
+            <?php if ($project['topic_mode'] === 'Self'): ?>
+                <div class="topic-self-note">
+                    No topics are pre-defined. Each team leader submits a versioned topic proposal for teacher approval.
+                </div>
+            <?php elseif (count($projectTopics) === 0): ?>
+                <div class="topic-self-note">No topic options have been configured for this project.</div>
+            <?php else: ?>
+                <div class="topic-allocation-head">
+                    <strong><?= $project['topic_mode'] === 'Fixed' ? 'Teacher-defined topic' : count($projectTopics) . ' topic options' ?></strong>
+                    <span><?= $project['topic_mode'] === 'Fixed' ? 'Assigned automatically' : 'Teams may share the same option' ?></span>
+                </div>
+                <?php foreach ($projectTopics as $topicOption): ?>
+                    <div class="topic-option-row">
+                        <div>
+                            <strong><?= htmlspecialchars($topicOption['title']) ?></strong>
+                            <?php if (!empty($topicOption['description'])): ?>
+                                <small><?= htmlspecialchars($topicOption['description']) ?></small>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($topicOption['selection_summary']): ?>
+                            <div class="topic-option-counts">
+                                <?= (int) $topicOption['selection_summary']['teams'] ?> teams ·
+                                <?= (int) $topicOption['selection_summary']['students'] ?> students
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
 
         <?php if (count($attachments) > 0): ?>
             <h2>Project Attachments</h2>
@@ -2031,12 +2136,15 @@ foreach ($tasks as $t) {
                 $teamNumber = trim(preg_replace('/\D+/', '', (string) $t['name']));
                 $teamNumber = $teamNumber !== '' ? str_pad(substr($teamNumber, -2), 2, '0', STR_PAD_LEFT) : 'T';
                 $teamStatusLabels = array(
-                    'Waiting_Send' => 'Approval Pending',
+                    'Waiting_Send' => 'Ready to Submit',
                     'Voting'       => 'Choosing Leader',
-                    'Executing'    => 'Work in Progress',
+                    'Executing'    => 'Active',
                     'Completed'    => 'Completed',
                 );
                 $displayTeamStatus = $teamStatusLabels[$t['status']] ?? $t['status'];
+                $teamTopicTitle = $project['topic_mode'] === 'Fixed'
+                    ? (count($projectTopics) > 0 ? $projectTopics[0]['title'] : '')
+                    : (string) $t['topic_title'];
                 ?>
                 <a class="team-card <?= $overdue > 0 ? 'is-late' : '' ?>"
                    href="team_detail.php?id=<?= (int) $t['id'] ?>">
@@ -2045,6 +2153,13 @@ foreach ($tasks as $t) {
                         <span class="team-card-title">
                             <strong><?= htmlspecialchars($t['name']) ?></strong>
                             <small>Leader · <?= htmlspecialchars($t['leader_name'] ?: 'Not assigned') ?></small>
+                            <small class="team-card-topic">
+                                <?= $project['topic_mode'] === 'Self' ? 'Project title' : 'Topic' ?>
+                                · <?= htmlspecialchars($teamTopicTitle ?: 'Not submitted') ?>
+                                <?php if ($project['topic_mode'] !== 'Fixed' && $t['topic_status']): ?>
+                                    · <?= htmlspecialchars(topicProposalStatusLabel($t['topic_status'])) ?>
+                                <?php endif; ?>
+                            </small>
                         </span>
                         <span class="team-card-status"><?= htmlspecialchars($displayTeamStatus) ?></span>
                     </div>
@@ -2261,7 +2376,11 @@ foreach ($tasks as $t) {
                     </div>
                     <div class="settings-item">
                         <span class="settings-label">Cross-class teams</span>
-                        <span class="settings-value"><?= !empty($project['allow_cross_class']) ? 'Allowed' : 'Not allowed' ?></span>
+                        <span class="settings-value">
+                            <?= !empty($project['allow_cross_class'])
+                                ? 'Allowed — ' . htmlspecialchars($project['cross_class_codes'] ?: 'No partner classes selected')
+                                : 'Not allowed' ?>
+                        </span>
                     </div>
                     <div class="settings-item">
                         <span class="settings-label">After team deadline</span>

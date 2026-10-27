@@ -38,6 +38,8 @@ $stmt = mysqli_prepare($conn, "
         g.creator_id, g.leader_id,
         g.project_id, g.max_members,
         p.name           AS project_name,
+        p.class_id       AS home_class_id,
+        p.allow_cross_class,
         p.supervisor_id,
         t.user_id        AS supervisor_user_id,
         tu.username      AS supervisor_name,
@@ -57,6 +59,36 @@ mysqli_stmt_close($stmt);
 
 if (!$grp) {
     header('Location: student_create_group.php?msg=error');
+    exit;
+}
+
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS invalid_count
+    FROM `group_members` gm
+    INNER JOIN `students` s ON s.id = gm.student_id
+    WHERE gm.group_id = ?
+      AND s.class_id <> ?
+      AND NOT EXISTS (
+          SELECT 1
+          FROM `project_cross_classes` pcc
+          WHERE pcc.project_id = ?
+            AND pcc.class_id = s.class_id
+      )
+");
+mysqli_stmt_bind_param(
+    $stmt,
+    "iii",
+    $groupID,
+    $grp['home_class_id'],
+    $grp['project_id']
+);
+mysqli_stmt_execute($stmt);
+$rsClass = mysqli_stmt_get_result($stmt);
+$classCheck = mysqli_fetch_assoc($rsClass);
+mysqli_stmt_close($stmt);
+
+if ((int) $classCheck['invalid_count'] > 0) {
+    header('Location: student_create_group.php?msg=crossclass&group_id=' . $groupID);
     exit;
 }
 

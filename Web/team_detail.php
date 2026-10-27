@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/topic_helpers.php';
 /** @var mysqli $conn */
 
 $teamId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
@@ -50,6 +51,7 @@ $sql = "
         p.id              AS project_id,
         p.name            AS project_name,
         p.category        AS project_category,
+        p.topic_mode,
         p.period_start,
         p.period_end,
         p.supervisor_id,
@@ -82,14 +84,26 @@ if (!$team) {
     exit;
 }
 
+$teamTopic = latestTeamTopicProposal($conn, $teamId);
+$projectTopicOptions = activeProjectTopics($conn, (int) $team['project_id']);
+$assignedFixedTopic = ($team['topic_mode'] === 'Fixed' && count($projectTopicOptions) > 0)
+    ? $projectTopicOptions[0]
+    : null;
+
 $isPending = ((int) $team['pending_requests'] > 0);
 
 if ($isPending) {
-    $statusLabel = 'Pending Approval';
+    $statusLabel = 'Awaiting Approval';
     $statusClass = 'pending';
 } elseif ($team['status'] === 'Waiting_Send') {
-    $statusLabel = 'Waiting to Submit';
+    $statusLabel = 'Ready to Submit';
     $statusClass = 'waiting';
+} elseif ($team['status'] === 'Voting') {
+    $statusLabel = 'Choosing Leader';
+    $statusClass = 'voting';
+} elseif ($team['status'] === 'Executing') {
+    $statusLabel = 'Active';
+    $statusClass = 'executing';
 } else {
     $statusLabel = $team['status'];
     $statusClass = strtolower($team['status']);
@@ -723,7 +737,7 @@ if (!$selectedMember && count($members) > 0) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($team['team_name']); ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028a">
+    <link rel="stylesheet" href="teacher.css?v=20261028b">
 
     <style>
         .page-head {
@@ -1406,6 +1420,39 @@ if (!$selectedMember && count($members) > 0) {
             text-transform: uppercase;
         }
 
+        .team-topic-card {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 24px;
+            padding: 17px 18px;
+            border: 1px solid #e2e6ea;
+            border-left: 4px solid #537da7;
+            border-radius: 9px;
+            background: #fff;
+        }
+        .team-topic-card h3 {
+            margin: 0 0 5px;
+            color: #252b33;
+            font-size: 16px;
+        }
+        .team-topic-card p {
+            margin: 0;
+            color: #68717b;
+            font-size: 11.5px;
+            line-height: 1.6;
+        }
+        .team-topic-mode {
+            flex: 0 0 auto;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #eef3f8;
+            color: #49657f;
+            font-size: 9.5px;
+            font-weight: 700;
+        }
+
         .milestone-card {
             margin-bottom: 30px;
             overflow: hidden;
@@ -1962,6 +2009,40 @@ if (!$selectedMember && count($members) > 0) {
                     </div>
                 </div>
             </section>
+        </div>
+
+        <h2><?= $team['topic_mode'] === 'Self' ? 'Project Title' : 'Team Topic' ?></h2>
+        <p class="muted" style="margin-bottom: 12px;">
+            <?= $team['topic_mode'] === 'Self'
+                ? 'The latest project title submitted by this team.'
+                : 'Topic rule from the project and this team’s latest selection.' ?>
+        </p>
+        <div class="team-topic-card">
+            <div>
+                <?php if ($team['topic_mode'] === 'Fixed' && $assignedFixedTopic): ?>
+                    <h3><?= htmlspecialchars($assignedFixedTopic['title']) ?></h3>
+                    <p><?= nl2br(htmlspecialchars((string) $assignedFixedTopic['description'])) ?></p>
+                    <p style="margin-top:6px;color:#477052;font-weight:600;">Teacher-assigned topic · no approval required</p>
+                <?php elseif ($teamTopic): ?>
+                    <h3><?= htmlspecialchars($teamTopic['topic_title']) ?></h3>
+                    <p><?= nl2br(htmlspecialchars((string) $teamTopic['topic_description'])) ?></p>
+                    <p style="margin-top:6px;">
+                        Version <?= (int) $teamTopic['version'] ?> ·
+                        <?= htmlspecialchars(topicProposalStatusLabel($teamTopic['status'])) ?>
+                        · Submitted <?= date('d M Y H:i', strtotime($teamTopic['submitted_at'])) ?>
+                    </p>
+                    <?php if (!empty($teamTopic['review_note'])): ?>
+                        <p style="margin-top:7px;color:#9a3e3e;"><strong>Teacher feedback:</strong> <?= nl2br(htmlspecialchars($teamTopic['review_note'])) ?></p>
+                    <?php endif; ?>
+                <?php elseif ($team['topic_mode'] === 'Fixed'): ?>
+                    <h3>Fixed topic not configured</h3>
+                    <p>The supervisor has not added the fixed project topic yet.</p>
+                <?php else: ?>
+                    <h3>No topic submitted</h3>
+                    <p>The team leader has not submitted a topic proposal yet.</p>
+                <?php endif; ?>
+            </div>
+            <span class="team-topic-mode"><?= htmlspecialchars(topicModeLabel($team['topic_mode'])) ?></span>
         </div>
 
         <!-- Project milestones (teacher, read-only) -->

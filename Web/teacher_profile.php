@@ -181,7 +181,7 @@ $displayDept = !empty($teacher['department']) ? $teacher['department'] : '—';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028a">
+    <link rel="stylesheet" href="teacher.css?v=20261028b">
 </head>
 <body>
 

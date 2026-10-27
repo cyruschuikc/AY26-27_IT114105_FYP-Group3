@@ -114,6 +114,7 @@ $mimeTypes = array(
 $mime = isset($mimeTypes[$ext]) ? $mimeTypes[$ext] : 'application/octet-stream';
 
 $isImg = in_array($ext, array('png', 'jpg', 'jpeg', 'gif', 'webp'));
+$isInline = $isImg || in_array($ext, array('pdf', 'txt'), true);
 
 $downloadName = str_replace(array("\r", "\n"), '', $file['file_name']);
 
@@ -122,7 +123,7 @@ if (ob_get_level()) ob_end_clean();
 header('Content-Type: ' . $mime);
 header('Content-Length: ' . filesize($realPath));
 
-if ($isImg) {
+if ($isInline) {
     header('Content-Disposition: inline; filename="' . $downloadName . '"');
 } else {
     header('Content-Disposition: attachment; filename="' . $downloadName . '"');

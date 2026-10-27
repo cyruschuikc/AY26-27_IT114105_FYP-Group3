@@ -44,6 +44,9 @@ if (isset($_GET['msg'])) {
     } elseif ($_GET['msg'] === 'error') {
         $systemMsg = 'Something went wrong.';
         $msgType   = 'error';
+} elseif ($_GET['msg'] === 'crossclass') {
+    $systemMsg = 'This team invitation is not available to students from your class.';
+    $msgType   = 'error';
     }
 }
 

@@ -18,7 +18,7 @@ if ($inviteID === 0) {
 }
 
 // 取自己 student_id
-$stmt = mysqli_prepare($conn, "SELECT id FROM `students` WHERE user_id = ? LIMIT 1");
+$stmt = mysqli_prepare($conn, "SELECT id, class_id FROM `students` WHERE user_id = ? LIMIT 1");
 mysqli_stmt_bind_param($stmt, "i", $userID);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
@@ -30,6 +30,7 @@ if (!$rc) {
     exit;
 }
 $myStudentID = (int) $rc['id'];
+$myClassID = (int) $rc['class_id'];
 
 // 取邀請
 $stmt = mysqli_prepare($conn, "
@@ -66,8 +67,11 @@ $stmt = mysqli_prepare($conn, "
         g.status,
         g.max_members,
         g.project_id,
+        p.class_id AS home_class_id,
+        p.allow_cross_class,
         (SELECT COUNT(*) FROM `group_members` gm WHERE gm.group_id = g.id) AS member_count
     FROM `groups` g
+    INNER JOIN `projects` p ON p.id = g.project_id
     WHERE g.id = ?
     LIMIT 1
 ");
@@ -79,6 +83,33 @@ mysqli_stmt_close($stmt);
 
 if (!$grp) {
     header('Location: student_notifications.php?msg=error');
+    exit;
+}
+
+$classAllowed = ($myClassID === (int) $grp['home_class_id']);
+if (!$classAllowed && (int) $grp['allow_cross_class'] === 1) {
+    $stmt = mysqli_prepare($conn, "
+        SELECT 1
+        FROM `project_cross_classes`
+        WHERE project_id = ? AND class_id = ?
+        LIMIT 1
+    ");
+    mysqli_stmt_bind_param($stmt, "ii", $grp['project_id'], $myClassID);
+    mysqli_stmt_execute($stmt);
+    $rsClass = mysqli_stmt_get_result($stmt);
+    $classAllowed = (bool) mysqli_fetch_assoc($rsClass);
+    mysqli_stmt_close($stmt);
+}
+if (!$classAllowed) {
+    $stmt = mysqli_prepare($conn, "
+        UPDATE `invitations`
+        SET status = 'Cancelled', responded_at = NOW()
+        WHERE id = ? AND status = 'Pending'
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $inviteID);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    header('Location: student_notifications.php?msg=crossclass');
     exit;
 }
 

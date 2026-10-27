@@ -729,6 +729,7 @@ CREATE TABLE `projects` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(150) NOT NULL,
   `category` varchar(100) DEFAULT NULL,
+  `topic_mode` enum('Fixed','Multi','Self') NOT NULL DEFAULT 'Fixed',
   `assessment_scope` varchar(30) DEFAULT NULL,
   `assessment_weight` tinyint(3) unsigned DEFAULT NULL,
   `course_id` int(11) DEFAULT NULL,
@@ -769,9 +770,142 @@ CREATE TABLE `projects` (
 
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
-INSERT INTO `projects` VALUES (1,'TeamBox','Final Year Project',NULL,NULL,1,1,1,'2026-09-01','2027-01-31','Executing',20,'TeamBox is a Final Year Project for class SE-1A.','Students work in teams of four and submit progress through TeamBox.','Random','2026-10-18',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(2,'Smart Attendance','Final Year Project',NULL,NULL,1,4,1,'2026-09-01','2027-01-31','Executing',20,'Smart Attendance is a Final Year Project for class SE-2B.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-03',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(3,'Campus Map AR','Final Year Project',NULL,NULL,1,5,1,'2026-09-01','2027-01-31','Executing',20,'Campus Map AR is a Final Year Project for class CY-1A.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-10',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(4,'Smart Library','Final Year Project',NULL,NULL,1,2,2,'2026-09-01','2027-01-31','Executing',20,'Smart Library is a Final Year Project for class SE-1B.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-05',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(5,'Campus Food Order','Final Year Project',NULL,NULL,1,6,2,'2026-09-01','2027-01-31','Executing',20,'Campus Food Order is a Final Year Project for class CY-1B.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-07',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(6,'AI Study Buddy','Final Year Project',NULL,NULL,1,3,3,'2026-09-01','2027-01-31','Executing',20,'AI Study Buddy is a Final Year Project for class SE-2A.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-07',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(7,'Green Campus','Final Year Project',NULL,NULL,1,7,4,'2026-09-01','2027-01-31','Executing',20,'Green Campus is a Final Year Project for class CY-2A.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-09',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(8,'Career Path Finder','Final Year Project',NULL,NULL,1,8,5,'2026-09-01','2027-01-31','Executing',20,'Career Path Finder is a Final Year Project for class CY-2B.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-11',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03');
+INSERT INTO `projects` (`id`,`name`,`category`,`assessment_scope`,`assessment_weight`,`course_id`,`class_id`,`supervisor_id`,`period_start`,`period_end`,`status`,`progress`,`description`,`requirements`,`team_mode`,`team_deadline`,`allow_cross_class`,`default_max_members`,`leader_permissions`,`post_deadline_action`,`visibility`,`reminder_days`,`allow_extension`,`is_draft`,`last_reminder_sent`,`created_at`) VALUES (1,'TeamBox','Final Year Project',NULL,NULL,1,1,1,'2026-09-01','2027-01-31','Executing',20,'TeamBox is a Final Year Project for class SE-1A.','Students work in teams of four and submit progress through TeamBox.','Random','2026-10-18',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(2,'Smart Attendance','Final Year Project',NULL,NULL,1,4,1,'2026-09-01','2027-01-31','Executing',20,'Smart Attendance is a Final Year Project for class SE-2B.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-03',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(3,'Campus Map AR','Final Year Project',NULL,NULL,1,5,1,'2026-09-01','2027-01-31','Executing',20,'Campus Map AR is a Final Year Project for class CY-1A.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-10',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(4,'Smart Library','Final Year Project',NULL,NULL,1,2,2,'2026-09-01','2027-01-31','Executing',20,'Smart Library is a Final Year Project for class SE-1B.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-05',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(5,'Campus Food Order','Final Year Project',NULL,NULL,1,6,2,'2026-09-01','2027-01-31','Executing',20,'Campus Food Order is a Final Year Project for class CY-1B.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-07',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(6,'AI Study Buddy','Final Year Project',NULL,NULL,1,3,3,'2026-09-01','2027-01-31','Executing',20,'AI Study Buddy is a Final Year Project for class SE-2A.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-07',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(7,'Green Campus','Final Year Project',NULL,NULL,1,7,4,'2026-09-01','2027-01-31','Executing',20,'Green Campus is a Final Year Project for class CY-2A.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-09',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03'),(8,'Career Path Finder','Final Year Project',NULL,NULL,1,8,5,'2026-09-01','2027-01-31','Executing',20,'Career Path Finder is a Final Year Project for class CY-2B.','Students work in teams of four and submit progress through TeamBox.','Random','2026-11-11',0,4,'[\"invite\",\"remove\",\"rename\",\"assign\",\"submit\"]','Lock','Course',3,1,0,NULL,'2026-10-20 13:29:03');
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
 UNLOCK TABLES;
+
+-- Demo FYP workspaces are class-based and use student-proposed topics.
+UPDATE `projects`
+SET `topic_mode` = 'Self',
+    `team_mode` = 'Free',
+    `name` = CONCAT(
+        (SELECT `code` FROM `courses` WHERE `courses`.`id` = `projects`.`course_id`),
+        '_',
+        (SELECT `class_code` FROM `classes` WHERE `classes`.`id` = `projects`.`class_id`),
+        '_',
+        `category`
+    ),
+    `description` = CONCAT('Final Year Project workspace for ', (
+        SELECT `class_code` FROM `classes` WHERE `classes`.`id` = `projects`.`class_id`
+    ), '. Each team proposes and develops its own topic.')
+WHERE `id` BETWEEN 1 AND 8;
+
+--
+-- Table structure for table `project_topics`
+--
+
+DROP TABLE IF EXISTS `project_topics`;
+CREATE TABLE `project_topics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `project_id` int(11) NOT NULL,
+  `title` varchar(180) NOT NULL,
+  `description` text DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT 0,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_project_topics_project` (`project_id`,`is_active`,`position`),
+  CONSTRAINT `project_topics_project_fk` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Table structure for table `project_cross_classes`
+--
+
+DROP TABLE IF EXISTS `project_cross_classes`;
+CREATE TABLE `project_cross_classes` (
+  `project_id` int(11) NOT NULL,
+  `class_id` int(11) NOT NULL,
+  PRIMARY KEY (`project_id`,`class_id`),
+  KEY `class_id` (`class_id`),
+  CONSTRAINT `project_cross_classes_project_fk` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `project_cross_classes_class_fk` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Table structure for table `team_topic_proposals`
+--
+
+DROP TABLE IF EXISTS `team_topic_proposals`;
+CREATE TABLE `team_topic_proposals` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `group_id` int(11) NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `topic_id` int(11) DEFAULT NULL,
+  `version` int(11) NOT NULL DEFAULT 1,
+  `topic_title` varchar(180) NOT NULL,
+  `topic_description` text DEFAULT NULL,
+  `status` enum('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
+  `submitted_by` int(11) NOT NULL,
+  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `reviewed_by` int(11) DEFAULT NULL,
+  `reviewed_at` datetime DEFAULT NULL,
+  `review_note` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_team_topic_version` (`group_id`,`version`),
+  KEY `idx_topic_proposals_project_status` (`project_id`,`status`),
+  KEY `idx_topic_proposals_topic` (`topic_id`),
+  KEY `idx_topic_proposals_submitted_by` (`submitted_by`),
+  KEY `idx_topic_proposals_reviewed_by` (`reviewed_by`),
+  CONSTRAINT `topic_proposals_group_fk` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `topic_proposals_project_fk` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `topic_proposals_topic_fk` FOREIGN KEY (`topic_id`) REFERENCES `project_topics` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `topic_proposals_student_fk` FOREIGN KEY (`submitted_by`) REFERENCES `students` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `topic_proposals_teacher_fk` FOREIGN KEY (`reviewed_by`) REFERENCES `teachers` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `team_topic_proposals`
+    (`group_id`,`project_id`,`topic_id`,`version`,`topic_title`,`topic_description`,
+     `status`,`submitted_by`,`submitted_at`,`reviewed_by`,`reviewed_at`)
+SELECT
+    g.`id`,
+    g.`project_id`,
+    NULL,
+    1,
+    CASE g.`id`
+        WHEN 1 THEN 'TeamBox'
+        WHEN 2 THEN 'Smart Campus Assistant'
+        WHEN 3 THEN 'Student Wellbeing Hub'
+        WHEN 4 THEN 'Campus Navigation'
+        WHEN 5 THEN 'Smart Attendance'
+        WHEN 6 THEN 'AI Study Planner'
+        WHEN 7 THEN 'Campus Event Finder'
+        WHEN 8 THEN 'Peer Tutoring'
+        WHEN 9 THEN 'Campus Map AR'
+        WHEN 10 THEN 'Lab Equipment Tracker'
+        WHEN 11 THEN 'Cybersecurity Awareness'
+        WHEN 12 THEN 'Smart Recycling'
+        WHEN 13 THEN 'Library Seat Finder'
+        WHEN 14 THEN 'Study Group Matcher'
+        WHEN 15 THEN 'Campus Lost and Found'
+        WHEN 16 THEN 'Lecture Capture Assistant'
+        WHEN 17 THEN 'Food Queue Manager'
+        WHEN 18 THEN 'Allergy-Safe Menu'
+        WHEN 19 THEN 'Sustainable Dining'
+        WHEN 20 THEN 'Campus Delivery Hub'
+        WHEN 21 THEN 'AI Study Buddy'
+        WHEN 22 THEN 'Revision Planner'
+        WHEN 23 THEN 'Flashcard Generator'
+        WHEN 24 THEN 'Academic Chatbot'
+        WHEN 25 THEN 'Green Campus Dashboard'
+        WHEN 26 THEN 'Energy Usage Tracker'
+        WHEN 27 THEN 'Waste Sorting Guide'
+        WHEN 28 THEN 'Sustainable Transport'
+        WHEN 29 THEN 'Career Path Finder'
+        WHEN 30 THEN 'Internship Matcher'
+        WHEN 31 THEN 'Skills Portfolio'
+        WHEN 32 THEN 'Graduate Readiness Hub'
+        ELSE CONCAT('FYP Topic ', g.`id`)
+    END,
+    'Approved Final Year Project topic selected for this team.',
+    'Approved',
+    g.`creator_id`,
+    '2026-10-20 14:00:00',
+    p.`supervisor_id`,
+    '2026-10-20 15:00:00'
+FROM `groups` g
+INNER JOIN `projects` p ON p.`id` = g.`project_id`
+WHERE p.`topic_mode` = 'Self';
 
 --
 -- Table structure for table `request_members`

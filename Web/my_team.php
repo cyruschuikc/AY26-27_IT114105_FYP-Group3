@@ -2,6 +2,7 @@
 session_start();
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/topic_helpers.php';
 /** @var mysqli $conn */
 
 if (!isset($conn) || !$conn) {
@@ -59,6 +60,7 @@ $stmt = mysqli_prepare($conn, "
         g.created_at,
         p.name          AS project_name,
         p.category      AS project_category,
+        p.topic_mode,
         p.period_start,
         p.period_end,
         p.progress      AS project_progress,
@@ -137,6 +139,12 @@ if (!$myGroup && count($myGroups) > 0) {
 $pendingExtension = null;
 
 if ($myGroup) {
+    $teamTopic = latestTeamTopicProposal($conn, (int) $myGroup['group_id']);
+    $teamTopicOptions = activeProjectTopics($conn, (int) $myGroup['project_id']);
+    $fixedTeamTopic = ($myGroup['topic_mode'] === 'Fixed' && count($teamTopicOptions) > 0)
+        ? $teamTopicOptions[0]
+        : null;
+
     $stmt = mysqli_prepare($conn, "
         SELECT id, requested_end, status
         FROM `project_extension_requests`
@@ -422,6 +430,21 @@ if (!function_exists('timeAgo')) {
         .team-info-card h3 { margin-bottom: 10px; color: #777; font-size: 14px; }
         .team-info-card p { color: #222; font-size: 17px; font-weight: bold; }
 
+        .team-topic-summary {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 18px; margin: -8px 0 26px; padding: 18px 20px;
+            background: #f7f9fc; border: 1px solid #e1e6ec;
+            border-left: 4px solid #245889; border-radius: 10px;
+        }
+        .team-topic-summary h3 { margin-bottom: 5px; color: #222; font-size: 17px; }
+        .team-topic-summary p { color: #666; font-size: 13px; line-height: 1.55; }
+        .team-topic-link {
+            flex: 0 0 auto; padding: 9px 13px; border: 1px solid #245889;
+            border-radius: 7px; color: #245889; font-size: 12px; font-weight: bold;
+            text-decoration: none; background: #fff;
+        }
+        .team-topic-link:hover { background: #edf3f9; }
+
         /* Project */
         .project-section {
             padding: 30px; margin-bottom: 25px;
@@ -576,6 +599,7 @@ if (!function_exists('timeAgo')) {
             .group-switcher select { min-width: 100%; }
 
             .team-header { flex-direction: column; }
+            .team-topic-summary { flex-direction: column; align-items: flex-start; }
             .team-info-grid,
             .info-grid,
             .member-list { grid-template-columns: 1fr; }
@@ -825,6 +849,26 @@ if (!function_exists('timeAgo')) {
                     <h3>Supervisor</h3>
                     <p><?php echo htmlspecialchars($myGroup['supervisor_name'] ?: '—'); ?></p>
                 </div>
+            </div>
+
+            <div class="team-topic-summary">
+                <div>
+                    <h3><?= $myGroup['topic_mode'] === 'Self' ? 'Project Title' : 'Team Topic' ?></h3>
+                    <?php if ($myGroup['topic_mode'] === 'Fixed' && $fixedTeamTopic): ?>
+                        <p><?= htmlspecialchars($fixedTeamTopic['title']) ?> · Teacher assigned</p>
+                    <?php elseif ($teamTopic): ?>
+                        <p>
+                            <?= htmlspecialchars($teamTopic['topic_title']) ?> ·
+                            <?= htmlspecialchars(topicProposalStatusLabel($teamTopic['status'])) ?> ·
+                            Version <?= (int) $teamTopic['version'] ?>
+                        </p>
+                    <?php else: ?>
+                        <p><?= htmlspecialchars(topicModeLabel($myGroup['topic_mode'])) ?> · No topic submitted yet</p>
+                    <?php endif; ?>
+                </div>
+                <a class="team-topic-link" href="student_topic.php?group_id=<?= (int) $myGroup['group_id'] ?>">
+                    <?= $myGroup['topic_mode'] === 'Self' ? 'Open Project Title' : 'Open Topic' ?>
+                </a>
             </div>
 
             <div class="team-progress">
