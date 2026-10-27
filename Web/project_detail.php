@@ -10,6 +10,7 @@ require_once __DIR__ . '/helpers.php';
 /** @var mysqli $conn */
 
 $projectId = isset($_GET['id']) ? (int)$_GET['id'] : 1;
+$lateOnly  = isset($_GET['late']) && $_GET['late'] === '1';
 
 // =========================================================
 // 0. Current teacher + extension review handler
@@ -177,7 +178,11 @@ $sql = "
         (SELECT COUNT(*) FROM `Tasks` t
             WHERE t.group_id = g.id AND t.status = 'Completed') AS done_tasks,
         (SELECT COUNT(*) FROM `Tasks` t2
-            WHERE t2.group_id = g.id) AS total_tasks
+            WHERE t2.group_id = g.id) AS total_tasks,
+        (SELECT COUNT(*) FROM `Tasks` t3
+            WHERE t3.group_id = g.id
+              AND t3.status <> 'Completed'
+              AND t3.due_date < CURDATE()) AS overdue_tasks
     FROM `Groups` g
     LEFT JOIN `Students` s ON s.id = g.leader_id
     LEFT JOIN `Users`    u ON u.id = s.user_id
@@ -190,9 +195,19 @@ mysqli_stmt_bind_param($stmt, "i", $projectId);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 while ($row = mysqli_fetch_assoc($rs)) {
+    $row['overdue_tasks'] = (int) $row['overdue_tasks'];
     $teams[] = $row;
 }
 mysqli_stmt_close($stmt);
+
+$lateTeams = array();
+foreach ($teams as $teamRow) {
+    if ((int) $teamRow['overdue_tasks'] > 0) {
+        $lateTeams[] = $teamRow;
+    }
+}
+$lateTeamCount = count($lateTeams);
+$displayTeams  = $lateOnly ? $lateTeams : $teams;
 
 
 // =========================================================
@@ -233,6 +248,9 @@ $sql = "
         t.title,
         t.status,
         t.due_date,
+        (t.due_date IS NOT NULL
+            AND t.status <> 'Completed'
+            AND t.due_date < CURDATE()) AS is_overdue,
         g.name     AS team_name,
         u.username AS owner_name
     FROM `Tasks` t
@@ -661,7 +679,7 @@ foreach ($tasks as $t) {
 
         .status-strip {
             display: grid;
-            grid-template-columns: 1.35fr repeat(3, 1fr);
+            grid-template-columns: 1.25fr 1fr 1fr;
             overflow: hidden;
             margin-bottom: 30px;
             background: #fff;
@@ -671,8 +689,10 @@ foreach ($tasks as $t) {
 
         .status-metric {
             min-width: 0;
-            padding: 15px 18px;
+            padding: 16px 18px;
             border-right: 1px solid #eef0f2;
+            color: inherit;
+            text-decoration: none;
         }
 
         .status-metric:last-child { border-right: none; }
@@ -695,28 +715,69 @@ foreach ($tasks as $t) {
         }
 
         .status-metric small {
-            margin-left: 4px;
+            display: block;
+            margin-top: 4px;
             color: #8b8f98;
             font-size: 11.5px;
             font-weight: 500;
+            line-height: 1.4;
         }
 
-        .status-metric .mini-progress {
-            height: 5px;
-            margin-top: 9px;
-            overflow: hidden;
-            background: #eef0f3;
-            border-radius: 999px;
+        .progress-summary {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .status-metric .mini-progress > span {
-            display: block;
-            height: 100%;
-            background: #175196;
+        .progress-ring {
+            position: relative;
+            display: grid;
+            width: 58px;
+            height: 58px;
+            flex: 0 0 58px;
+            place-items: center;
+            border-radius: 50%;
+        }
+
+        .progress-ring::before {
+            position: absolute;
+            inset: 6px;
             border-radius: inherit;
+            background: #fff;
+            content: "";
+        }
+
+        .progress-ring strong {
+            position: relative;
+            z-index: 1;
+            color: #2c2f36;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .progress-caption {
+            color: #8b8f98;
+            font-size: 11.5px;
+            line-height: 1.35;
         }
 
         .status-metric.is-warning strong { color: #b02a2a; }
+
+        .status-metric.status-link {
+            display: block;
+            background: #fffafa;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+
+        .status-metric.status-link:hover {
+            background: #fff4f4;
+            box-shadow: inset 0 -2px 0 #d65b5b;
+        }
+
+        .status-metric.status-link small {
+            color: #a94444;
+            font-weight: 600;
+        }
 
         .section-head {
             display: flex;
@@ -777,21 +838,247 @@ foreach ($tasks as $t) {
 
         .detail-section[open] > summary { margin-bottom: 12px; }
 
-        .milestone-row {
+        .teams-grid {
             display: grid;
-            grid-template-columns: minmax(180px, 1.5fr) minmax(170px, 1fr) 110px;
-            align-items: center;
-            gap: 16px;
-            padding: 13px 16px;
-            border-bottom: 1px solid #f2f3f5;
-            font-size: 13px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
         }
 
-        .milestone-row:last-child { border-bottom: none; }
-        .milestone-row.is-late { background: #fff8f8; }
-        .milestone-name { color: #2c2f36; font-weight: 550; }
-        .milestone-dates { color: #8b8f98; font-size: 11.5px; }
-        .milestone-state { text-align: right; }
+        .team-card {
+            position: relative;
+            display: flex;
+            min-width: 0;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 15px 16px 13px;
+            border: 1px solid #e3e6ea;
+            border-radius: 9px;
+            background: #fff;
+            color: inherit;
+            text-decoration: none;
+            transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+        }
+
+        .team-card::before {
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 3px;
+            background: #175196;
+            content: "";
+        }
+
+        .team-card.is-late::before { background: #b02a2a; }
+
+        .team-card:hover {
+            border-color: #c7d2df;
+            box-shadow: 0 8px 22px rgba(25, 40, 60, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .team-card-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .team-avatar {
+            display: grid;
+            width: 36px;
+            height: 36px;
+            flex: 0 0 36px;
+            place-items: center;
+            border-radius: 9px;
+            background: #eef3f8;
+            color: #175196;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .team-card.is-late .team-avatar {
+            background: #fdf0f0;
+            color: #a42c2c;
+        }
+
+        .team-card-title {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .team-card-title strong {
+            display: block;
+            overflow: hidden;
+            color: #232830;
+            font-size: 13.5px;
+            font-weight: 700;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .team-card-title small {
+            display: block;
+            overflow: hidden;
+            margin-top: 2px;
+            color: #8b8f98;
+            font-size: 10.5px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .team-card-status {
+            flex: 0 0 auto;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: #f0f2f4;
+            color: #626974;
+            font-size: 9.5px;
+            font-weight: 700;
+        }
+
+        .team-card-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid #f0f2f4;
+        }
+
+        .team-card-metric span {
+            display: block;
+            color: #969ca4;
+            font-size: 9.5px;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .team-card-metric strong {
+            display: block;
+            margin-top: 3px;
+            color: #353c46;
+            font-size: 13px;
+            font-variant-numeric: tabular-nums;
+            font-weight: 650;
+        }
+
+        .team-card-metric.is-danger strong { color: #b02a2a; }
+
+        .team-card-progress {
+            height: 4px;
+            margin-top: 12px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #edf0f3;
+        }
+
+        .team-card-progress span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: #175196;
+        }
+
+        .team-card.is-late .team-card-progress span { background: #b95d5d; }
+
+        .team-card-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 9px;
+            color: #969ca4;
+            font-size: 10px;
+        }
+
+        .team-card-open {
+            color: #315e8d;
+            font-weight: 700;
+        }
+
+        .milestone-timeline {
+            position: relative;
+            padding: 7px 17px;
+        }
+
+        .milestone-item {
+            position: relative;
+            display: grid;
+            grid-template-columns: 30px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 13px;
+            padding: 12px 0;
+        }
+
+        .milestone-item:not(:last-child)::before {
+            position: absolute;
+            top: 38px;
+            bottom: -11px;
+            left: 14px;
+            width: 1px;
+            background: #e5e8ec;
+            content: "";
+        }
+
+        .milestone-marker {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            width: 29px;
+            height: 29px;
+            place-items: center;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            background: #e9eef4;
+            color: #5e7287;
+            box-shadow: 0 0 0 1px #dde3ea;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .milestone-item.is-late .milestone-marker {
+            background: #fbe7e7;
+            color: #a72c2c;
+            box-shadow: 0 0 0 1px #ecc9c9;
+        }
+
+        .milestone-item.is-complete .milestone-marker {
+            background: #e5f2ea;
+            color: #32714d;
+            box-shadow: 0 0 0 1px #c9e2d4;
+        }
+
+        .milestone-copy { min-width: 0; }
+
+        .milestone-copy strong {
+            display: block;
+            color: #2c323b;
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .milestone-copy span {
+            display: block;
+            margin-top: 3px;
+            color: #8b8f98;
+            font-size: 10.5px;
+        }
+
+        .milestone-side {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            text-align: right;
+        }
+
+        .milestone-age {
+            color: #9aa0a8;
+            font-size: 9.5px;
+            font-weight: 600;
+        }
+
+        .milestone-item.is-late .milestone-age { color: #b02a2a; }
 
         .progress-table td { white-space: normal; }
 
@@ -807,33 +1094,73 @@ foreach ($tasks as $t) {
         .progress-table td:last-child { color: #2c2f36; }
 
         .task-row {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 34px minmax(0, 1fr) auto;
             align-items: center;
+            gap: 12px;
             padding: 13px 16px;
             border-bottom: 1px solid #f2f3f5;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .task-row:last-child { border-bottom: none; }
 
-        .task-row .task-name { color: #2c2f36; }
+        .task-marker {
+            display: grid;
+            width: 32px;
+            height: 32px;
+            place-items: center;
+            border-radius: 8px;
+            background: #eef3f8;
+            color: #315e8d;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .task-row.is-late .task-marker {
+            background: #fbe9e9;
+            color: #a62e2e;
+        }
+
+        .task-main { min-width: 0; }
+
+        .task-row .task-name {
+            color: #2c323b;
+            font-weight: 600;
+        }
 
         .task-row .task-owner {
-            font-size: 13px;
-            color: #8b8f98;
             margin-top: 3px;
+            color: #8b8f98;
+            font-size: 10.5px;
         }
 
         .task-row .task-right {
-            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
             white-space: nowrap;
         }
 
+        .task-status {
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: #eef2f6;
+            color: #4f6275;
+            font-size: 9.5px;
+            font-weight: 700;
+        }
+
+        .task-row.is-late .task-status {
+            background: #fbeaea;
+            color: #a42c2c;
+        }
+
         .task-row .task-due {
-            font-size: 12px;
-            color: #a8acb4;
-            margin-top: 3px;
+            color: #9aa0a8;
+            font-size: 10px;
         }
 
         .task-row.is-late {
@@ -1465,9 +1792,7 @@ foreach ($tasks as $t) {
             .gantt-label { width: 100%; padding: 0 0 6px 0; }
             .review-cta { flex-direction: column; align-items: flex-start; }
             .board-stats { grid-template-columns: repeat(2, 1fr); }
-            .status-strip { grid-template-columns: repeat(2, 1fr); }
-            .status-metric:nth-child(2) { border-right: none; }
-            .status-metric:nth-child(-n+2) { border-bottom: 1px solid #eef0f2; }
+            .status-strip { grid-template-columns: 1.1fr 1fr 1fr; }
         }
 
         @media (max-width: 800px) {
@@ -1482,10 +1807,24 @@ foreach ($tasks as $t) {
             .status-strip { grid-template-columns: 1fr; }
             .status-metric { border-right: none; border-bottom: 1px solid #eef0f2; }
             .status-metric:last-child { border-bottom: none; }
-            .milestone-row { grid-template-columns: 1fr; gap: 5px; }
-            .milestone-state { text-align: left; }
+            .teams-grid { grid-template-columns: 1fr; }
+            .milestone-item {
+                grid-template-columns: 30px minmax(0, 1fr);
+                align-items: start;
+            }
+            .milestone-side {
+                grid-column: 2;
+                flex-direction: row;
+                align-items: center;
+                text-align: left;
+            }
             .detail-section > summary .summary-note { display: none; }
-            .task-row { align-items: flex-start; gap: 14px; }
+            .task-row { grid-template-columns: 34px minmax(0, 1fr); align-items: start; }
+            .task-right {
+                grid-column: 2;
+                flex-direction: row;
+                align-items: center;
+            }
         }
     </style>
 </head>
@@ -1543,25 +1882,34 @@ foreach ($tasks as $t) {
         <div class="status-strip" aria-label="Project status summary">
             <div class="status-metric">
                 <span>Project progress</span>
-                <strong><?= (int) $project['progress'] ?>%</strong>
-                <div class="mini-progress" aria-hidden="true">
-                    <span style="width: <?= (int) $project['progress'] ?>%"></span>
+                <div class="progress-summary">
+                    <div class="progress-ring"
+                         style="background: conic-gradient(#175196 0 <?= (int) $project['progress'] ?>%, #edf0f3 <?= (int) $project['progress'] ?>% 100%);">
+                        <strong><?= (int) $project['progress'] ?>%</strong>
+                    </div>
+                    <span class="progress-caption">Overall<br>completion</span>
                 </div>
             </div>
             <div class="status-metric">
                 <span>Teams</span>
                 <strong><?= count($teams) ?></strong>
-                <small><?= (int) $assignedStudents ?> students assigned</small>
+                <small>Total <?= (int) $assignedStudents ?> students</small>
             </div>
-            <div class="status-metric">
-                <span>Tasks completed</span>
-                <strong><?= (int) $doneTasks ?><small>/ <?= (int) $totalTasks ?></small></strong>
-            </div>
-            <div class="status-metric <?= $lateCount > 0 ? 'is-warning' : '' ?>">
-                <span>Milestones late</span>
-                <strong><?= (int) $lateCount ?></strong>
-                <small><?= $lateCount > 0 ? 'Needs attention' : 'On track' ?></small>
-            </div>
+            <?php if ($lateTeamCount > 0): ?>
+                <a class="status-metric status-link is-warning"
+                   href="project_detail.php?id=<?= (int) $projectId ?>&amp;late=1#teams"
+                   title="Open teams with overdue work">
+                    <span>Late teams</span>
+                    <strong><?= (int) $lateTeamCount ?></strong>
+                    <small>Open groups with overdue work →</small>
+                </a>
+            <?php else: ?>
+                <div class="status-metric">
+                    <span>Late teams</span>
+                    <strong>0</strong>
+                    <small>All work is on track</small>
+                </div>
+            <?php endif; ?>
         </div>
 
         <?php if ($project['requirements']): ?>
@@ -1570,37 +1918,6 @@ foreach ($tasks as $t) {
                 <?php echo nl2br(htmlspecialchars($project['requirements'])); ?>
             </div>
         <?php endif; ?>
-
-        <h2>Team Formation</h2>
-        <div class="card board-card">
-            <div class="board-stats">
-                <div class="board-stat">
-                    <span>Enrolled</span>
-                    <strong><?= (int) $enrolledStudents ?></strong>
-                </div>
-                <div class="board-stat">
-                    <span>Assigned</span>
-                    <strong><?= (int) $assignedStudents ?></strong>
-                </div>
-                <div class="board-stat">
-                    <span>Unassigned</span>
-                    <strong><?= (int) $unassignedStudents ?></strong>
-                </div>
-                <div class="board-stat">
-                    <span>Capacity</span>
-                    <strong><?= count($teams) ?> / <?= (int) $groupCapacity ?></strong>
-                </div>
-            </div>
-            <div class="board-progress" aria-label="Team formation progress">
-                <div style="width: <?= (int) $formationPercent ?>%"></div>
-            </div>
-            <div class="board-caption">
-                <strong><?= (int) $formationPercent ?>%</strong> of enrolled students have joined a team
-                <?php if ($unassignedStudents > 0): ?>
-                    · <span class="board-warn"><?= (int) $unassignedStudents ?> still unassigned</span>
-                <?php endif; ?>
-            </div>
-        </div>
 
         <?php if (count($attachments) > 0): ?>
             <h2>Project Attachments</h2>
@@ -1685,46 +2002,75 @@ foreach ($tasks as $t) {
             </div>
         <?php endif; ?>
 
-        <div class="section-head">
-            <h2>Teams</h2>
-            <span class="section-note"><?= count($teams) ?> teams · <?= (int) $assignedStudents ?> students</span>
-        </div>
-        <div class="card">
-            <table>
-                <tr>
-                    <th>Team Name</th>
-                    <th>Leader</th>
-                    <th>Members</th>
-                    <th>Progress</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-
-                <?php if (count($teams) === 0): ?>
-                    <tr>
-                        <td colspan="6" class="muted" style="text-align: center; padding: 24px;">
-                            No teams in this project yet.
-                        </td>
-                    </tr>
+        <div class="section-head" id="teams">
+            <h2><?= $lateOnly ? 'Late Teams' : 'Teams' ?></h2>
+            <span class="section-note">
+                <?php if ($lateOnly): ?>
+                    <?= count($displayTeams) ?> team<?= count($displayTeams) === 1 ? '' : 's' ?> with overdue work
+                    · <a href="project_detail.php?id=<?= (int) $projectId ?>#teams" class="link">Show all teams</a>
+                <?php else: ?>
+                    <?= count($teams) ?> teams · <?= (int) $assignedStudents ?> students
                 <?php endif; ?>
+            </span>
+        </div>
+        <?php if (count($displayTeams) === 0): ?>
+            <div class="card">
+                <div class="empty-note">
+                    <?= $lateOnly ? 'No teams with overdue work.' : 'No teams in this project yet.' ?>
+                </div>
+            </div>
+        <?php endif; ?>
 
-                <?php foreach ($teams as $t): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($t['name']); ?></td>
-                        <td><?php echo htmlspecialchars($t['leader_name'] ?: '—'); ?></td>
-                        <td><?php echo (int) $t['member_count']; ?> / <?php echo (int) $t['max_members']; ?></td>
-                        <td>
-                            <?php
-                            $done  = (int) $t['done_tasks'];
-                            $total = (int) $t['total_tasks'];
-                            echo $total > 0 ? ($done . ' / ' . $total) : '—';
-                            ?>
-                        </td>
-                        <td><span class="pill"><?php echo htmlspecialchars($t['status']); ?></span></td>
-                        <td><a href="team_detail.php?id=<?php echo (int) $t['id']; ?>" class="link">View</a></td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
+        <div class="teams-grid">
+            <?php foreach ($displayTeams as $t): ?>
+                <?php
+                $done = (int) $t['done_tasks'];
+                $total = (int) $t['total_tasks'];
+                $overdue = (int) $t['overdue_tasks'];
+                $teamProgress = $total > 0 ? (int) round($done / $total * 100) : 0;
+                $teamNumber = trim(preg_replace('/\D+/', '', (string) $t['name']));
+                $teamNumber = $teamNumber !== '' ? str_pad(substr($teamNumber, -2), 2, '0', STR_PAD_LEFT) : 'T';
+                $teamStatusLabels = array(
+                    'Waiting_Send' => 'Approval Pending',
+                    'Voting'       => 'Choosing Leader',
+                    'Executing'    => 'Work in Progress',
+                    'Completed'    => 'Completed',
+                );
+                $displayTeamStatus = $teamStatusLabels[$t['status']] ?? $t['status'];
+                ?>
+                <a class="team-card <?= $overdue > 0 ? 'is-late' : '' ?>"
+                   href="team_detail.php?id=<?= (int) $t['id'] ?>">
+                    <div class="team-card-head">
+                        <span class="team-avatar"><?= htmlspecialchars($teamNumber) ?></span>
+                        <span class="team-card-title">
+                            <strong><?= htmlspecialchars($t['name']) ?></strong>
+                            <small>Leader · <?= htmlspecialchars($t['leader_name'] ?: 'Not assigned') ?></small>
+                        </span>
+                        <span class="team-card-status"><?= htmlspecialchars($displayTeamStatus) ?></span>
+                    </div>
+                    <div class="team-card-metrics">
+                        <div class="team-card-metric">
+                            <span>Members</span>
+                            <strong><?= (int) $t['member_count'] ?> / <?= (int) $t['max_members'] ?></strong>
+                        </div>
+                        <div class="team-card-metric">
+                            <span>Tasks</span>
+                            <strong><?= $total > 0 ? $done . ' / ' . $total : '—' ?></strong>
+                        </div>
+                        <div class="team-card-metric <?= $overdue > 0 ? 'is-danger' : '' ?>">
+                            <span>Overdue</span>
+                            <strong><?= $overdue ?></strong>
+                        </div>
+                    </div>
+                    <div class="team-card-progress" aria-label="Task progress <?= $teamProgress ?>%">
+                        <span style="width: <?= $teamProgress ?>%"></span>
+                    </div>
+                    <div class="team-card-foot">
+                        <span><?= $teamProgress ?>% task completion</span>
+                        <span class="team-card-open">Open team →</span>
+                    </div>
+                </a>
+            <?php endforeach; ?>
         </div>
 
         <div class="section-head">
@@ -1735,26 +2081,48 @@ foreach ($tasks as $t) {
             <?php if (count($milestones) === 0): ?>
                 <div class="empty-note">No milestones yet.</div>
             <?php endif; ?>
-            <?php foreach ($milestones as $m): ?>
-                <div class="milestone-row <?= !empty($m['is_late']) ? 'is-late' : '' ?>">
-                    <div class="milestone-name"><?= htmlspecialchars($m['name']) ?></div>
-                    <div class="milestone-dates">
-                        <?= date('d M', strtotime($m['start'])) ?>
-                        → <?= date('d M Y', strtotime($m['end'])) ?>
-                    </div>
-                    <div class="milestone-state">
-                        <?php if (!empty($m['is_late'])): ?>
-                            <span class="pill pill-rejected">Late</span>
-                        <?php elseif ($m['status'] === 'Completed'): ?>
-                            <span class="pill pill-approved">Completed</span>
-                        <?php else: ?>
-                            <span class="pill pill-<?= $m['status'] === 'In Progress' ? 'pending' : 'draft' ?>">
-                                <?= htmlspecialchars($m['status']) ?>
+            <div class="milestone-timeline">
+                <?php foreach ($milestones as $m): ?>
+                    <?php
+                    $milestoneEnd = strtotime($m['end']);
+                    $daysToEnd = (int) floor(($milestoneEnd - strtotime(date('Y-m-d'))) / 86400);
+                    $isComplete = $m['status'] === 'Completed';
+                    if (!empty($m['is_late'])) {
+                        $ageLabel = 'Overdue ' . max(1, abs($daysToEnd)) . 'd';
+                    } elseif ($isComplete) {
+                        $ageLabel = 'Complete';
+                    } elseif ($daysToEnd === 0) {
+                        $ageLabel = 'Due today';
+                    } else {
+                        $ageLabel = 'Due in ' . max(0, $daysToEnd) . 'd';
+                    }
+                    ?>
+                    <div class="milestone-item <?= !empty($m['is_late']) ? 'is-late' : ($isComplete ? 'is-complete' : '') ?>">
+                        <span class="milestone-marker">
+                            <?= !empty($m['is_late']) ? '!' : ($isComplete ? '✓' : '•') ?>
+                        </span>
+                        <div class="milestone-copy">
+                            <strong><?= htmlspecialchars($m['name']) ?></strong>
+                            <span>
+                                <?= date('d M', strtotime($m['start'])) ?>
+                                → <?= date('d M Y', $milestoneEnd) ?>
                             </span>
-                        <?php endif; ?>
+                        </div>
+                        <div class="milestone-side">
+                            <?php if (!empty($m['is_late'])): ?>
+                                <span class="pill pill-rejected">Late</span>
+                            <?php elseif ($isComplete): ?>
+                                <span class="pill pill-approved">Completed</span>
+                            <?php else: ?>
+                                <span class="pill pill-<?= $m['status'] === 'In Progress' ? 'pending' : 'draft' ?>">
+                                    <?= htmlspecialchars($m['status']) ?>
+                                </span>
+                            <?php endif; ?>
+                            <span class="milestone-age"><?= htmlspecialchars($ageLabel) ?></span>
+                        </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
+            </div>
         </div>
 
         <?php
@@ -1775,12 +2143,13 @@ foreach ($tasks as $t) {
             <?php endif; ?>
             <?php foreach ($activeTasks as $t): ?>
                 <?php
-                $taskIsLate = !empty($t['due_date'])
-                    && strtotime($t['due_date']) < strtotime(date('Y-m-d'))
-                    && $t['status'] !== 'Completed';
+                $taskIsLate = !empty($t['is_overdue']);
+                $teamNumber = trim(preg_replace('/\D+/', '', (string) $t['team_name']));
+                $teamNumber = $teamNumber !== '' ? str_pad(substr($teamNumber, -2), 2, '0', STR_PAD_LEFT) : 'T';
                 ?>
                 <div class="task-row <?= $taskIsLate ? 'is-late' : '' ?>">
-                    <div>
+                    <span class="task-marker"><?= htmlspecialchars($teamNumber) ?></span>
+                    <div class="task-main">
                         <div class="task-name"><?= htmlspecialchars($t['title']) ?></div>
                         <div class="task-owner">
                             <?= htmlspecialchars($t['team_name'] ?: '—') ?> ·
@@ -1788,7 +2157,7 @@ foreach ($tasks as $t) {
                         </div>
                     </div>
                     <div class="task-right">
-                        <div><?= htmlspecialchars($t['status']) ?></div>
+                        <span class="task-status"><?= htmlspecialchars($t['status']) ?></span>
                         <div class="task-due">
                             <?= $t['due_date'] ? date('d M Y', strtotime($t['due_date'])) : '—' ?>
                             <?= $taskIsLate ? ' · Late' : '' ?>
