@@ -42,7 +42,7 @@ $studentID   = (int) $rc['student_id'];
 $studentName = $rc['username'];
 
 // =========================================================
-// 2. 未讀通知數量
+// 2. 未讀通知數量 + 預覽列表
 // =========================================================
 $unreadNotifications = 0;
 
@@ -55,6 +55,22 @@ mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 $rc = mysqli_fetch_assoc($rs);
 $unreadNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+$unreadList = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT id, type, title, message, created_at
+    FROM `notifications`
+    WHERE user_id = ? AND is_read = 0
+    ORDER BY created_at DESC
+    LIMIT 8
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($rowN = mysqli_fetch_assoc($rs)) {
+    $unreadList[] = $rowN;
+}
 mysqli_stmt_close($stmt);
 
 // =========================================================
@@ -257,7 +273,6 @@ if (isset($_POST['createTask']) && $myGroup) {
     $deadline    = trim(isset($_POST['taskDeadline'])    ? $_POST['taskDeadline']    : '');
     $priority    = trim(isset($_POST['taskPriority'])    ? $_POST['taskPriority']    : 'Medium');
 
-    // 現在只能指定其他組員，不能選自己
     $assignedToID = (int) $assignedTo;
 
     if ($title === '' || $description === '' || $deadline === '' || $assignedToID === 0) {
@@ -520,46 +535,194 @@ if (isset($_POST['confirmTask']) && $myGroup) {
     }
 }
 
-// -------- 6.4 Log My Contribution --------
-if (isset($_POST['logContribution']) && $myGroup) {
+// -------- 6.4 Confirm another groupmate's contribution --------
+if (isset($_POST['voteContribution']) && $myGroup) {
+    $contributionID = (int)(isset($_POST['contributionID']) ? $_POST['contributionID'] : 0);
+    $vote = isset($_POST['vote']) ? $_POST['vote'] : '';
 
-    $title  = trim(isset($_POST['contributionTitle']) ? $_POST['contributionTitle'] : '');
-    $type   = trim(isset($_POST['contributionType'])  ? $_POST['contributionType']  : '');
-    $date   = trim(isset($_POST['contributionDate'])  ? $_POST['contributionDate']  : '');
-    $notes  = trim(isset($_POST['contributionNotes']) ? $_POST['contributionNotes'] : '');
-
-    if ($title === '' || $type === '' || $date === '') {
-        $flashMsg  = 'Please fill in all required contribution fields.';
+    if ($contributionID <= 0 || !in_array($vote, array('agree', 'disagree'), true)) {
+        $flashMsg = 'Invalid confirmation request.';
         $flashType = 'error';
     } else {
         $stmt = mysqli_prepare($conn, "
-            INSERT INTO `contributions`
-                (group_id, student_id, title, type, notes, contribution_date)
-            VALUES (?, ?, ?, ?, ?, ?)
+            SELECT c.id, c.student_id, c.confirmation_status
+            FROM `contributions` c
+            JOIN `group_members` gm
+              ON gm.group_id = c.group_id AND gm.student_id = ?
+            WHERE c.id = ? AND c.group_id = ?
+            LIMIT 1
         ");
-        mysqli_stmt_bind_param(
-                $stmt, "iissss",
-                $activeGroupID, $studentID, $title, $type, $notes, $date
-        );
-
-        if (mysqli_stmt_execute($stmt)) {
-            $projectId = (int) $myGroup['project_id'];
-            $stmt2 = mysqli_prepare($conn, "
-                INSERT INTO `activities` (project_id, group_id, actor_id, action, detail)
-                VALUES (?, ?, ?, 'contributed', ?)
-            ");
-            $detail = 'logged contribution "' . $title . '"';
-            mysqli_stmt_bind_param($stmt2, "iiis", $projectId, $activeGroupID, $userID, $detail);
-            mysqli_stmt_execute($stmt2);
-            mysqli_stmt_close($stmt2);
-
-            $flashMsg  = 'Contribution logged successfully.';
-            $flashType = 'success';
-        } else {
-            $flashMsg  = 'Failed to log contribution: ' . mysqli_error($conn);
-            $flashType = 'error';
-        }
+        mysqli_stmt_bind_param($stmt, "iii", $studentID, $contributionID, $activeGroupID);
+        mysqli_stmt_execute($stmt);
+        $contribution = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
         mysqli_stmt_close($stmt);
+
+        if (!$contribution || (int)$contribution['student_id'] === $studentID) {
+            $flashMsg = 'You cannot confirm this contribution.';
+            $flashType = 'error';
+        } elseif ($contribution['confirmation_status'] !== 'Pending') {
+            $flashMsg = 'This contribution has already been decided.';
+            $flashType = 'error';
+        } else {
+            $stmt = mysqli_prepare($conn, "
+                INSERT INTO `contribution_votes` (contribution_id, voter_student_id, vote)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE vote = VALUES(vote), voted_at = CURRENT_TIMESTAMP
+            ");
+            mysqli_stmt_bind_param($stmt, "iis", $contributionID, $studentID, $vote);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+
+            // The owner does not vote. A decision is made only after every other groupmate votes.
+            $stmt = mysqli_prepare($conn, "
+                SELECT
+                    (SELECT COUNT(*) FROM `group_members` WHERE group_id = ?) - 1 AS required_votes,
+                    COUNT(*) AS total_votes,
+                    SUM(vote = 'agree') AS agree_votes,
+                    SUM(vote = 'disagree') AS disagree_votes
+                FROM `contribution_votes`
+                WHERE contribution_id = ?
+            ");
+            mysqli_stmt_bind_param($stmt, "ii", $activeGroupID, $contributionID);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            mysqli_stmt_close($stmt);
+
+            $required = max(0, (int)$result['required_votes']);
+            $total = (int)$result['total_votes'];
+            $agree = (int)$result['agree_votes'];
+            $disagree = (int)$result['disagree_votes'];
+
+            if ($required > 0 && $total >= $required) {
+                // Tie, majority agree, or unanimous agree: award 10 points.
+                // Majority disagree or unanimous disagree: award 0 points.
+                $approved = ($agree >= $disagree);
+                $status = $approved ? 'Approved' : 'Rejected';
+                $points = $approved ? 10 : 0;
+                $stmt = mysqli_prepare($conn, "
+                    UPDATE `contributions`
+                    SET confirmation_status = ?, points_awarded = ?, confirmed_at = NOW()
+                    WHERE id = ? AND confirmation_status = 'Pending'
+                ");
+                mysqli_stmt_bind_param($stmt, "sii", $status, $points, $contributionID);
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+                $flashMsg = $approved
+                        ? 'All groupmates confirmed. This contribution received 10 points.'
+                        : 'All groupmates confirmed. This contribution received 0 points.';
+            } else {
+                $flashMsg = 'Your confirmation was recorded.';
+            }
+            $flashType = 'success';
+        }
+    }
+}
+
+// -------- 6.4 Log My Contribution + optional attachment --------
+if (isset($_POST['logContribution']) && $myGroup) {
+    $title = trim(isset($_POST['contributionTitle']) ? $_POST['contributionTitle'] : '');
+    $type  = trim(isset($_POST['contributionType']) ? $_POST['contributionType'] : '');
+    $date  = trim(isset($_POST['contributionDate']) ? $_POST['contributionDate'] : '');
+    $notes = trim(isset($_POST['contributionNotes']) ? $_POST['contributionNotes'] : '');
+
+    $allowedExtensions = array('pdf','doc','docx','ppt','pptx','xls','xlsx','png','jpg','jpeg','txt','zip','fig','sql','ipynb');
+    $hasFile = isset($_FILES['contributionFile'])
+            && isset($_FILES['contributionFile']['error'])
+            && $_FILES['contributionFile']['error'] !== UPLOAD_ERR_NO_FILE;
+
+    if ($title === '' || $type === '' || $date === '') {
+        $flashMsg = 'Please fill in all required contribution fields.';
+        $flashType = 'error';
+    } elseif ($hasFile && $_FILES['contributionFile']['error'] !== UPLOAD_ERR_OK) {
+        $flashMsg = 'The attachment could not be uploaded.';
+        $flashType = 'error';
+    } else {
+        $originalName = '';
+        $extension = '';
+        if ($hasFile) {
+            $originalName = basename($_FILES['contributionFile']['name']);
+            $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+            if (!in_array($extension, $allowedExtensions, true)) {
+                $flashMsg = 'File type not allowed.';
+                $flashType = 'error';
+            } elseif ((int)$_FILES['contributionFile']['size'] > 10 * 1024 * 1024) {
+                $flashMsg = 'The attachment must not exceed 10 MB.';
+                $flashType = 'error';
+            }
+        }
+
+        if ($flashMsg === '') {
+            mysqli_begin_transaction($conn);
+            $storedName = '';
+            $savedPath = '';
+            try {
+                $stmt = mysqli_prepare($conn, "
+                    INSERT INTO `contributions`
+                        (group_id, student_id, title, type, notes, contribution_date)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                mysqli_stmt_bind_param($stmt, "iissss", $activeGroupID, $studentID, $title, $type, $notes, $date);
+                if (!mysqli_stmt_execute($stmt)) {
+                    throw new Exception(mysqli_stmt_error($stmt));
+                }
+                $contributionID = (int)mysqli_insert_id($conn);
+                mysqli_stmt_close($stmt);
+
+                if ($hasFile) {
+                    $uploadDir = __DIR__ . '/uploads/chat_files/';
+                    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true)) {
+                        throw new Exception('Cannot create upload directory.');
+                    }
+                    $storedName = 'contribution_' . $contributionID . '_' . (function_exists('random_bytes') ? bin2hex(random_bytes(8)) : str_replace('.', '', uniqid('', true))) . '.' . $extension;
+                    $savedPath = $uploadDir . $storedName;
+                    if (!move_uploaded_file($_FILES['contributionFile']['tmp_name'], $savedPath)) {
+                        throw new Exception('Cannot save uploaded file.');
+                    }
+
+                    $bytes = (int)$_FILES['contributionFile']['size'];
+                    $fileSize = $bytes >= 1048576
+                            ? round($bytes / 1048576, 2) . ' MB'
+                            : round($bytes / 1024, 2) . ' KB';
+                    $fileType = strtoupper($extension);
+                    $projectID = (int)$myGroup['project_id'];
+
+                    $stmtF = mysqli_prepare($conn, "
+                        INSERT INTO `files`
+                            (project_id, group_id, task_id, contribution_id, uploader_id,
+                             file_name, display_name, stored_name, file_size, file_type, status)
+                        VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, 'Unviewed')
+                    ");
+                    mysqli_stmt_bind_param($stmtF, "iiiisssss", $projectID, $activeGroupID,
+                            $contributionID, $studentID, $originalName, $originalName,
+                            $storedName, $fileSize, $fileType);
+                    if (!mysqli_stmt_execute($stmtF)) {
+                        throw new Exception(mysqli_stmt_error($stmtF));
+                    }
+                    mysqli_stmt_close($stmtF);
+                }
+
+                $projectID = (int)$myGroup['project_id'];
+                $detail = 'logged contribution "' . $title . '"';
+                $stmtA = mysqli_prepare($conn, "
+                    INSERT INTO `activities` (project_id, group_id, actor_id, action, detail)
+                    VALUES (?, ?, ?, 'contributed', ?)
+                ");
+                mysqli_stmt_bind_param($stmtA, "iiis", $projectID, $activeGroupID, $userID, $detail);
+                mysqli_stmt_execute($stmtA);
+                mysqli_stmt_close($stmtA);
+
+                mysqli_commit($conn);
+                $flashMsg = $hasFile
+                        ? 'Contribution and attachment saved successfully.'
+                        : 'Contribution logged successfully.';
+                $flashType = 'success';
+            } catch (Throwable $e) {
+                mysqli_rollback($conn);
+                if ($savedPath !== '' && is_file($savedPath)) @unlink($savedPath);
+                $flashMsg = 'Failed to log contribution: ' . $e->getMessage();
+                $flashType = 'error';
+            }
+        }
     }
 }
 
@@ -724,6 +887,35 @@ if (!function_exists('timeAgo')) {
     }
 }
 ?>
+<?php
+// Contribution history and confirmation progress.
+$contributionHistory = array();
+if ($myGroup) {
+    $stmt = mysqli_prepare($conn, "
+        SELECT c.*, u.username AS student_name,
+               COUNT(DISTINCT cv.id) AS total_votes,
+               SUM(cv.vote = 'agree') AS agree_votes,
+               SUM(cv.vote = 'disagree') AS disagree_votes,
+               (SELECT COUNT(*) FROM `group_members` gm2 WHERE gm2.group_id = c.group_id) - 1 AS required_votes,
+               MAX(CASE WHEN cv.voter_student_id = ? THEN cv.vote END) AS my_vote,
+               GROUP_CONCAT(DISTINCT CONCAT_WS('::', f.id, f.file_name, f.file_type, f.file_size) ORDER BY f.uploaded_at DESC SEPARATOR '||') AS attached_files
+        FROM `contributions` c
+        JOIN `students` s ON s.id = c.student_id
+        JOIN `users` u ON u.id = s.user_id
+        LEFT JOIN `contribution_votes` cv ON cv.contribution_id = c.id
+        LEFT JOIN `files` f ON f.contribution_id = c.id
+        WHERE c.group_id = ?
+        GROUP BY c.id
+        ORDER BY c.created_at DESC
+    ");
+    mysqli_stmt_bind_param($stmt, "ii", $studentID, $activeGroupID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    while ($row = mysqli_fetch_assoc($rs)) $contributionHistory[] = $row;
+    mysqli_stmt_close($stmt);
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -748,12 +940,21 @@ if (!function_exists('timeAgo')) {
         .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
         .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
-        .bell-link {
-            position: absolute; right: 0; top: 50%;
+        /* =========================================================
+           鈴鐺 + 未讀通知預覽
+           ========================================================= */
+        .bell-wrap {
+            position: absolute;
+            right: 0; top: 50%;
             transform: translateY(-50%);
+            z-index: 100;
+        }
+        .bell-link {
+            position: relative;
             display: flex; align-items: center; justify-content: center;
             width: 44px; height: 44px; border-radius: 50%;
             transition: background 0.3s;
+            text-decoration: none;
         }
         .bell-link:hover { background: rgba(255, 255, 255, 0.15); }
         .bell-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
@@ -765,6 +966,108 @@ if (!function_exists('timeAgo')) {
             display: flex; align-items: center; justify-content: center;
             border: 2px solid black;
         }
+
+        .bell-preview {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 340px;
+            max-height: 420px;
+            background: white;
+            color: #222;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+            overflow: hidden;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+        }
+        .bell-wrap:hover .bell-preview {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .bell-preview::before {
+            content: "";
+            position: absolute;
+            top: -6px;
+            right: 18px;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            border-top: 1px solid #e0e0e0;
+            transform: rotate(45deg);
+        }
+        .bell-preview-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #333;
+            background: #fafbfc;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .bell-preview-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            max-height: 320px;
+        }
+        .bell-preview-item {
+            display: block;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f2f3f5;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+        .bell-preview-item:hover { background: #f7f8fa; }
+        .bell-preview-item:last-child { border-bottom: none; }
+        .bell-preview-title {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bell-preview-msg {
+            display: block;
+            font-size: 11.5px;
+            color: #777;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .bell-preview-time {
+            display: block;
+            font-size: 10.5px;
+            color: #9aa0a6;
+        }
+        .bell-preview-footer {
+            padding: 10px 14px;
+            text-align: center;
+            background: #fafbfc;
+            border-top: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #175196;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .bell-preview-footer:hover { background: #f0f6fd; }
 
         .function-menu {
             width: 100%; display: flex; justify-content: center; align-items: center;
@@ -904,6 +1207,55 @@ if (!function_exists('timeAgo')) {
         .form-group select:focus,
         .form-group textarea:focus { border-color: black; }
 
+        /* Assigned task attachments shown under Contribution Type */
+        .contribution-task-files {
+            margin: 2px 0 19px;
+            padding: 18px;
+            background: #f8fafc;
+            border: 2px solid #e1e6eb;
+            border-radius: 10px;
+        }
+        .contribution-task-files > h3 {
+            margin: 0 0 14px;
+            font-size: 16px;
+            color: #222;
+        }
+        .contribution-task-file-item {
+            padding: 13px 14px;
+            margin-bottom: 10px;
+            background: white;
+            border: 1px solid #e2e2e2;
+            border-left: 4px solid #245889;
+            border-radius: 8px;
+        }
+        .contribution-task-file-item:last-child { margin-bottom: 0; }
+        .contribution-task-file-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .contribution-task-file-title strong { font-size: 14px; color: #222; }
+        .contribution-task-file-title span { font-size: 12px; color: #777; }
+        .contribution-attached-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .contribution-attached-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 9px;
+            background: #f7f7f7;
+            border-radius: 6px;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+        .contribution-attached-list .file-name { flex: 1; min-width: 140px; }
         .form-actions { display: flex; justify-content: flex-end; gap: 12px; }
         .cancel-btn {
             min-width: 130px; height: 46px; padding: 0 16px;
@@ -1333,6 +1685,21 @@ if (!function_exists('timeAgo')) {
 
         .muted { color: #777; font-size: 14px; }
 
+
+        .contribution-history { margin-top: 30px; }
+        .history-list { display: grid; gap: 14px; }
+        .history-card { background:#fff; border:1px solid #e2e6ea; border-left:5px solid #245889; border-radius:10px; padding:18px; }
+        .history-head { display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+        .history-head h3 { margin:0 0 5px; font-size:17px; }
+        .history-meta, .vote-summary { color:#666; font-size:13px; }
+        .history-attachments{margin-top:14px;border-top:1px solid #e6e9ed;padding-top:12px}.history-attachments h4{margin:0 0 8px;font-size:14px}.history-file-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 10px;margin-top:7px;background:#f7f9fb;border-radius:7px}.history-file-info{min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.history-file-name{overflow-wrap:anywhere;font-weight:600}.history-download-btn{margin-left:auto;flex:0 0 auto;padding:7px 12px;border-radius:6px;background:#245889;color:#fff;text-decoration:none;font-size:12px;font-weight:700}.history-download-btn:hover{background:#173d61}
+        .status-badge { padding:5px 10px; border-radius:999px; font-size:12px; font-weight:bold; }
+        .status-Pending { color:#8a5800; background:#fff1c7; }
+        .status-Approved { color:#146c2e; background:#dff5e5; }
+        .status-Rejected { color:#9b1c1c; background:#fde2e2; }
+        .vote-actions { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+        .vote-btn { border:1px solid #245889; background:#fff; color:#245889; padding:8px 14px; border-radius:7px; cursor:pointer; font-weight:600; }
+        .vote-btn:hover, .vote-btn.selected { background:#245889; color:#fff; }
         @media (max-width: 1100px) {
             .summary-grid { grid-template-columns: repeat(3, 1fr); }
         }
@@ -1347,6 +1714,7 @@ if (!function_exists('timeAgo')) {
             .logo-area span { font-size: 26px; }
             .bell-link { width: 38px; height: 38px; }
             .bell-link img { width: 22px; height: 22px; }
+            .bell-preview { width: calc(100vw - 40px); right: -8px; }
             .function-menu { flex-direction: column; gap: 12px; }
             .main-content { width: 94%; margin: 25px auto; }
             .page-heading h1 { font-size: 28px; }
@@ -1381,12 +1749,38 @@ if (!function_exists('timeAgo')) {
             <span>TeamBox</span>
         </div>
 
-        <a href="student_notifications.php" class="bell-link" title="Notifications">
-            <img src="bell.png" alt="Notifications">
-            <?php if ($unreadNotifications > 0): ?>
-                <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+        <div class="bell-wrap">
+            <a href="student_notifications.php" class="bell-link" title="Notifications">
+                <img src="bell.png" alt="Notifications">
+                <?php if ($unreadNotifications > 0): ?>
+                    <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+                <?php endif; ?>
+            </a>
+
+            <?php if (count($unreadList) > 0): ?>
+                <div class="bell-preview">
+                    <div class="bell-preview-header">
+                        Unread Notifications (<?php echo count($unreadList); ?>)
+                    </div>
+                    <div class="bell-preview-list">
+                        <?php foreach ($unreadList as $n): ?>
+                            <a href="student_notifications.php" class="bell-preview-item">
+                                <span class="bell-preview-title"><?php echo htmlspecialchars($n['title']); ?></span>
+                                <?php if (!empty($n['message'])): ?>
+                                    <span class="bell-preview-msg"><?php echo htmlspecialchars($n['message']); ?></span>
+                                <?php endif; ?>
+                                <span class="bell-preview-time">
+                                    <?php echo date('d M Y H:i', strtotime($n['created_at'])); ?>
+                                </span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <a href="student_notifications.php" class="bell-preview-footer">
+                        View all notifications →
+                    </a>
+                </div>
             <?php endif; ?>
-        </a>
+        </div>
     </div>
 
     <div class="function-menu">
@@ -1519,7 +1913,7 @@ if (!function_exists('timeAgo')) {
                 needed. Your entry will be counted towards your contribution score.
             </p>
 
-            <form method="post" action="student_task.php?group_id=<?php echo $activeGroupID; ?>">
+            <form method="post" enctype="multipart/form-data" action="student_task.php?group_id=<?php echo $activeGroupID; ?>">
                 <div class="form-group">
                     <label for="contributionTitle">What did you do?</label>
                     <input type="text" id="contributionTitle" name="contributionTitle"
@@ -1549,6 +1943,17 @@ if (!function_exists('timeAgo')) {
                     </div>
                 </div>
 
+                <div class="task-files" style="margin-top:0; margin-bottom:19px;">
+                    <div class="task-files-head">
+                        <h4>Attached File <span class="muted small">(optional, maximum 10 MB)</span></h4>
+                        <label class="upload-btn" for="contributionFile">+ Choose File</label>
+                    </div>
+                    <input type="file" id="contributionFile" name="contributionFile"
+                           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.txt,.zip,.fig,.sql,.ipynb"
+                           style="position:absolute;left:-9999px;">
+                    <p id="contributionFileName" class="muted small">No file selected.</p>
+                </div>
+
                 <div class="form-group">
                     <label for="contributionNotes">Notes (optional)</label>
                     <textarea id="contributionNotes" name="contributionNotes"
@@ -1556,12 +1961,90 @@ if (!function_exists('timeAgo')) {
                 </div>
 
                 <div class="form-actions">
-                    <button type="reset" class="cancel-btn">Clear</button>
+                    <button type="reset" class="cancel-btn" onclick="setTimeout(function(){ var n=document.getElementById('contributionFileName'); if(n)n.textContent='No file selected.'; },0)">Clear</button>
                     <button type="submit" name="logContribution" class="submit-btn">
                         Log Contribution
                     </button>
                 </div>
             </form>
+        </section>
+
+        <section class="task-section contribution-history">
+            <div class="section-heading"><h2>Contribution Log History</h2></div>
+            <?php if (count($contributionHistory) === 0): ?>
+                <p class="muted">No contribution records yet.</p>
+            <?php else: ?>
+                <div class="history-list">
+                    <?php foreach ($contributionHistory as $log): ?>
+                        <?php
+                        $isOwner = ((int)$log['student_id'] === $studentID);
+                        $requiredVotes = max(0, (int)$log['required_votes']);
+                        $totalVotes = (int)$log['total_votes'];
+                        $agreeVotes = (int)$log['agree_votes'];
+                        $disagreeVotes = (int)$log['disagree_votes'];
+                        $historyFiles = array();
+                        if (!empty($log['attached_files'])) {
+                            foreach (explode('||', $log['attached_files']) as $packedFile) {
+                                $parts = explode('::', $packedFile, 4);
+                                if (count($parts) === 4) $historyFiles[] = array('id'=>(int)$parts[0], 'name'=>$parts[1], 'type'=>$parts[2], 'size'=>$parts[3]);
+                            }
+                        }
+                        ?>
+                        <article class="history-card">
+                            <div class="history-head">
+                                <div>
+                                    <h3><?php echo htmlspecialchars($log['title']); ?></h3>
+                                    <div class="history-meta">
+                                        <?php echo htmlspecialchars($log['student_name']); ?> ·
+                                        <?php echo htmlspecialchars($log['type']); ?> ·
+                                        <?php echo htmlspecialchars($log['contribution_date']); ?>
+                                    </div>
+                                </div>
+                                <span class="status-badge status-<?php echo htmlspecialchars($log['confirmation_status']); ?>">
+                                <?php echo htmlspecialchars($log['confirmation_status']); ?> ·
+                                <?php echo (int)$log['points_awarded']; ?> points
+                            </span>
+                            </div>
+                            <?php if (trim((string)$log['notes']) !== ''): ?>
+                                <p><?php echo nl2br(htmlspecialchars($log['notes'])); ?></p>
+                            <?php endif; ?>
+                            <?php if (count($historyFiles) > 0): ?>
+                                <div class="history-attachments">
+                                    <h4>Attached File<?php echo count($historyFiles) > 1 ? 's' : ''; ?></h4>
+                                    <?php foreach ($historyFiles as $historyFile): ?>
+                                        <div class="history-file-row">
+                                            <div class="history-file-info">
+                                                <span class="file-type"><?php echo htmlspecialchars($historyFile['type']); ?></span>
+                                                <span class="history-file-name"><?php echo htmlspecialchars($historyFile['name']); ?></span>
+                                                <span class="muted small"><?php echo htmlspecialchars($historyFile['size']); ?></span>
+                                            </div>
+                                            <a class="history-download-btn" href="download_file.php?id=<?php echo (int)$historyFile['id']; ?>">Download</a>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                            <div class="vote-summary" style="margin-top:12px;">
+                                Confirmed <?php echo $totalVotes; ?>/<?php echo $requiredVotes; ?> ·
+                                Agree <?php echo $agreeVotes; ?> · Disagree <?php echo $disagreeVotes; ?>
+                            </div>
+                            <?php if (!$isOwner && $log['confirmation_status'] === 'Pending'): ?>
+                                <form method="post" class="vote-actions">
+                                    <input type="hidden" name="contributionID" value="<?php echo (int)$log['id']; ?>">
+                                    <button type="submit" name="voteContribution" value="1"
+                                            class="vote-btn <?php echo $log['my_vote'] === 'agree' ? 'selected' : ''; ?>"
+                                            onclick="this.form.vote.value='agree'">Agree</button>
+                                    <button type="submit" name="voteContribution" value="1"
+                                            class="vote-btn <?php echo $log['my_vote'] === 'disagree' ? 'selected' : ''; ?>"
+                                            onclick="this.form.vote.value='disagree'">Disagree</button>
+                                    <input type="hidden" name="vote" value="">
+                                </form>
+                            <?php elseif ($isOwner && $log['confirmation_status'] === 'Pending'): ?>
+                                <p class="muted small">Waiting for every other groupmate to confirm.</p>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </section>
 
         <section class="task-section">
@@ -1895,5 +2378,17 @@ if (!function_exists('timeAgo')) {
     });
 </script>
 
+
+<script>
+    const contributionFile = document.getElementById('contributionFile');
+    const contributionFileName = document.getElementById('contributionFileName');
+    if (contributionFile && contributionFileName) {
+        contributionFile.addEventListener('change', function () {
+            contributionFileName.textContent = this.files.length
+                ? this.files[0].name
+                : 'No file selected.';
+        });
+    }
+</script>
 </body>
 </html>

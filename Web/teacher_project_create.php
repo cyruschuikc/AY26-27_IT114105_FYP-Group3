@@ -95,39 +95,39 @@ $allowedAssessmentScopes = array('CA', 'EA', 'This Semester', 'Full Year');
 $allowedTopicModes = array('Fixed', 'Multi', 'Self');
 
 $form = array(
-    'name'                 => '',
-    'class_id'             => count($classes) > 0 ? (int) $classes[0]['id'] : 0,
-    'course_id'            => count($classes) > 0 ? (int) $classes[0]['course_id'] : 0,
-    'category'             => '',
-    'topic_mode'           => 'Fixed',
-    'assessment_scope'     => '',
-    'assessment_weight'    => '',
-    'description'          => '',
-    'requirements'         => '',
-    'period_start'         => date('Y-m-d'),
-    'period_end'           => date('Y-m-d', strtotime('+16 weeks')),
-    'visibility'           => 'Course',
-    'team_mode'            => 'Free',
-    'team_deadline'        => date('Y-m-d', strtotime('+2 weeks')),
-    'max_members'          => 4,
-    'allow_cross_class'    => 0,
-    'cross_class_ids'      => array(),
-    'leader_permissions'   => $defaultPermissions,
-    'post_deadline_action' => 'Lock',
-    'reminder_days'        => 3,
-    'allow_extension'      => 1,
-    'ann_title'            => '',
-    'ann_message'          => '',
-    'ann_channels'         => array('inapp'),
-    'ann_timing'           => 'now',
-    'ann_scheduled_at'     => '',
+        'name'                 => '',
+        'class_id'             => count($classes) > 0 ? (int) $classes[0]['id'] : 0,
+        'course_id'            => count($classes) > 0 ? (int) $classes[0]['course_id'] : 0,
+        'category'             => '',
+        'topic_mode'           => 'Fixed',
+        'assessment_scope'     => '',
+        'assessment_weight'    => '',
+        'description'          => '',
+        'requirements'         => '',
+        'period_start'         => date('Y-m-d'),
+        'period_end'           => date('Y-m-d', strtotime('+16 weeks')),
+        'visibility'           => 'Course',
+        'team_mode'            => 'Free',
+        'team_deadline'        => date('Y-m-d', strtotime('+2 weeks')),
+        'max_members'          => 4,
+        'allow_cross_class'    => 0,
+        'cross_class_ids'      => array(),
+        'leader_permissions'   => $defaultPermissions,
+        'post_deadline_action' => 'Lock',
+        'reminder_days'        => 3,
+        'allow_extension'      => 1,
+        'ann_title'            => '',
+        'ann_message'          => '',
+        'ann_channels'         => array('inapp'),
+        'ann_timing'           => 'now',
+        'ann_scheduled_at'     => '',
 );
 
 $milestones = array(
-    array('name' => '', 'start' => '', 'end' => ''),
+        array('name' => '', 'start' => '', 'end' => ''),
 );
 $topics = array(
-    array('id' => 0, 'title' => '', 'description' => ''),
+        array('id' => 0, 'title' => '', 'description' => ''),
 );
 
 $existingAttachments = array();
@@ -158,15 +158,18 @@ if ($sourceId > 0) {
         $form['class_id']             = (int) $source['class_id'];
         $form['course_id']            = (int) $source['course_id'];
         $form['category']             = in_array($source['category'], $allowedCategories, true)
-            ? $source['category']
-            : '';
+                ? $source['category']
+                : '';
         $form['topic_mode']            = in_array($source['topic_mode'], $allowedTopicModes, true)
-            ? $source['topic_mode']
-            : 'Fixed';
-        $form['assessment_scope']     = (string) ($source['assessment_scope'] ?? '');
+                ? $source['topic_mode']
+                : 'Fixed';
+
+        // ★ 修正：?? → isset() ? :
+        $form['assessment_scope']     = (string) (isset($source['assessment_scope']) ? $source['assessment_scope'] : '');
+
         $form['assessment_weight']    = $source['assessment_weight'] !== null
-            ? (string) (int) $source['assessment_weight']
-            : '';
+                ? (string) (int) $source['assessment_weight']
+                : '';
         $form['description']          = $source['description'];
         $form['requirements']         = $source['requirements'];
         $form['period_start']         = $source['period_start'];
@@ -204,9 +207,9 @@ if ($sourceId > 0) {
         $loadedMs = array();
         while ($row = mysqli_fetch_assoc($rs)) {
             $loadedMs[] = array(
-                'name'  => $row['name'],
-                'start' => $row['start_date'],
-                'end'   => $row['end_date'],
+                    'name'  => $row['name'],
+                    'start' => $row['start_date'],
+                    'end'   => $row['end_date'],
             );
         }
         mysqli_stmt_close($stmt);
@@ -227,9 +230,9 @@ if ($sourceId > 0) {
         $loadedTopics = array();
         while ($row = mysqli_fetch_assoc($rs)) {
             $loadedTopics[] = array(
-                'id' => $isDuplicate ? 0 : (int) $row['id'],
-                'title' => $row['title'],
-                'description' => (string) $row['description'],
+                    'id' => $isDuplicate ? 0 : (int) $row['id'],
+                    'title' => $row['title'],
+                    'description' => (string) $row['description'],
             );
         }
         mysqli_stmt_close($stmt);
@@ -364,9 +367,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             continue;
         }
         $topics[] = array(
-            'id' => isset($postedTopicIds[$i]) ? (int) $postedTopicIds[$i] : 0,
-            'title' => $topicTitle,
-            'description' => trim(isset($postedTopicDescs[$i]) ? $postedTopicDescs[$i] : ''),
+                'id' => isset($postedTopicIds[$i]) ? (int) $postedTopicIds[$i] : 0,
+                'title' => $topicTitle,
+                'description' => trim(isset($postedTopicDescs[$i]) ? $postedTopicDescs[$i] : ''),
         );
     }
     if (count($topics) === 0) {
@@ -374,9 +377,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (in_array($form['topic_mode'], array('Multi', 'Self'), true)
-        && $selectedClassCode !== ''
-        && $selectedCourseCode !== ''
-        && in_array($form['category'], $allowedCategories, true)) {
+            && $selectedClassCode !== ''
+            && $selectedCourseCode !== ''
+            && in_array($form['category'], $allowedCategories, true)) {
         $form['name'] = $selectedCourseCode . '_' . $selectedClassCode . '_' . $form['category'];
     }
 
@@ -384,17 +387,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($form['topic_mode'] === 'Fixed' && $form['name'] !== '') {
         $fixedTopicId = count($topics) > 0 ? (int) $topics[0]['id'] : 0;
         $topics = array(array(
-            'id' => $fixedTopicId,
-            'title' => $form['name'],
-            'description' => '',
+                'id' => $fixedTopicId,
+                'title' => $form['name'],
+                'description' => '',
         ));
     }
 
     // ---------- Validation ----------
     if ($form['name'] === '') {
         $errors[] = in_array($form['topic_mode'], array('Multi', 'Self'), true)
-            ? 'The automatic project title could not be generated. Check the class and category.'
-            : 'Project title is required.';
+                ? 'The automatic project title could not be generated. Check the class and category.'
+                : 'Project title is required.';
     } elseif (strlen($form['name']) > 150) {
         $errors[] = 'Project title must be 150 characters or fewer.';
     }
@@ -431,8 +434,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Please choose a valid assessment scope.';
         }
         if (!preg_match('/^\d+$/', $form['assessment_weight'])
-            || (int) $form['assessment_weight'] < 0
-            || (int) $form['assessment_weight'] > 100) {
+                || (int) $form['assessment_weight'] < 0
+                || (int) $form['assessment_weight'] > 100) {
             $errors[] = 'Assessment percentage must be a whole number between 0 and 100.';
         }
     }
@@ -447,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($form['period_start'] !== '' && $form['period_end'] !== ''
-        && strtotime($form['period_end']) < strtotime($form['period_start'])) {
+            && strtotime($form['period_end']) < strtotime($form['period_start'])) {
         $errors[] = 'Project deadline cannot be earlier than the start date.';
     }
 
@@ -480,14 +483,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allClassIds[] = (int) $classOption['id'];
     }
     $form['cross_class_ids'] = array_values(array_intersect(
-        $form['cross_class_ids'],
-        $allClassIds
+            $form['cross_class_ids'],
+            $allClassIds
     ));
     $form['cross_class_ids'] = array_values(array_filter(
-        $form['cross_class_ids'],
-        function ($classId) use ($form) {
-            return (int) $classId !== (int) $form['class_id'];
-        }
+            $form['cross_class_ids'],
+            function ($classId) use ($form) {
+                return (int) $classId !== (int) $form['class_id'];
+            }
     ));
     if (!$form['allow_cross_class']) {
         $form['cross_class_ids'] = array();
@@ -533,8 +536,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // One class may only have one active Final Year Project workspace.
     if (!$isDraft
-        && $form['category'] === 'Final Year Project'
-        && $form['class_id'] > 0) {
+            && $form['category'] === 'Final Year Project'
+            && $form['class_id'] > 0) {
         $excludeProjectId = $isEdit ? $editId : 0;
         $stmt = mysqli_prepare($conn, "
             SELECT id
@@ -561,8 +564,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $leaderPermissions = json_encode($form['leader_permissions']);
         $desc              = ($form['description'] !== '' && $form['topic_mode'] !== 'Multi')
-            ? $form['description']
-            : null;
+                ? $form['description']
+                : null;
         $reqs              = ($form['requirements'] !== '') ? $form['requirements'] : null;
         $startDate         = ($form['period_start'] !== '') ? $form['period_start'] : null;
         $endDate           = ($form['period_end'] !== '') ? $form['period_end'] : null;
@@ -583,13 +586,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id = ? AND supervisor_id = ?
             ");
             mysqli_stmt_bind_param(
-                $stmt,
-                "ssiissssssiisssiiiii",
-                $form['name'], $category, $courseId, $classId, $startDate, $endDate,
-                $desc, $reqs, $form['team_mode'], $teamDeadline,
-                $form['allow_cross_class'], $form['max_members'], $leaderPermissions,
-                $form['post_deadline_action'], $form['visibility'], $form['reminder_days'],
-                $form['allow_extension'], $draftFlag, $editId, $teacherId
+                    $stmt,
+                    "ssiissssssiisssiiiii",
+                    $form['name'], $category, $courseId, $classId, $startDate, $endDate,
+                    $desc, $reqs, $form['team_mode'], $teamDeadline,
+                    $form['allow_cross_class'], $form['max_members'], $leaderPermissions,
+                    $form['post_deadline_action'], $form['visibility'], $form['reminder_days'],
+                    $form['allow_extension'], $draftFlag, $editId, $teacherId
             );
             if (!mysqli_stmt_execute($stmt)) {
                 $errors[] = 'Could not update the project: ' . mysqli_stmt_error($stmt);
@@ -606,13 +609,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'Recruiting', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             mysqli_stmt_bind_param(
-                $stmt,
-                "ssiiissssssiisssiii",
-                $form['name'], $category, $courseId, $classId, $teacherId, $startDate, $endDate,
-                $desc, $reqs, $form['team_mode'], $teamDeadline,
-                $form['allow_cross_class'], $form['max_members'], $leaderPermissions,
-                $form['post_deadline_action'], $form['visibility'], $form['reminder_days'],
-                $form['allow_extension'], $draftFlag
+                    $stmt,
+                    "ssiiissssssiisssiii",
+                    $form['name'], $category, $courseId, $classId, $teacherId, $startDate, $endDate,
+                    $desc, $reqs, $form['team_mode'], $teamDeadline,
+                    $form['allow_cross_class'], $form['max_members'], $leaderPermissions,
+                    $form['post_deadline_action'], $form['visibility'], $form['reminder_days'],
+                    $form['allow_extension'], $draftFlag
             );
             if (!mysqli_stmt_execute($stmt)) {
                 $errors[] = 'Could not create the project: ' . mysqli_stmt_error($stmt);
@@ -624,20 +627,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (count($errors) === 0 && $projectId > 0) {
             $assessmentScope = $form['assessment_scope'] !== '' ? $form['assessment_scope'] : null;
             $assessmentWeight = $form['assessment_weight'] !== ''
-                ? (int) $form['assessment_weight']
-                : null;
+                    ? (int) $form['assessment_weight']
+                    : null;
             $weightStmt = mysqli_prepare($conn, "
                 UPDATE `projects`
                 SET assessment_scope = ?, assessment_weight = ?
                 WHERE id = ? AND supervisor_id = ?
             ");
             mysqli_stmt_bind_param(
-                $weightStmt,
-                "sdii",
-                $assessmentScope,
-                $assessmentWeight,
-                $projectId,
-                $teacherId
+                    $weightStmt,
+                    "sdii",
+                    $assessmentScope,
+                    $assessmentWeight,
+                    $projectId,
+                    $teacherId
             );
             if (!mysqli_stmt_execute($weightStmt)) {
                 $errors[] = 'Could not save the assessment weighting: ' . mysqli_stmt_error($weightStmt);
@@ -650,11 +653,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id = ? AND supervisor_id = ?
             ");
             mysqli_stmt_bind_param(
-                $topicModeStmt,
-                "sii",
-                $form['topic_mode'],
-                $projectId,
-                $teacherId
+                    $topicModeStmt,
+                    "sii",
+                    $form['topic_mode'],
+                    $projectId,
+                    $teacherId
             );
             if (!mysqli_stmt_execute($topicModeStmt)) {
                 $errors[] = 'Could not save the topic allocation method: ' . mysqli_stmt_error($topicModeStmt);
@@ -707,28 +710,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         continue;
                     }
                     $topicDescription = $topic['description'] !== ''
-                        ? $topic['description']
-                        : null;
+                            ? $topic['description']
+                            : null;
                     $topicId = (int) $topic['id'];
                     if ($topicId > 0) {
                         mysqli_stmt_bind_param(
-                            $updateTopic,
-                            "ssiii",
-                            $topic['title'],
-                            $topicDescription,
-                            $position,
-                            $topicId,
-                            $projectId
+                                $updateTopic,
+                                "ssiii",
+                                $topic['title'],
+                                $topicDescription,
+                                $position,
+                                $topicId,
+                                $projectId
                         );
                         mysqli_stmt_execute($updateTopic);
                     } else {
                         mysqli_stmt_bind_param(
-                            $insertTopic,
-                            "issi",
-                            $projectId,
-                            $topic['title'],
-                            $topicDescription,
-                            $position
+                                $insertTopic,
+                                "issi",
+                                $projectId,
+                                $topic['title'],
+                                $topicDescription,
+                                $position
                         );
                         mysqli_stmt_execute($insertTopic);
                     }
@@ -847,9 +850,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $mimeType    = function_exists('mime_content_type') ? @mime_content_type($targetPath) : $ext;
 
                     mysqli_stmt_bind_param(
-                        $insAtt,
-                        "isssss",
-                        $projectId, $origName, $displayName, $storedName, $sizeLabel, $mimeType
+                            $insAtt,
+                            "isssss",
+                            $projectId, $origName, $displayName, $storedName, $sizeLabel, $mimeType
                     );
                     mysqli_stmt_execute($insAtt);
                 }
@@ -869,9 +872,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 mysqli_stmt_bind_param(
-                    $stmt, "ississss",
-                    $teacherId, $form['ann_title'], $form['ann_message'], $projectId,
-                    $channels, $annStatus, $scheduledAt, $sentAt
+                        $stmt, "ississss",
+                        $teacherId, $form['ann_title'], $form['ann_message'], $projectId,
+                        $channels, $annStatus, $scheduledAt, $sentAt
                 );
                 $annOk = mysqli_stmt_execute($stmt);
                 $annId = (int) mysqli_insert_id($conn);
@@ -1174,7 +1177,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     </div>
 
                     <div class="pf-field" id="manualProjectTitleField"
-                         <?= $form['topic_mode'] !== 'Fixed' ? 'hidden' : '' ?>>
+                            <?= $form['topic_mode'] !== 'Fixed' ? 'hidden' : '' ?>>
                         <label for="name">Project title <span class="req">*</span></label>
                         <input type="text" id="name" name="name" maxlength="150"
                                value="<?= htmlspecialchars($form['name']) ?>"
@@ -1182,7 +1185,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     </div>
 
                     <div class="pf-field auto-project-title" id="autoProjectTitleField"
-                         <?= $form['topic_mode'] !== 'Self' ? 'hidden' : '' ?>>
+                            <?= $form['topic_mode'] !== 'Self' ? 'hidden' : '' ?>>
                         <label>Project title <span class="req">*</span></label>
                         <div id="autoProjectTitlePreview" class="auto-project-title-value">
                             Select a class and Category to generate the title.
@@ -1197,11 +1200,11 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                             <select id="assessmentScope" name="assessmentScope"
                                     class="<?= $form['assessment_scope'] === '' ? 'is-placeholder' : '' ?>">
                                 <option value=""
-                                    <?= $form['assessment_scope'] === '' ? 'selected' : '' ?>
-                                    disabled hidden>e.g. CA</option>
+                                        <?= $form['assessment_scope'] === '' ? 'selected' : '' ?>
+                                        disabled hidden>e.g. CA</option>
                                 <?php foreach ($allowedAssessmentScopes as $scope): ?>
                                     <option value="<?= htmlspecialchars($scope) ?>"
-                                        <?= $form['assessment_scope'] === $scope ? 'selected' : '' ?>>
+                                            <?= $form['assessment_scope'] === $scope ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($scope) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -1217,7 +1220,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     </div>
 
                     <div class="pf-field full" id="projectDescriptionField"
-                         <?= $form['topic_mode'] === 'Multi' ? 'hidden' : '' ?>>
+                            <?= $form['topic_mode'] === 'Multi' ? 'hidden' : '' ?>>
                         <label for="description">Project description <span class="req">*</span></label>
                         <textarea id="description" name="description"
                                   placeholder="Describe the project idea, the problem it solves and what students will build."><?= htmlspecialchars($form['description']) ?></textarea>
@@ -1248,9 +1251,9 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                             <?php endif; ?>
                             <?php foreach ($classes as $classRow): ?>
                                 <option value="<?= (int) $classRow['id'] ?>"
-                                    data-class-code="<?= htmlspecialchars($classRow['class_code']) ?>"
-                                    data-course-code="<?= htmlspecialchars($classRow['course_code']) ?>"
-                                    <?= (int) $classRow['id'] === (int) $form['class_id'] ? 'selected' : '' ?>>
+                                        data-class-code="<?= htmlspecialchars($classRow['class_code']) ?>"
+                                        data-course-code="<?= htmlspecialchars($classRow['course_code']) ?>"
+                                        <?= (int) $classRow['id'] === (int) $form['class_id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($classRow['class_code']) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -1268,7 +1271,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                             <option value="">Select Category</option>
                             <?php foreach ($allowedCategories as $category): ?>
                                 <option value="<?= htmlspecialchars($category) ?>"
-                                    <?= $form['category'] === $category ? 'selected' : '' ?>>
+                                        <?= $form['category'] === $category ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($category) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -1333,7 +1336,7 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     <div class="pf-field full">
                         <label class="pf-inline">
                             <input type="checkbox" id="allowCrossClass" name="allowCrossClass" value="1"
-                                <?= (int) $form['allow_cross_class'] === 1 ? 'checked' : '' ?>>
+                                    <?= (int) $form['allow_cross_class'] === 1 ? 'checked' : '' ?>>
                             Allow cross-class teams
                         </label>
                         <span class="pf-help">Select which partner classes may join teams from the home class.</span>
@@ -1350,8 +1353,8 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                                         <input type="checkbox" name="crossClassIds[]"
                                                value="<?= $optionClassId ?>"
                                                data-cross-class-id="<?= $optionClassId ?>"
-                                               <?= $isHomeClass || $isPartnerClass ? 'checked' : '' ?>
-                                               <?= $isHomeClass ? 'disabled' : '' ?>>
+                                                <?= $isHomeClass || $isPartnerClass ? 'checked' : '' ?>
+                                                <?= $isHomeClass ? 'disabled' : '' ?>>
                                         <span><?= htmlspecialchars($classOption['class_code']) ?></span>
                                     </label>
                                 <?php endforeach; ?>
@@ -1392,51 +1395,51 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
                     <span class="optional-badge">Optional</span>
                 </summary>
                 <div class="pf-disclosure-body">
-                <div class="pf-grid">
-                    <div>
-                        <div class="pf-field">
-                            <label for="annTitle">Announcement title</label>
-                            <input type="text" id="annTitle" name="annTitle" maxlength="200"
-                                   value="<?= htmlspecialchars($form['ann_title']) ?>"
-                                   placeholder="e.g. Team formation opens on Monday">
-                        </div>
-
-                        <div class="pf-field">
-                            <label for="annMessage">Message</label>
-                            <textarea id="annMessage" name="annMessage"
-                                      placeholder="Write the announcement students will receive..."><?= htmlspecialchars($form['ann_message']) ?></textarea>
-                        </div>
-
-                        <div class="pf-grid">
+                    <div class="pf-grid">
+                        <div>
                             <div class="pf-field">
-                                <label for="annTiming">Send timing</label>
-                                <select id="annTiming" name="annTiming">
-                                    <option value="now" <?= $form['ann_timing'] === 'now' ? 'selected' : '' ?>>Send immediately</option>
-                                    <option value="scheduled" <?= $form['ann_timing'] === 'scheduled' ? 'selected' : '' ?>>Schedule for later</option>
-                                </select>
+                                <label for="annTitle">Announcement title</label>
+                                <input type="text" id="annTitle" name="annTitle" maxlength="200"
+                                       value="<?= htmlspecialchars($form['ann_title']) ?>"
+                                       placeholder="e.g. Team formation opens on Monday">
                             </div>
+
                             <div class="pf-field">
-                                <label for="annScheduledAt">Scheduled date &amp; time</label>
-                                <input type="datetime-local" id="annScheduledAt" name="annScheduledAt"
-                                       value="<?= htmlspecialchars($form['ann_scheduled_at']) ?>">
+                                <label for="annMessage">Message</label>
+                                <textarea id="annMessage" name="annMessage"
+                                          placeholder="Write the announcement students will receive..."><?= htmlspecialchars($form['ann_message']) ?></textarea>
+                            </div>
+
+                            <div class="pf-grid">
+                                <div class="pf-field">
+                                    <label for="annTiming">Send timing</label>
+                                    <select id="annTiming" name="annTiming">
+                                        <option value="now" <?= $form['ann_timing'] === 'now' ? 'selected' : '' ?>>Send immediately</option>
+                                        <option value="scheduled" <?= $form['ann_timing'] === 'scheduled' ? 'selected' : '' ?>>Schedule for later</option>
+                                    </select>
+                                </div>
+                                <div class="pf-field">
+                                    <label for="annScheduledAt">Scheduled date &amp; time</label>
+                                    <input type="datetime-local" id="annScheduledAt" name="annScheduledAt"
+                                           value="<?= htmlspecialchars($form['ann_scheduled_at']) ?>">
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <div class="pf-preview">
-                            <div class="pf-preview-head">Announcement preview</div>
-                            <div class="pf-preview-body">
-                                <div class="pf-preview-title" id="pvTitle">Your announcement title</div>
-                                <div class="pf-preview-message" id="pvMessage">Your message will appear here as students see it.</div>
-                                <div class="pf-preview-meta">
-                                    <span class="pf-chip" id="pvChannels">In-app notification</span>
-                                    <span id="pvTiming">Sent immediately</span>
+                        <div>
+                            <div class="pf-preview">
+                                <div class="pf-preview-head">Announcement preview</div>
+                                <div class="pf-preview-body">
+                                    <div class="pf-preview-title" id="pvTitle">Your announcement title</div>
+                                    <div class="pf-preview-message" id="pvMessage">Your message will appear here as students see it.</div>
+                                    <div class="pf-preview-meta">
+                                        <span class="pf-chip" id="pvChannels">In-app notification</span>
+                                        <span id="pvTiming">Sent immediately</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 </div>
             </details>
 
@@ -1541,173 +1544,173 @@ $pageTitle = $isEdit ? 'Edit Project' : ($isDuplicate ? 'Duplicate Project' : 'C
 </template>
 
 <script>
-(function () {
-    // Make required and optional fields visually consistent.
-    document.querySelectorAll('.pf-field > label').forEach(function (label) {
-        if (!label.querySelector('.req') && !label.querySelector('.optional-badge')) {
-            var badge = document.createElement('span');
-            badge.className = 'optional-badge';
-            badge.textContent = 'Optional';
-            label.appendChild(badge);
-        }
-    });
-
-    // Milestones
-    var rows = document.getElementById('msRows');
-    var tpl  = document.getElementById('msTemplate');
-
-    document.getElementById('addMilestone').addEventListener('click', function () {
-        rows.appendChild(tpl.content.cloneNode(true));
-    });
-
-    rows.addEventListener('click', function (event) {
-        if (event.target.classList.contains('js-ms-remove')) {
-            if (rows.querySelectorAll('.pf-ms-row').length > 1) {
-                event.target.closest('.pf-ms-row').remove();
+    (function () {
+        // Make required and optional fields visually consistent.
+        document.querySelectorAll('.pf-field > label').forEach(function (label) {
+            if (!label.querySelector('.req') && !label.querySelector('.optional-badge')) {
+                var badge = document.createElement('span');
+                badge.className = 'optional-badge';
+                badge.textContent = 'Optional';
+                label.appendChild(badge);
             }
-        }
-    });
-
-    // Keep the empty assessment-scope option styled like a placeholder.
-    var assessmentScope = document.getElementById('assessmentScope');
-    function syncAssessmentScopeStyle() {
-        assessmentScope.classList.toggle('is-placeholder', assessmentScope.value === '');
-    }
-    assessmentScope.addEventListener('change', syncAssessmentScopeStyle);
-    syncAssessmentScopeStyle();
-
-    // Topic allocation
-    var topicMode = document.getElementById('topicMode');
-    var topicEditor = document.getElementById('topicEditor');
-    var topicRows = document.getElementById('topicRows');
-    var topicTemplate = document.getElementById('topicTemplate');
-    var addTopic = document.getElementById('addTopic');
-    var selfTopicNote = document.getElementById('selfTopicNote');
-    var topicModeHelp = document.getElementById('topicModeHelp');
-    var nameInput = document.getElementById('name');
-    var classSelect = document.getElementById('classId');
-    var categorySelect = document.getElementById('category');
-    var manualProjectTitleField = document.getElementById('manualProjectTitleField');
-    var autoProjectTitleField = document.getElementById('autoProjectTitleField');
-    var autoProjectTitlePreview = document.getElementById('autoProjectTitlePreview');
-    var projectDescriptionField = document.getElementById('projectDescriptionField');
-    var assessmentWeightGroup = document.getElementById('assessmentWeightField');
-    var allowCrossClass = document.getElementById('allowCrossClass');
-    var crossClassOptions = document.getElementById('crossClassOptions');
-
-    function syncCrossClassOptions() {
-        var isEnabled = allowCrossClass.checked;
-        crossClassOptions.hidden = !isEnabled;
-        var homeClassId = classSelect.value;
-
-        crossClassOptions.querySelectorAll('[data-cross-class-id]').forEach(function (checkbox) {
-            var isHome = checkbox.getAttribute('data-cross-class-id') === homeClassId;
-            checkbox.disabled = isHome;
-            checkbox.checked = isHome || checkbox.checked;
-            checkbox.closest('.cross-class-option').classList.toggle('is-home', isHome);
         });
-    }
 
-    function syncProjectTitle() {
-        var isFixed = topicMode.value === 'Fixed';
-        var isSelf = topicMode.value === 'Self';
-        var isMulti = topicMode.value === 'Multi';
-        manualProjectTitleField.hidden = !isFixed;
-        autoProjectTitleField.hidden = !isSelf;
-        projectDescriptionField.hidden = isMulti;
-        assessmentWeightGroup.classList.toggle('full', isMulti);
-        nameInput.required = isFixed;
+        // Milestones
+        var rows = document.getElementById('msRows');
+        var tpl  = document.getElementById('msTemplate');
 
-        if (!isSelf) return;
+        document.getElementById('addMilestone').addEventListener('click', function () {
+            rows.appendChild(tpl.content.cloneNode(true));
+        });
 
-        var classOption = classSelect.options[classSelect.selectedIndex];
-        var classCode = classOption ? (classOption.getAttribute('data-class-code') || '') : '';
-        var courseCode = classOption ? (classOption.getAttribute('data-course-code') || '') : '';
-        var category = categorySelect.value || '';
-
-        autoProjectTitlePreview.textContent = (courseCode && classCode && category)
-            ? courseCode + '_' + classCode + '_' + category
-            : 'Select a class and Category to generate the title.';
-    }
-
-    function syncTopicMode() {
-        var mode = topicMode.value;
-        var isSelf = mode === 'Self';
-        topicEditor.hidden = mode !== 'Multi';
-        selfTopicNote.hidden = !isSelf;
-        addTopic.style.display = mode === 'Multi' ? '' : 'none';
-
-        if (mode === 'Fixed') {
-            while (topicRows.querySelectorAll('.pf-topic-row').length > 1) {
-                topicRows.querySelector('.pf-topic-row:last-child').remove();
+        rows.addEventListener('click', function (event) {
+            if (event.target.classList.contains('js-ms-remove')) {
+                if (rows.querySelectorAll('.pf-ms-row').length > 1) {
+                    event.target.closest('.pf-ms-row').remove();
+                }
             }
+        });
+
+        // Keep the empty assessment-scope option styled like a placeholder.
+        var assessmentScope = document.getElementById('assessmentScope');
+        function syncAssessmentScopeStyle() {
+            assessmentScope.classList.toggle('is-placeholder', assessmentScope.value === '');
+        }
+        assessmentScope.addEventListener('change', syncAssessmentScopeStyle);
+        syncAssessmentScopeStyle();
+
+        // Topic allocation
+        var topicMode = document.getElementById('topicMode');
+        var topicEditor = document.getElementById('topicEditor');
+        var topicRows = document.getElementById('topicRows');
+        var topicTemplate = document.getElementById('topicTemplate');
+        var addTopic = document.getElementById('addTopic');
+        var selfTopicNote = document.getElementById('selfTopicNote');
+        var topicModeHelp = document.getElementById('topicModeHelp');
+        var nameInput = document.getElementById('name');
+        var classSelect = document.getElementById('classId');
+        var categorySelect = document.getElementById('category');
+        var manualProjectTitleField = document.getElementById('manualProjectTitleField');
+        var autoProjectTitleField = document.getElementById('autoProjectTitleField');
+        var autoProjectTitlePreview = document.getElementById('autoProjectTitlePreview');
+        var projectDescriptionField = document.getElementById('projectDescriptionField');
+        var assessmentWeightGroup = document.getElementById('assessmentWeightField');
+        var allowCrossClass = document.getElementById('allowCrossClass');
+        var crossClassOptions = document.getElementById('crossClassOptions');
+
+        function syncCrossClassOptions() {
+            var isEnabled = allowCrossClass.checked;
+            crossClassOptions.hidden = !isEnabled;
+            var homeClassId = classSelect.value;
+
+            crossClassOptions.querySelectorAll('[data-cross-class-id]').forEach(function (checkbox) {
+                var isHome = checkbox.getAttribute('data-cross-class-id') === homeClassId;
+                checkbox.disabled = isHome;
+                checkbox.checked = isHome || checkbox.checked;
+                checkbox.closest('.cross-class-option').classList.toggle('is-home', isHome);
+            });
         }
 
-        var help = {
-            Fixed: 'Project title is used as the topic title for every team. No separate topic approval is required.',
-            Multi: 'Add any number of topic options. Multiple teams may select the same topic.',
-            Self: 'No topics are pre-defined. Only a team leader may submit a topic proposal.'
-        };
-        topicModeHelp.textContent = help[mode] || '';
-        syncProjectTitle();
-    }
+        function syncProjectTitle() {
+            var isFixed = topicMode.value === 'Fixed';
+            var isSelf = topicMode.value === 'Self';
+            var isMulti = topicMode.value === 'Multi';
+            manualProjectTitleField.hidden = !isFixed;
+            autoProjectTitleField.hidden = !isSelf;
+            projectDescriptionField.hidden = isMulti;
+            assessmentWeightGroup.classList.toggle('full', isMulti);
+            nameInput.required = isFixed;
 
-    topicMode.addEventListener('change', syncTopicMode);
-    classSelect.addEventListener('change', function () {
-        syncProjectTitle();
+            if (!isSelf) return;
+
+            var classOption = classSelect.options[classSelect.selectedIndex];
+            var classCode = classOption ? (classOption.getAttribute('data-class-code') || '') : '';
+            var courseCode = classOption ? (classOption.getAttribute('data-course-code') || '') : '';
+            var category = categorySelect.value || '';
+
+            autoProjectTitlePreview.textContent = (courseCode && classCode && category)
+                ? courseCode + '_' + classCode + '_' + category
+                : 'Select a class and Category to generate the title.';
+        }
+
+        function syncTopicMode() {
+            var mode = topicMode.value;
+            var isSelf = mode === 'Self';
+            topicEditor.hidden = mode !== 'Multi';
+            selfTopicNote.hidden = !isSelf;
+            addTopic.style.display = mode === 'Multi' ? '' : 'none';
+
+            if (mode === 'Fixed') {
+                while (topicRows.querySelectorAll('.pf-topic-row').length > 1) {
+                    topicRows.querySelector('.pf-topic-row:last-child').remove();
+                }
+            }
+
+            var help = {
+                Fixed: 'Project title is used as the topic title for every team. No separate topic approval is required.',
+                Multi: 'Add any number of topic options. Multiple teams may select the same topic.',
+                Self: 'No topics are pre-defined. Only a team leader may submit a topic proposal.'
+            };
+            topicModeHelp.textContent = help[mode] || '';
+            syncProjectTitle();
+        }
+
+        topicMode.addEventListener('change', syncTopicMode);
+        classSelect.addEventListener('change', function () {
+            syncProjectTitle();
+            syncCrossClassOptions();
+        });
+        categorySelect.addEventListener('change', syncProjectTitle);
+        allowCrossClass.addEventListener('change', syncCrossClassOptions);
+        syncTopicMode();
         syncCrossClassOptions();
-    });
-    categorySelect.addEventListener('change', syncProjectTitle);
-    allowCrossClass.addEventListener('change', syncCrossClassOptions);
-    syncTopicMode();
-    syncCrossClassOptions();
 
-    addTopic.addEventListener('click', function () {
-        topicRows.appendChild(topicTemplate.content.cloneNode(true));
-    });
+        addTopic.addEventListener('click', function () {
+            topicRows.appendChild(topicTemplate.content.cloneNode(true));
+        });
 
-    topicRows.addEventListener('click', function (event) {
-        if (!event.target.classList.contains('js-topic-remove')) {
-            return;
+        topicRows.addEventListener('click', function (event) {
+            if (!event.target.classList.contains('js-topic-remove')) {
+                return;
+            }
+            var allRows = topicRows.querySelectorAll('.pf-topic-row');
+            if (allRows.length > 1) {
+                event.target.closest('.pf-topic-row').remove();
+            }
+        });
+
+        // Announcement live preview
+        var title    = document.getElementById('annTitle');
+        var message  = document.getElementById('annMessage');
+        var timing   = document.getElementById('annTiming');
+        var when     = document.getElementById('annScheduledAt');
+
+        function render() {
+            var t = title.value.trim();
+            var m = message.value.trim();
+            document.getElementById('pvTitle').textContent = t || 'Your announcement title';
+            document.getElementById('pvMessage').textContent = m || 'Your message will appear here as students see it.';
+
+            document.getElementById('pvChannels').textContent = 'In-app notification';
+
+            var label = 'Sent immediately';
+            if (timing.value === 'scheduled') {
+                label = when.value ? 'Scheduled for ' + when.value.replace('T', ' ') : 'Scheduled (time not set)';
+            }
+            document.getElementById('pvTiming').textContent = label;
         }
-        var allRows = topicRows.querySelectorAll('.pf-topic-row');
-        if (allRows.length > 1) {
-            event.target.closest('.pf-topic-row').remove();
-        }
-    });
 
-    // Announcement live preview
-    var title    = document.getElementById('annTitle');
-    var message  = document.getElementById('annMessage');
-    var timing   = document.getElementById('annTiming');
-    var when     = document.getElementById('annScheduledAt');
-
-    function render() {
-        var t = title.value.trim();
-        var m = message.value.trim();
-        document.getElementById('pvTitle').textContent = t || 'Your announcement title';
-        document.getElementById('pvMessage').textContent = m || 'Your message will appear here as students see it.';
-
-        document.getElementById('pvChannels').textContent = 'In-app notification';
-
-        var label = 'Sent immediately';
-        if (timing.value === 'scheduled') {
-            label = when.value ? 'Scheduled for ' + when.value.replace('T', ' ') : 'Scheduled (time not set)';
-        }
-        document.getElementById('pvTiming').textContent = label;
-    }
-
-    [title, message, when].forEach(function (el) {
-        el.addEventListener('input', render);
-        el.addEventListener('change', render);
-    });
-    timing.addEventListener('change', function () {
+        [title, message, when].forEach(function (el) {
+            el.addEventListener('input', render);
+            el.addEventListener('change', render);
+        });
+        timing.addEventListener('change', function () {
+            when.style.opacity = timing.value === 'scheduled' ? '1' : '0.45';
+            render();
+        });
         when.style.opacity = timing.value === 'scheduled' ? '1' : '0.45';
         render();
-    });
-    when.style.opacity = timing.value === 'scheduled' ? '1' : '0.45';
-    render();
-})();
+    })();
 </script>
 
 </body>

@@ -16,6 +16,42 @@ if (!isset($_SESSION['userID'])) {
 $userID = (int) $_SESSION['userID'];
 
 // =========================================================
+// 自動建立投票所需資料表（如果不存在）
+// =========================================================
+mysqli_query($conn, "
+    CREATE TABLE IF NOT EXISTS `chat_polls` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `group_id` int(11) NOT NULL,
+        `creator_id` int(11) NOT NULL,
+        `title` varchar(200) NOT NULL,
+        `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+        PRIMARY KEY (`id`),
+        KEY `group_id` (`group_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
+mysqli_query($conn, "
+    CREATE TABLE IF NOT EXISTS `chat_poll_options` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `poll_id` int(11) NOT NULL,
+        `option_text` varchar(200) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `poll_id` (`poll_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
+mysqli_query($conn, "
+    CREATE TABLE IF NOT EXISTS `chat_poll_votes` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `poll_id` int(11) NOT NULL,
+        `option_id` int(11) NOT NULL,
+        `voter_id` int(11) NOT NULL,
+        `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `unique_vote` (`poll_id`,`voter_id`),
+        KEY `option_id` (`option_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
+
+// =========================================================
 // 更新自己 last_active_at
 // =========================================================
 $stmtActive = mysqli_prepare($conn, "UPDATE `users` SET `last_active_at` = NOW() WHERE id = ?");
@@ -50,7 +86,7 @@ $studentID   = (int) $rc['student_id'];
 $studentName = $rc['username'];
 
 // =========================================================
-// 2. 未讀通知數量
+// 2. 未讀通知數量 + 預覽列表
 // =========================================================
 $unreadNotifications = 0;
 
@@ -63,6 +99,23 @@ mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 $rc = mysqli_fetch_assoc($rs);
 $unreadNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+// 未讀通知預覽（最多 8 條）
+$unreadList = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT id, type, title, message, created_at
+    FROM `notifications`
+    WHERE user_id = ? AND is_read = 0
+    ORDER BY created_at DESC
+    LIMIT 8
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($rowN = mysqli_fetch_assoc($rs)) {
+    $unreadList[] = $rowN;
+}
 mysqli_stmt_close($stmt);
 
 // =========================================================
@@ -270,6 +323,237 @@ if (count($myGroups) > 0) {
 }
 
 // =========================================================
+// 4.8 AJAX：投票（votePoll）
+// =========================================================
+if (isset($_POST['votePoll']) && $myGroup) {
+    header('Content-Type: application/json');
+
+    $pollID   = isset($_POST['poll_id'])   ? (int)$_POST['poll_id']   : 0;
+    $optionID = isset($_POST['option_id']) ? (int)$_POST['option_id'] : 0;
+
+    $stmt = mysqli_prepare($conn, "SELECT id FROM `chat_polls` WHERE id = ? AND group_id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmt, "ii", $pollID, $activeGroupID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $pollRow = mysqli_fetch_assoc($rs);
+    mysqli_stmt_close($stmt);
+
+    if (!$pollRow) {
+        echo json_encode(array('ok' => false, 'error' => 'Poll not found'));
+        exit;
+    }
+
+    $stmt = mysqli_prepare($conn, "SELECT id FROM `chat_poll_options` WHERE id = ? AND poll_id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmt, "ii", $optionID, $pollID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $optRow = mysqli_fetch_assoc($rs);
+    mysqli_stmt_close($stmt);
+
+    if (!$optRow) {
+        echo json_encode(array('ok' => false, 'error' => 'Option not found'));
+        exit;
+    }
+
+    $stmt = mysqli_prepare($conn, "
+        INSERT INTO `chat_poll_votes` (poll_id, option_id, voter_id)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE option_id = VALUES(option_id)
+    ");
+    mysqli_stmt_bind_param($stmt, "iii", $pollID, $optionID, $studentID);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+
+    $counts = array();
+    $total  = 0;
+    $stmt = mysqli_prepare($conn, "
+        SELECT o.id, COUNT(v.id) AS c
+        FROM `chat_poll_options` o
+        LEFT JOIN `chat_poll_votes` v ON v.option_id = o.id
+        WHERE o.poll_id = ?
+        GROUP BY o.id
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $pollID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    while ($r = mysqli_fetch_assoc($rs)) {
+        $counts[(int)$r['id']] = (int)$r['c'];
+        $total += (int)$r['c'];
+    }
+    mysqli_stmt_close($stmt);
+
+    echo json_encode(array(
+            'ok'    => true,
+            'counts'=> $counts,
+            'total' => $total,
+            'voted' => $optionID
+    ));
+    exit;
+}
+
+// =========================================================
+// 4.9 POST：建立投票（createPoll）
+// =========================================================
+if (isset($_POST['createPoll']) && $myGroup) {
+    $pollTitle = trim(isset($_POST['pollTitle']) ? $_POST['pollTitle'] : '');
+
+    $rawOptions = isset($_POST['pollOption']) ? $_POST['pollOption'] : array();
+    $pollOptions = array();
+    if (is_array($rawOptions)) {
+        foreach ($rawOptions as $opt) {
+            $opt = trim($opt);
+            if ($opt !== '') {
+                $pollOptions[] = $opt;
+            }
+        }
+    }
+
+    if ($pollTitle !== '' && count($pollOptions) >= 2) {
+        mysqli_begin_transaction($conn);
+        $ok = true;
+
+        $stmt = mysqli_prepare($conn, "INSERT INTO `chat_polls` (group_id, creator_id, title) VALUES (?, ?, ?)");
+        mysqli_stmt_bind_param($stmt, "iis", $activeGroupID, $studentID, $pollTitle);
+        if (!mysqli_stmt_execute($stmt)) { $ok = false; }
+        $newPollID = $ok ? (int)mysqli_insert_id($conn) : 0;
+        mysqli_stmt_close($stmt);
+
+        if ($ok && $newPollID > 0) {
+            foreach ($pollOptions as $optText) {
+                $stmt = mysqli_prepare($conn, "INSERT INTO `chat_poll_options` (poll_id, option_text) VALUES (?, ?)");
+                mysqli_stmt_bind_param($stmt, "is", $newPollID, $optText);
+                if (!mysqli_stmt_execute($stmt)) { $ok = false; }
+                mysqli_stmt_close($stmt);
+                if (!$ok) break;
+            }
+        }
+
+        if ($ok && $newPollID > 0) {
+            $pollContent = '__POLL__:' . $newPollID;
+            $stmt = mysqli_prepare($conn, "
+                INSERT INTO `messages` (group_id, sender_id, recipient_id, content)
+                VALUES (?, ?, NULL, ?)
+            ");
+            mysqli_stmt_bind_param($stmt, "iis", $activeGroupID, $studentID, $pollContent);
+            if (!mysqli_stmt_execute($stmt)) { $ok = false; }
+            mysqli_stmt_close($stmt);
+        }
+
+        if ($ok) {
+            mysqli_commit($conn);
+            header('Location: student_chat.php?group_id=' . $activeGroupID . '&msg=poll_created');
+            exit;
+        } else {
+            mysqli_rollback($conn);
+        }
+    }
+
+    header('Location: student_chat.php?group_id=' . $activeGroupID . '&msg=poll_error');
+    exit;
+}
+
+// =========================================================
+// 4.10 AJAX：置頂 / 取消置頂（pinMessage）
+// =========================================================
+if (isset($_POST['pinMessage']) && $myGroup) {
+    header('Content-Type: application/json');
+
+    $messageID = isset($_POST['message_id']) ? (int)$_POST['message_id'] : 0;
+
+    $stmt = mysqli_prepare($conn, "
+        SELECT is_pinned FROM `messages`
+        WHERE id = ? AND group_id = ? AND sender_id = ?
+        LIMIT 1
+    ");
+    mysqli_stmt_bind_param($stmt, "iii", $messageID, $activeGroupID, $studentID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rowMsg = mysqli_fetch_assoc($rs);
+    mysqli_stmt_close($stmt);
+
+    if (!$rowMsg) {
+        echo json_encode(array('ok' => false, 'error' => 'Not allowed'));
+        exit;
+    }
+
+    $newPinned = ((int)$rowMsg['is_pinned'] === 1) ? 0 : 1;
+
+    if ($newPinned) {
+        $stmt = mysqli_prepare($conn, "
+            UPDATE `messages`
+            SET is_pinned = 1, pinned_at = NOW(), pinned_by_user_id = ?
+            WHERE id = ?
+        ");
+        mysqli_stmt_bind_param($stmt, "ii", $userID, $messageID);
+    } else {
+        $stmt = mysqli_prepare($conn, "
+            UPDATE `messages`
+            SET is_pinned = 0, pinned_at = NULL, pinned_by_user_id = NULL
+            WHERE id = ?
+        ");
+        mysqli_stmt_bind_param($stmt, "i", $messageID);
+    }
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+
+    echo json_encode(array('ok' => true, 'pinned' => $newPinned));
+    exit;
+}
+
+// =========================================================
+// 4.11 AJAX：刪除訊息（deleteMessage）
+// =========================================================
+if (isset($_POST['deleteMessage']) && $myGroup) {
+    header('Content-Type: application/json');
+
+    $messageID = isset($_POST['message_id']) ? (int)$_POST['message_id'] : 0;
+
+    $stmt = mysqli_prepare($conn, "
+        SELECT id, content FROM `messages`
+        WHERE id = ? AND group_id = ? AND sender_id = ?
+        LIMIT 1
+    ");
+    mysqli_stmt_bind_param($stmt, "iii", $messageID, $activeGroupID, $studentID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $rowMsg = mysqli_fetch_assoc($rs);
+    mysqli_stmt_close($stmt);
+
+    if (!$rowMsg) {
+        echo json_encode(array('ok' => false, 'error' => 'Not allowed'));
+        exit;
+    }
+
+    $contentRaw = trim((string)$rowMsg['content']);
+    if (preg_match('/^__POLL__:(\d+)$/', $contentRaw, $pm)) {
+        $pollID = (int)$pm[1];
+
+        $stmt = mysqli_prepare($conn, "DELETE FROM `chat_poll_votes` WHERE poll_id = ?");
+        mysqli_stmt_bind_param($stmt, "i", $pollID);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+
+        $stmt = mysqli_prepare($conn, "DELETE FROM `chat_poll_options` WHERE poll_id = ?");
+        mysqli_stmt_bind_param($stmt, "i", $pollID);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+
+        $stmt = mysqli_prepare($conn, "DELETE FROM `chat_polls` WHERE id = ?");
+        mysqli_stmt_bind_param($stmt, "i", $pollID);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+
+    $stmt = mysqli_prepare($conn, "DELETE FROM `messages` WHERE id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $messageID);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+
+    echo json_encode(array('ok' => true));
+    exit;
+}
+
+// =========================================================
 // 5. 處理 POST：發送訊息（文字 + 附件 可同時）
 // =========================================================
 $flashMsg  = '';
@@ -285,7 +569,6 @@ if (isset($_POST['sendMessage']) && $myGroup) {
         $recipientID = (int) $_POST['recipient_id'];
     }
 
-    // -------- 5.1 有冇附件？ --------
     if (isset($_FILES['chatFile'])
             && $_FILES['chatFile']['error'] === UPLOAD_ERR_OK
             && $_FILES['chatFile']['size'] > 0) {
@@ -317,9 +600,6 @@ if (isset($_POST['sendMessage']) && $myGroup) {
             $sizeText = formatBytes($fileSize);
             $fileType = strtoupper($ext);
 
-            // =========================================================
-            // 【修正】先產生 storedName，搬移後一次 INSERT 寫入
-            // =========================================================
             $storedName = 'chat' . $activeGroupID . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
 
             $uploadDir = __DIR__ . '/uploads/chat_files/';
@@ -359,7 +639,6 @@ if (isset($_POST['sendMessage']) && $myGroup) {
         }
     }
 
-    // -------- 5.2 文字 / 附件最少要有一個 --------
     if ($flashType !== 'error' && ($messageText !== '' || $attachmentID !== null)) {
 
         $stmt = mysqli_prepare($conn, "
@@ -395,13 +674,49 @@ if (isset($_POST['sendMessage']) && $myGroup) {
 }
 
 // =========================================================
+// 5.5 來自 GET 的 flash
+// =========================================================
+if (isset($_GET['msg'])) {
+    if ($_GET['msg'] === 'poll_created') {
+        $flashMsg  = 'Vote created and posted to the chat.';
+        $flashType = 'success';
+    } elseif ($_GET['msg'] === 'poll_error') {
+        $flashMsg  = 'Could not create the vote. Please check the title and at least 2 options.';
+        $flashType = 'error';
+    }
+}
+
+// =========================================================
 // 6. 拎 group 資料
 // =========================================================
-$groupMembers = array();
-$messages     = array();
-$allMembers   = array();
+$groupMembers   = array();
+$messages       = array();
+$allMembers     = array();
+$pinnedMessages = array();
+
+$groupTeacher   = null;
 
 if ($myGroup) {
+
+    // Project supervisor also participates in this group chat.
+    $stmt = mysqli_prepare($conn, "
+        SELECT t.id AS teacher_id, t.user_id, u.username AS name,
+               u.last_active_at,
+               (u.last_active_at IS NOT NULL AND
+                u.last_active_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)) AS is_online
+        FROM `groups` g
+        JOIN `projects` p ON p.id = g.project_id
+        JOIN `teachers` t ON t.id = p.supervisor_id
+        JOIN `users` u ON u.id = t.user_id
+        WHERE g.id = ?
+        LIMIT 1
+    " );
+    mysqli_stmt_bind_param($stmt, "i", $activeGroupID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $groupTeacher = mysqli_fetch_assoc($rs);
+    mysqli_stmt_close($stmt);
+
 
     $stmt = mysqli_prepare($conn, "
         SELECT
@@ -468,16 +783,19 @@ if ($myGroup) {
                 m.content,
                 m.created_at,
                 m.sender_id,
+                m.sender_user_id,
                 m.recipient_id,
                 m.attachment_id,
-                u.username      AS sender_name,
-                gm.role         AS sender_role,
+                m.is_pinned,
+                COALESCE(su.username, tu.username) AS sender_name,
+                CASE WHEN tu.role = 'teacher' THEN 'teacher' ELSE gm.role END AS sender_role,
                 f.file_name     AS attachment_name,
                 f.file_size     AS attachment_size,
                 f.file_type     AS attachment_type
             FROM `messages` m
             LEFT JOIN `students` s ON s.id = m.sender_id
-            LEFT JOIN `users`    u ON u.id = s.user_id
+            LEFT JOIN `users` su ON su.id = s.user_id
+            LEFT JOIN `users` tu ON tu.id = m.sender_user_id
             LEFT JOIN `group_members` gm
                    ON gm.group_id = m.group_id AND gm.student_id = m.sender_id
             LEFT JOIN `files` f ON f.id = m.attachment_id
@@ -502,16 +820,19 @@ if ($myGroup) {
                 m.content,
                 m.created_at,
                 m.sender_id,
+                m.sender_user_id,
                 m.recipient_id,
                 m.attachment_id,
-                u.username      AS sender_name,
-                gm.role         AS sender_role,
+                m.is_pinned,
+                COALESCE(su.username, tu.username) AS sender_name,
+                CASE WHEN tu.role = 'teacher' THEN 'teacher' ELSE gm.role END AS sender_role,
                 f.file_name     AS attachment_name,
                 f.file_size     AS attachment_size,
                 f.file_type     AS attachment_type
             FROM `messages` m
             LEFT JOIN `students` s ON s.id = m.sender_id
-            LEFT JOIN `users`    u ON u.id = s.user_id
+            LEFT JOIN `users` su ON su.id = s.user_id
+            LEFT JOIN `users` tu ON tu.id = m.sender_user_id
             LEFT JOIN `group_members` gm
                    ON gm.group_id = m.group_id AND gm.student_id = m.sender_id
             LEFT JOIN `files` f ON f.id = m.attachment_id
@@ -527,6 +848,67 @@ if ($myGroup) {
     $rs = mysqli_stmt_get_result($stmt);
     while ($row = mysqli_fetch_assoc($rs)) {
         $messages[] = $row;
+    }
+    mysqli_stmt_close($stmt);
+
+    // ---- 查詢所有置頂訊息 ----
+    if ($dmStudentID > 0) {
+        $stmt = mysqli_prepare($conn, "
+            SELECT
+                m.id,
+                m.content,
+                m.sender_id,
+                m.sender_user_id,
+                m.attachment_id,
+                m.pinned_at,
+                COALESCE(su.username, tu.username) AS sender_name,
+                f.file_name     AS attachment_name
+            FROM `messages` m
+            LEFT JOIN `students` s ON s.id = m.sender_id
+            LEFT JOIN `users` su ON su.id = s.user_id
+            LEFT JOIN `users` tu ON tu.id = m.sender_user_id
+            LEFT JOIN `files` f ON f.id = m.attachment_id
+            WHERE m.group_id = ?
+              AND m.is_pinned = 1
+              AND (
+                    (m.sender_id = ? AND m.recipient_id = ?)
+                 OR (m.sender_id = ? AND m.recipient_id = ?)
+              )
+            ORDER BY m.pinned_at DESC
+        ");
+        mysqli_stmt_bind_param(
+                $stmt, "iiiii",
+                $activeGroupID,
+                $studentID, $dmStudentID,
+                $dmStudentID, $studentID
+        );
+    } else {
+        $stmt = mysqli_prepare($conn, "
+            SELECT
+                m.id,
+                m.content,
+                m.sender_id,
+                m.sender_user_id,
+                m.attachment_id,
+                m.pinned_at,
+                COALESCE(su.username, tu.username) AS sender_name,
+                f.file_name     AS attachment_name
+            FROM `messages` m
+            LEFT JOIN `students` s ON s.id = m.sender_id
+            LEFT JOIN `users` su ON su.id = s.user_id
+            LEFT JOIN `users` tu ON tu.id = m.sender_user_id
+            LEFT JOIN `files` f ON f.id = m.attachment_id
+            WHERE m.group_id = ?
+              AND m.recipient_id IS NULL
+              AND m.is_pinned = 1
+            ORDER BY m.pinned_at DESC
+        ");
+        mysqli_stmt_bind_param($stmt, "i", $activeGroupID);
+    }
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    while ($row = mysqli_fetch_assoc($rs)) {
+        $pinnedMessages[] = $row;
     }
     mysqli_stmt_close($stmt);
 }
@@ -568,12 +950,21 @@ if (!function_exists('initials')) {
         .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
         .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
-        .bell-link {
-            position: absolute; right: 0; top: 50%;
+        /* =========================================================
+           鈴鐺 + 未讀通知預覽
+           ========================================================= */
+        .bell-wrap {
+            position: absolute;
+            right: 0; top: 50%;
             transform: translateY(-50%);
+            z-index: 100;
+        }
+        .bell-link {
+            position: relative;
             display: flex; align-items: center; justify-content: center;
             width: 44px; height: 44px; border-radius: 50%;
             transition: background 0.3s;
+            text-decoration: none;
         }
         .bell-link:hover { background: rgba(255, 255, 255, 0.15); }
         .bell-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
@@ -585,6 +976,108 @@ if (!function_exists('initials')) {
             display: flex; align-items: center; justify-content: center;
             border: 2px solid black;
         }
+
+        .bell-preview {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 340px;
+            max-height: 420px;
+            background: white;
+            color: #222;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+            overflow: hidden;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+        }
+        .bell-wrap:hover .bell-preview {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .bell-preview::before {
+            content: "";
+            position: absolute;
+            top: -6px;
+            right: 18px;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            border-top: 1px solid #e0e0e0;
+            transform: rotate(45deg);
+        }
+        .bell-preview-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #333;
+            background: #fafbfc;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .bell-preview-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            max-height: 320px;
+        }
+        .bell-preview-item {
+            display: block;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f2f3f5;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+        .bell-preview-item:hover { background: #f7f8fa; }
+        .bell-preview-item:last-child { border-bottom: none; }
+        .bell-preview-title {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bell-preview-msg {
+            display: block;
+            font-size: 11.5px;
+            color: #777;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .bell-preview-time {
+            display: block;
+            font-size: 10.5px;
+            color: #9aa0a6;
+        }
+        .bell-preview-footer {
+            padding: 10px 14px;
+            text-align: center;
+            background: #fafbfc;
+            border-top: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #175196;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .bell-preview-footer:hover { background: #f0f6fd; }
 
         .function-menu {
             width: 100%; display: flex; justify-content: center; align-items: center;
@@ -841,6 +1334,106 @@ if (!function_exists('initials')) {
         .chat-title h2 { margin-bottom: 5px; font-size: 22px; }
         .chat-title p { color: #777; font-size: 13px; }
 
+        /* =========================================================
+           置頂訊息欄
+           ========================================================= */
+        .pinned-bar {
+            flex-shrink: 0;
+            background: #fff8e1;
+            border-bottom: 1px solid #f0e0b0;
+            padding: 8px 20px;
+            max-height: 170px;
+            overflow-y: auto;
+        }
+        .pinned-bar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #8a5c00;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .pinned-bar-toggle {
+            background: none;
+            border: 1px solid #e0c98a;
+            color: #8a5c00;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 3px 9px;
+            border-radius: 5px;
+            font-family: inherit;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .pinned-bar-toggle:hover { background: rgba(138, 92, 0, 0.1); }
+        .pinned-bar.collapsed .pinned-bar-list { display: none; }
+        .pinned-bar.collapsed .pinned-bar-header { margin-bottom: 0; }
+        .pinned-bar-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .pinned-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            background: white;
+            border: 1px solid #f0e0b0;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .pinned-item:hover {
+            background: #fffaef;
+            border-color: #e0c98a;
+        }
+        .pinned-item-sender {
+            font-size: 11px;
+            color: #8a5c00;
+            font-weight: 700;
+            white-space: nowrap;
+            flex-shrink: 0;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pinned-item-text {
+            flex: 1;
+            min-width: 0;
+            font-size: 12px;
+            color: #555;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pinned-unpin {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 4px;
+            border-radius: 3px;
+            line-height: 1;
+            font-family: inherit;
+            flex-shrink: 0;
+            transition: 0.2s;
+        }
+        .pinned-unpin:hover { background: #fdecea; color: #c62828; }
+
+        .message-row.highlight-flash {
+            animation: highlightFlash 1.6s ease;
+            border-radius: 10px;
+        }
+        @keyframes highlightFlash {
+            0%   { background: rgba(255, 193, 7, 0.45); }
+            100% { background: transparent; }
+        }
+
         .message-area {
             flex: 1 1 auto;
             min-height: 0;
@@ -865,6 +1458,9 @@ if (!function_exists('initials')) {
         .message-row {
             margin-bottom: 20px;
             display: flex; align-items: flex-end; gap: 11px;
+            padding: 4px 6px;
+            border-radius: 10px;
+            transition: background 0.3s;
         }
         .message-row.my-message { justify-content: flex-end; }
 
@@ -874,9 +1470,84 @@ if (!function_exists('initials')) {
             display: flex; justify-content: center; align-items: center;
             font-size: 12px; font-weight: bold;
         }
-        .message-content { max-width: 65%; }
+        .message-content {
+            max-width: 65%;
+            position: relative;
+        }
         .sender-name { margin-bottom: 6px; color: #666; font-size: 12px; }
         .my-message .sender-name { text-align: right; }
+
+        /* =========================================================
+           自己訊息的 ⋯ 操作按鈕
+           ========================================================= */
+        .msg-actions {
+            position: absolute;
+            top: 0;
+            left: -44px;
+            z-index: 20;
+        }
+        .msg-menu-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+            padding: 0;
+            line-height: 1;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        .msg-menu-btn:hover { background: #f0f0f0; }
+        .my-message:hover .msg-menu-btn,
+        .msg-menu-btn.menu-open {
+            display: flex;
+        }
+        .msg-menu {
+            position: absolute;
+            top: 38px;
+            left: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+            z-index: 30;
+            min-width: 130px;
+            overflow: hidden;
+            display: none;
+            padding: 4px;
+        }
+        .msg-menu.open { display: block; }
+        .msg-menu button {
+            display: block;
+            width: 100%;
+            padding: 9px 12px;
+            background: transparent;
+            border: none;
+            text-align: left;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            color: #222;
+            border-radius: 6px;
+        }
+        .msg-menu button:hover { background: #f2f3f5; }
+        .msg-menu button.danger { color: #c62828; }
+        .msg-menu button.danger:hover { background: #fdecea; }
+
+        .pinned-flag {
+            display: inline-block;
+            margin-left: 6px;
+            font-size: 11px;
+            color: #175196;
+            font-weight: 600;
+        }
 
         .message-bubble {
             padding: 13px 16px;
@@ -1010,6 +1681,116 @@ if (!function_exists('initials')) {
         }
         .my-message .message-time { text-align: right; }
 
+        /* =========================================================
+           投票卡片
+           ========================================================= */
+        .poll-card {
+            margin-top: 6px;
+            padding: 14px 16px;
+            background: white;
+            border: 1px solid #e6e8eb;
+            border-radius: 12px;
+            max-width: 360px;
+        }
+        .my-message .poll-card {
+            background: white;
+            border-color: #e6e8eb;
+        }
+        .poll-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .poll-icon {
+            width: 28px;
+            height: 28px;
+            background: #175196;
+            color: white;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .poll-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #222;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+        .poll-option {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            background: #f7f8fa;
+            border: 1.5px solid #e6e8eb;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+            overflow: hidden;
+            font-family: inherit;
+        }
+        .poll-option:last-of-type { margin-bottom: 0; }
+        .poll-option:hover { border-color: #175196; }
+        .poll-option.voted {
+            border-color: #175196;
+            background: #f0f6fd;
+        }
+        .poll-option-bar {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            background: rgba(23, 81, 150, 0.12);
+            z-index: 0;
+            transition: width 0.3s;
+        }
+        .poll-option-text {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #222;
+            font-weight: 500;
+        }
+        .poll-option-label {
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+        }
+        .poll-option-count {
+            color: #6b6f78;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        .poll-meta {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #eef0f2;
+            font-size: 11px;
+            color: #8b8f98;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .poll-meta .voted-tag {
+            color: #175196;
+            font-weight: 600;
+        }
+
+        /* =========================================================
+           輸入區
+           ========================================================= */
         .message-input-area {
             flex-shrink: 0;
             padding: 17px 20px;
@@ -1026,11 +1807,11 @@ if (!function_exists('initials')) {
             height: 46px;
             flex-shrink: 0;
             align-self: flex-end;
-            background: white;
-            color: #333;
-            border: 2px solid #cccccc;
+            background: black;
+            color: white;
+            border: 2px solid black;
             border-radius: 8px;
-            font-size: 22px;
+            font-size: 24px;
             cursor: pointer;
             transition: 0.3s;
             display: flex;
@@ -1038,19 +1819,53 @@ if (!function_exists('initials')) {
             align-items: center;
             padding: 0;
             line-height: 1;
-            position: relative;
+            font-weight: bold;
         }
-        .attach-button:hover {
-            background: #f7f7f7;
-            border-color: black;
-        }
+        .attach-button:hover { background: #333; }
         .attach-button.has-file {
-            background: #eaf7ee;
+            background: #2e9d4d;
             border-color: #2e9d4d;
-            color: #176b2c;
+            color: white;
         }
         .attach-button input[type="file"] {
             display: none;
+        }
+
+        .attach-menu {
+            position: absolute;
+            bottom: 100%;
+            left: 20px;
+            margin-bottom: 8px;
+            background: white;
+            border: 1px solid #e6e8eb;
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+            padding: 6px;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 60;
+            min-width: 200px;
+        }
+        .attach-menu.open { display: flex; }
+        .attach-menu-item {
+            padding: 11px 14px;
+            background: transparent;
+            border: none;
+            border-radius: 7px;
+            text-align: left;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #222;
+        }
+        .attach-menu-item:hover { background: #f2f3f5; }
+        .attach-menu-item .menu-emoji {
+            font-size: 16px;
         }
 
         .selected-file {
@@ -1276,6 +2091,157 @@ if (!function_exists('initials')) {
         .input-hint .hint-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .input-hint .char-count { font-weight: 600; color: #6b6f78; }
 
+        /* =========================================================
+           投票 Modal
+           ========================================================= */
+        .vote-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .vote-modal-overlay.active { display: flex; }
+        .vote-modal {
+            background: white;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 480px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+        }
+        .vote-modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid #eeeeee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .vote-modal-header h3 { font-size: 18px; }
+        .vote-modal-close {
+            width: 34px;
+            height: 34px;
+            background: white;
+            color: #555;
+            border: 1.5px solid #cccccc;
+            border-radius: 7px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .vote-modal-close:hover {
+            background: #c62828;
+            color: white;
+            border-color: #c62828;
+        }
+        .vote-modal-body {
+            padding: 18px 22px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        .vote-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        .vote-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: white;
+            border: 2px solid #cccccc;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            margin-bottom: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .vote-input:focus { border-color: black; }
+        .vote-option-input { margin-bottom: 8px; }
+        .vote-add-option {
+            background: white;
+            color: #175196;
+            border: 1.5px solid #175196;
+            border-radius: 7px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 4px;
+            transition: 0.2s;
+        }
+        .vote-add-option:hover { background: #175196; color: white; }
+        .vote-modal-footer {
+            padding: 14px 22px;
+            border-top: 1px solid #eeeeee;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .vote-submit {
+            background: black;
+            color: white;
+            border: 2px solid black;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .vote-submit:hover { background: #333; }
+
+        .vote-option-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+            margin-bottom: 8px;
+        }
+        .vote-option-row .vote-input {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .vote-remove-option {
+            width: 42px;
+            flex-shrink: 0;
+            background: white;
+            color: #c62828;
+            border: 2px solid #cccccc;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-family: inherit;
+            line-height: 1;
+        }
+        .vote-remove-option:hover {
+            background: #c62828;
+            color: white;
+            border-color: #c62828;
+        }
+        .vote-option-row.deletable .vote-remove-option {
+            display: flex;
+        }
+
         @media (max-width: 850px) {
             .chat-container {
                 height: auto; min-height: auto;
@@ -1296,6 +2262,8 @@ if (!function_exists('initials')) {
             .chat-area { height: 600px; min-height: 500px; }
 
             .emoji-picker { width: 300px; right: 10px; }
+            .attach-menu { left: 10px; }
+            .bell-preview { width: 300px; }
         }
         @media (max-width: 650px) {
             .navbar { padding: 15px; }
@@ -1303,6 +2271,7 @@ if (!function_exists('initials')) {
             .logo-area span { font-size: 26px; }
             .bell-link { width: 38px; height: 38px; }
             .bell-link img { width: 22px; height: 22px; }
+            .bell-preview { width: calc(100vw - 40px); right: -8px; }
             .function-menu { flex-direction: column; gap: 12px; }
             .main-content { width: 94%; margin: 25px auto; }
             .page-heading h1 { font-size: 28px; }
@@ -1317,6 +2286,12 @@ if (!function_exists('initials')) {
             .send-button { flex: 1; width: auto; }
 
             .emoji-picker { width: calc(100% - 20px); right: 10px; left: 10px; }
+            .poll-card { max-width: 100%; }
+
+            .msg-actions { left: -38px; }
+            .msg-menu-btn { width: 28px; height: 28px; font-size: 16px; }
+            .pinned-bar { padding: 8px 12px; }
+            .pinned-item-sender { max-width: 80px; }
         }
     </style>
 </head>
@@ -1330,12 +2305,38 @@ if (!function_exists('initials')) {
             <span>TeamBox</span>
         </div>
 
-        <a href="student_notifications.php" class="bell-link" title="Notifications">
-            <img src="bell.png" alt="Notifications">
-            <?php if ($unreadNotifications > 0): ?>
-                <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+        <div class="bell-wrap">
+            <a href="student_notifications.php" class="bell-link" title="Notifications">
+                <img src="bell.png" alt="Notifications">
+                <?php if ($unreadNotifications > 0): ?>
+                    <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+                <?php endif; ?>
+            </a>
+
+            <?php if (count($unreadList) > 0): ?>
+                <div class="bell-preview">
+                    <div class="bell-preview-header">
+                        Unread Notifications (<?php echo count($unreadList); ?>)
+                    </div>
+                    <div class="bell-preview-list">
+                        <?php foreach ($unreadList as $n): ?>
+                            <a href="student_notifications.php" class="bell-preview-item">
+                                <span class="bell-preview-title"><?php echo htmlspecialchars($n['title']); ?></span>
+                                <?php if (!empty($n['message'])): ?>
+                                    <span class="bell-preview-msg"><?php echo htmlspecialchars($n['message']); ?></span>
+                                <?php endif; ?>
+                                <span class="bell-preview-time">
+                                    <?php echo date('d M Y H:i', strtotime($n['created_at'])); ?>
+                                </span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <a href="student_notifications.php" class="bell-preview-footer">
+                        View all notifications →
+                    </a>
+                </div>
             <?php endif; ?>
-        </a>
+        </div>
     </div>
 
     <div class="function-menu">
@@ -1414,6 +2415,19 @@ if (!function_exists('initials')) {
                 </div>
 
                 <div class="member-list">
+                    <?php if ($groupTeacher): ?>
+                        <div class="member-item" title="Project supervisor · Group chat participant">
+                            <div class="member-avatar"><?php echo htmlspecialchars(initials($groupTeacher['name'])); ?></div>
+                            <div class="member-details">
+                                <h3><?php echo htmlspecialchars($groupTeacher['name']); ?></h3>
+                                <p>Teacher · Project Supervisor</p>
+                            </div>
+                            <div class="member-right">
+                                <span class="member-status <?php echo ((int)$groupTeacher['is_online'] === 1) ? '' : 'offline'; ?>"
+                                      title="<?php echo ((int)$groupTeacher['is_online'] === 1) ? 'Online' : 'Offline'; ?>"></span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <?php foreach ($allMembers as $m): ?>
                         <?php if ((int)$m['student_id'] === $studentID) continue; ?>
                         <?php
@@ -1453,10 +2467,65 @@ if (!function_exists('initials')) {
                             <p><?php echo htmlspecialchars($myGroup['group_name']); ?> · <?php echo htmlspecialchars($myGroup['project_name']); ?></p>
                         <?php else: ?>
                             <h2><?php echo htmlspecialchars($myGroup['group_name']); ?> Group Chat</h2>
-                            <p><?php echo count($groupMembers); ?> members · <?php echo htmlspecialchars($myGroup['project_name']); ?></p>
+                            <p><?php echo count($groupMembers) + ($groupTeacher ? 1 : 0); ?> participants · <?php echo htmlspecialchars($myGroup['project_name']); ?></p>
                         <?php endif; ?>
                     </div>
                 </header>
+
+                <?php if (count($pinnedMessages) > 0): ?>
+                    <div class="pinned-bar" id="pinnedBar">
+                        <div class="pinned-bar-header">
+                            <span>📌 Pinned Messages (<?php echo count($pinnedMessages); ?>)</span>
+                            <button type="button"
+                                    class="pinned-bar-toggle"
+                                    id="pinnedToggleBtn"
+                                    onclick="togglePinnedBar()">Hide</button>
+                        </div>
+                        <div class="pinned-bar-list">
+                            <?php foreach ($pinnedMessages as $pm): ?>
+                                <?php
+                                $pinText = '';
+                                $pinRaw  = trim((string)$pm['content']);
+
+                                if (preg_match('/^__POLL__:(\d+)$/', $pinRaw, $pinPollMatch)) {
+                                    $pollID2 = (int)$pinPollMatch[1];
+                                    $pStmt2 = mysqli_prepare($conn, "SELECT title FROM `chat_polls` WHERE id = ? LIMIT 1");
+                                    mysqli_stmt_bind_param($pStmt2, "i", $pollID2);
+                                    mysqli_stmt_execute($pStmt2);
+                                    $pRs2 = mysqli_stmt_get_result($pStmt2);
+                                    $pRow2 = mysqli_fetch_assoc($pRs2);
+                                    mysqli_stmt_close($pStmt2);
+                                    $pinText = '📊 ' . ($pRow2 ? $pRow2['title'] : 'Poll');
+                                } elseif (!empty($pm['attachment_name']) && $pinRaw === '') {
+                                    $pinText = '📎 ' . $pm['attachment_name'];
+                                } else {
+                                    $pinText = $pinRaw;
+                                }
+
+                                if (mb_strlen($pinText) > 100) {
+                                    $pinText = mb_substr($pinText, 0, 100) . '…';
+                                }
+
+                                $pinIsMe = ((int)$pm['sender_id'] === $studentID);
+                                ?>
+                                <div class="pinned-item"
+                                     onclick="scrollToMessage(<?php echo (int)$pm['id']; ?>)"
+                                     title="Jump to message">
+                                    <span class="pinned-item-sender">
+                                        <?php echo htmlspecialchars($pinIsMe ? 'You' : $pm['sender_name']); ?>
+                                    </span>
+                                    <span class="pinned-item-text"><?php echo htmlspecialchars($pinText); ?></span>
+                                    <?php if ($pinIsMe): ?>
+                                        <button type="button"
+                                                class="pinned-unpin"
+                                                onclick="event.stopPropagation(); unpinMessage(<?php echo (int)$pm['id']; ?>)"
+                                                title="Unpin">✕</button>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <div class="message-area" id="messageArea">
 
@@ -1482,7 +2551,60 @@ if (!function_exists('initials')) {
                             <div class="date-separator"><?php echo htmlspecialchars($msgDate); ?></div>
                         <?php endif; ?>
 
-                        <div class="message-row <?php echo $isMe ? 'my-message' : ''; ?>">
+                        <?php
+                        $contentRaw = trim((string)$msg['content']);
+                        $isPollMsg  = preg_match('/^__POLL__:(\d+)$/', $contentRaw, $pollMatch);
+                        $pollID     = $isPollMsg ? (int)$pollMatch[1] : 0;
+
+                        $pollRow        = null;
+                        $pollOptions    = array();
+                        $pollTotalVotes = 0;
+                        $myVoteOptionID = 0;
+
+                        if ($isPollMsg && $pollID > 0) {
+                            $pStmt = mysqli_prepare($conn, "SELECT title, creator_id, created_at FROM `chat_polls` WHERE id = ? AND group_id = ? LIMIT 1");
+                            mysqli_stmt_bind_param($pStmt, "ii", $pollID, $activeGroupID);
+                            mysqli_stmt_execute($pStmt);
+                            $pRs = mysqli_stmt_get_result($pStmt);
+                            $pollRow = mysqli_fetch_assoc($pRs);
+                            mysqli_stmt_close($pStmt);
+
+                            if ($pollRow) {
+                                $oStmt = mysqli_prepare($conn, "
+                                    SELECT o.id, o.option_text, COUNT(v.id) AS vote_count
+                                    FROM `chat_poll_options` o
+                                    LEFT JOIN `chat_poll_votes` v ON v.option_id = o.id
+                                    WHERE o.poll_id = ?
+                                    GROUP BY o.id, o.option_text
+                                    ORDER BY o.id
+                                ");
+                                mysqli_stmt_bind_param($oStmt, "i", $pollID);
+                                mysqli_stmt_execute($oStmt);
+                                $oRs = mysqli_stmt_get_result($oStmt);
+                                while ($o = mysqli_fetch_assoc($oRs)) {
+                                    $pollOptions[] = $o;
+                                    $pollTotalVotes += (int)$o['vote_count'];
+                                }
+                                mysqli_stmt_close($oStmt);
+
+                                $vStmt = mysqli_prepare($conn, "SELECT option_id FROM `chat_poll_votes` WHERE poll_id = ? AND voter_id = ? LIMIT 1");
+                                mysqli_stmt_bind_param($vStmt, "ii", $pollID, $studentID);
+                                mysqli_stmt_execute($vStmt);
+                                $vRs = mysqli_stmt_get_result($vStmt);
+                                $vRow = mysqli_fetch_assoc($vRs);
+                                mysqli_stmt_close($vStmt);
+
+                                if ($vRow) {
+                                    $myVoteOptionID = (int)$vRow['option_id'];
+                                }
+                            }
+                        }
+
+                        $isPinned = !empty($msg['is_pinned']);
+                        ?>
+
+                        <div class="message-row <?php echo $isMe ? 'my-message' : ''; ?>"
+                             data-msg-id="<?php echo (int)$msg['id']; ?>">
                             <?php if (!$isMe): ?>
                                 <div class="message-avatar">
                                     <?php echo htmlspecialchars(initials($msg['sender_name'])); ?>
@@ -1490,18 +2612,85 @@ if (!function_exists('initials')) {
                             <?php endif; ?>
 
                             <div class="message-content">
+
+                                <?php if ($isMe): ?>
+                                    <div class="msg-actions">
+                                        <button type="button"
+                                                class="msg-menu-btn"
+                                                onclick="toggleMsgMenu(event, <?php echo (int)$msg['id']; ?>)"
+                                                title="More">⋯</button>
+                                        <div class="msg-menu" id="msgMenu-<?php echo (int)$msg['id']; ?>">
+                                            <button type="button"
+                                                    onclick="pinMessage(<?php echo (int)$msg['id']; ?>)">
+                                                <?php echo $isPinned ? 'Unpin' : 'Pin'; ?>
+                                            </button>
+                                            <button type="button"
+                                                    class="danger"
+                                                    onclick="deleteMessage(<?php echo (int)$msg['id']; ?>)">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
                                 <p class="sender-name">
                                     <?php if ($isMe): ?>
                                         You
                                     <?php else: ?>
                                         <?php echo htmlspecialchars($msg['sender_name'] ?: 'Unknown'); ?>
-                                        <?php if (isset($msg['sender_role']) && $msg['sender_role'] === 'leader'): ?>
+                                        <?php if (isset($msg['sender_role']) && $msg['sender_role'] === 'teacher'): ?>
+                                            · Teacher
+                                        <?php elseif (isset($msg['sender_role']) && $msg['sender_role'] === 'leader'): ?>
                                             · Team Leader
                                         <?php endif; ?>
                                     <?php endif; ?>
+                                    <?php if ($isPinned): ?>
+                                        <span class="pinned-flag">📌 Pinned</span>
+                                    <?php endif; ?>
                                 </p>
 
-                                <?php if (!empty($msg['content'])): ?>
+                                <?php if ($isPollMsg && $pollRow): ?>
+                                    <div class="poll-card" data-poll-id="<?php echo $pollID; ?>">
+                                        <div class="poll-header">
+                                            <div class="poll-icon">📊</div>
+                                            <div class="poll-title"><?php echo htmlspecialchars($pollRow['title']); ?></div>
+                                        </div>
+                                        <?php foreach ($pollOptions as $opt): ?>
+                                            <?php
+                                            $oid     = (int)$opt['id'];
+                                            $votes   = (int)$opt['vote_count'];
+                                            $pct     = $pollTotalVotes > 0 ? round($votes / $pollTotalVotes * 100) : 0;
+                                            $isVoted = ($myVoteOptionID === $oid);
+                                            ?>
+                                            <button type="button"
+                                                    class="poll-option <?php echo $isVoted ? 'voted' : ''; ?>"
+                                                    data-option-id="<?php echo $oid; ?>"
+                                                    onclick="votePoll(<?php echo $pollID; ?>, <?php echo $oid; ?>)">
+                                                <div class="poll-option-bar" style="width: <?php echo $pct; ?>%;"></div>
+                                                <div class="poll-option-text">
+                                                    <span class="poll-option-label">
+                                                        <?php if ($isVoted): ?>✓ <?php endif; ?>
+                                                        <?php echo htmlspecialchars($opt['option_text']); ?>
+                                                    </span>
+                                                    <span class="poll-option-count">
+                                                        <?php echo $votes; ?> (<?php echo $pct; ?>%)
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        <?php endforeach; ?>
+                                        <div class="poll-meta">
+                                            <span class="poll-total">
+                                                <?php echo $pollTotalVotes; ?> vote<?php echo $pollTotalVotes !== 1 ? 's' : ''; ?>
+                                            </span>
+                                            <?php if ($myVoteOptionID > 0): ?>
+                                                <span class="voted-tag">You voted · tap another option to change</span>
+                                            <?php else: ?>
+                                                <span>Tap an option to vote</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                <?php elseif (!empty($msg['content'])): ?>
                                     <div class="message-bubble">
                                         <?php echo nl2br(htmlspecialchars($msg['content'])); ?>
                                     </div>
@@ -1570,9 +2759,21 @@ if (!function_exists('initials')) {
                         <input type="hidden" name="recipient_id" value="<?php echo $dmStudentID; ?>">
                     <?php endif; ?>
 
-                    <label for="chatFile" class="attach-button" id="attachBtn" title="Attach file">
+                    <button type="button" class="attach-button" id="attachBtn" title="More options">
                         +
-                    </label>
+                    </button>
+
+                    <div class="attach-menu" id="attachMenu">
+                        <button type="button" class="attach-menu-item" onclick="openVoteModal()">
+                            <span class="menu-emoji">📊</span>
+                            <span>Create Vote</span>
+                        </button>
+                        <button type="button" class="attach-menu-item" onclick="chooseUploadFile()">
+                            <span class="menu-emoji">📎</span>
+                            <span>Upload File</span>
+                        </button>
+                    </div>
+
                     <input type="file"
                            id="chatFile"
                            name="chatFile"
@@ -1635,6 +2836,52 @@ if (!function_exists('initials')) {
 
             </div>
         </section>
+
+        <!-- ===== 建立投票 Modal ===== -->
+        <div class="vote-modal-overlay" id="voteModal">
+            <div class="vote-modal" role="dialog" aria-modal="true" aria-labelledby="voteModalTitle">
+                <div class="vote-modal-header">
+                    <h3 id="voteModalTitle">Create a Vote</h3>
+                    <button type="button" class="vote-modal-close" id="voteModalClose" aria-label="Close">✕</button>
+                </div>
+
+                <form method="post" action="student_chat.php?group_id=<?php echo $activeGroupID; ?>" id="voteForm">
+                    <input type="hidden" name="createPoll" value="1">
+
+                    <div class="vote-modal-body">
+                        <label class="vote-label" for="pollTitle">Question / Title</label>
+                        <input type="text"
+                               id="pollTitle"
+                               name="pollTitle"
+                               class="vote-input"
+                               placeholder="e.g. When should we meet?"
+                               maxlength="200"
+                               required>
+
+                        <label class="vote-label" style="margin-top:16px;">Options (at least 2)</label>
+                        <div id="voteOptions">
+                            <div class="vote-option-row">
+                                <input type="text" name="pollOption[]" class="vote-input vote-option-input" required placeholder="Option 1">
+                                <button type="button" class="vote-remove-option"
+                                        onclick="removeVoteOption(this)"
+                                        title="Remove option">−</button>
+                            </div>
+                            <div class="vote-option-row">
+                                <input type="text" name="pollOption[]" class="vote-input vote-option-input" required placeholder="Option 2">
+                                <button type="button" class="vote-remove-option"
+                                        onclick="removeVoteOption(this)"
+                                        title="Remove option">−</button>
+                            </div>
+                        </div>
+                        <button type="button" class="vote-add-option" id="voteAddOption">+ Add Option</button>
+                    </div>
+
+                    <div class="vote-modal-footer">
+                        <button type="submit" class="vote-submit">Create Vote</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
     <?php endif; ?>
 
@@ -1899,6 +3146,283 @@ if (!function_exists('initials')) {
 
         closePicker();
     })();
+
+    (function () {
+        var attachBtn  = document.getElementById('attachBtn');
+        var attachMenu = document.getElementById('attachMenu');
+        if (!attachBtn || !attachMenu) return;
+
+        attachBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            attachMenu.classList.toggle('open');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!attachMenu.contains(e.target) && e.target !== attachBtn) {
+                attachMenu.classList.remove('open');
+            }
+        });
+
+        window.chooseUploadFile = function () {
+            attachMenu.classList.remove('open');
+            var fileInput = document.getElementById('chatFile');
+            if (fileInput) fileInput.click();
+        };
+
+        window.openVoteModal = function () {
+            attachMenu.classList.remove('open');
+            var modal = document.getElementById('voteModal');
+            if (modal) {
+                modal.classList.add('active');
+                setTimeout(function () {
+                    var t = document.getElementById('pollTitle');
+                    if (t) t.focus();
+                }, 100);
+            }
+        };
+    })();
+
+    (function () {
+        var modal    = document.getElementById('voteModal');
+        var closeBtn = document.getElementById('voteModalClose');
+        var addOptBtn= document.getElementById('voteAddOption');
+        var options  = document.getElementById('voteOptions');
+        if (!modal) return;
+
+        function updateRemoveVisibility() {
+            if (!options) return;
+            var rows = options.querySelectorAll('.vote-option-row');
+            var deletable = rows.length > 2;
+            rows.forEach(function (row) {
+                row.classList.toggle('deletable', deletable);
+            });
+        }
+
+        window.removeVoteOption = function (btn) {
+            if (!options) return;
+            var rows = options.querySelectorAll('.vote-option-row');
+            if (rows.length <= 2) return;
+
+            var row = btn.parentNode;
+            if (row && row.parentNode === options) {
+                options.removeChild(row);
+            }
+            updateRemoveVisibility();
+        };
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeModal);
+        }
+
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeModal();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closeModal();
+            }
+        });
+
+        if (addOptBtn && options) {
+            addOptBtn.addEventListener('click', function () {
+                var count = options.querySelectorAll('.vote-option-row').length;
+                if (count >= 10) return;
+
+                var row = document.createElement('div');
+                row.className = 'vote-option-row';
+
+                var inp = document.createElement('input');
+                inp.type = 'text';
+                inp.name = 'pollOption[]';
+                inp.className = 'vote-input vote-option-input';
+                inp.placeholder = 'Option ' + (count + 1);
+
+                var rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'vote-remove-option';
+                rm.title = 'Remove option';
+                rm.textContent = '−';
+                rm.onclick = function () { window.removeVoteOption(rm); };
+
+                row.appendChild(inp);
+                row.appendChild(rm);
+                options.appendChild(row);
+
+                inp.focus();
+                updateRemoveVisibility();
+            });
+
+            updateRemoveVisibility();
+        }
+    })();
+
+    function votePoll(pollId, optionId) {
+        var formData = new FormData();
+        formData.append('votePoll', '1');
+        formData.append('poll_id', pollId);
+        formData.append('option_id', optionId);
+
+        fetch('student_chat.php?group_id=<?php echo (int)$activeGroupID; ?>', {
+            method: 'POST',
+            body: formData
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.ok) return;
+
+                var card = document.querySelector('.poll-card[data-poll-id="' + pollId + '"]');
+                if (!card) return;
+
+                var optionBtns = card.querySelectorAll('.poll-option');
+                optionBtns.forEach(function (btn) {
+                    var oid = parseInt(btn.getAttribute('data-option-id'), 10);
+                    var count = data.counts[oid] || 0;
+                    var pct = data.total > 0 ? Math.round(count / data.total * 100) : 0;
+
+                    var bar   = btn.querySelector('.poll-option-bar');
+                    var label = btn.querySelector('.poll-option-label');
+                    var cnt   = btn.querySelector('.poll-option-count');
+
+                    if (bar) bar.style.width = pct + '%';
+                    if (cnt) cnt.textContent = count + ' (' + pct + '%)';
+
+                    if (label) {
+                        var raw = label.textContent.replace(/^✓\s*/, '').trim();
+                        if (oid === data.voted) {
+                            label.textContent = '✓ ' + raw;
+                        } else {
+                            label.textContent = raw;
+                        }
+                    }
+
+                    btn.classList.toggle('voted', oid === data.voted);
+                });
+
+                var totalEl = card.querySelector('.poll-total');
+                if (totalEl) {
+                    totalEl.textContent = data.total + ' vote' + (data.total !== 1 ? 's' : '');
+                }
+            })
+            .catch(function () { /* ignore */ });
+    }
+
+    function toggleMsgMenu(e, msgId) {
+        if (e) e.stopPropagation();
+        var menu = document.getElementById('msgMenu-' + msgId);
+        if (!menu) return;
+
+        var allOpen = document.querySelectorAll('.msg-menu.open');
+        for (var i = 0; i < allOpen.length; i++) {
+            if (allOpen[i] !== menu) allOpen[i].classList.remove('open');
+        }
+        menu.classList.toggle('open');
+    }
+
+    document.addEventListener('click', function (e) {
+        var t = e.target;
+        var insideMenu = false;
+        var node = t;
+        while (node) {
+            if (node.classList && (node.classList.contains('msg-menu') || node.classList.contains('msg-menu-btn'))) {
+                insideMenu = true;
+                break;
+            }
+            node = node.parentNode;
+        }
+        if (!insideMenu) {
+            var allOpen = document.querySelectorAll('.msg-menu.open');
+            for (var i = 0; i < allOpen.length; i++) {
+                allOpen[i].classList.remove('open');
+            }
+        }
+    });
+
+    function pinMessage(msgId) {
+        var url = 'student_chat.php?group_id=<?php echo (int)$activeGroupID; ?><?php echo ($dmStudentID > 0 ? '&dm=' . $dmStudentID : ''); ?>';
+
+        var formData = new FormData();
+        formData.append('pinMessage', '1');
+        formData.append('message_id', msgId);
+
+        fetch(url, { method: 'POST', body: formData })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Could not update the pin status.');
+                }
+            })
+            .catch(function () { alert('Request failed.'); });
+    }
+
+    function unpinMessage(msgId) {
+        var url = 'student_chat.php?group_id=<?php echo (int)$activeGroupID; ?><?php echo ($dmStudentID > 0 ? '&dm=' . $dmStudentID : ''); ?>';
+
+        var formData = new FormData();
+        formData.append('pinMessage', '1');
+        formData.append('message_id', msgId);
+
+        fetch(url, { method: 'POST', body: formData })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Could not unpin this message.');
+                }
+            })
+            .catch(function () { alert('Request failed.'); });
+    }
+
+    function deleteMessage(msgId) {
+        if (!confirm('Delete this message?')) return;
+
+        var url = 'student_chat.php?group_id=<?php echo (int)$activeGroupID; ?><?php echo ($dmStudentID > 0 ? '&dm=' . $dmStudentID : ''); ?>';
+
+        var formData = new FormData();
+        formData.append('deleteMessage', '1');
+        formData.append('message_id', msgId);
+
+        fetch(url, { method: 'POST', body: formData })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Could not delete this message.');
+                }
+            })
+            .catch(function () { alert('Request failed.'); });
+    }
+
+    function togglePinnedBar() {
+        var bar = document.getElementById('pinnedBar');
+        var btn = document.getElementById('pinnedToggleBtn');
+        if (!bar) return;
+        bar.classList.toggle('collapsed');
+        if (btn) btn.textContent = bar.classList.contains('collapsed') ? 'Show' : 'Hide';
+    }
+
+    function scrollToMessage(msgId) {
+        var row = document.querySelector('.message-row[data-msg-id="' + msgId + '"]');
+        if (!row) return;
+
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        row.classList.remove('highlight-flash');
+        void row.offsetWidth;
+        row.classList.add('highlight-flash');
+
+        setTimeout(function () {
+            row.classList.remove('highlight-flash');
+        }, 1700);
+    }
 </script>
 
 </body>

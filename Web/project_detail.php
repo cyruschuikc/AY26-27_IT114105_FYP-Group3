@@ -35,7 +35,7 @@ if ($teacherId <= 0) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST'
-    && isset($_POST['extensionAction'], $_POST['requestId'])) {
+        && isset($_POST['extensionAction'], $_POST['requestId'])) {
 
     $requestId = (int) $_POST['requestId'];
     $action    = $_POST['extensionAction'] === 'approve' ? 'approve' : 'reject';
@@ -83,12 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         }
 
         $title = $action === 'approve'
-            ? 'Extension request approved'
-            : 'Extension request rejected';
+                ? 'Extension request approved'
+                : 'Extension request rejected';
         $message = $req['project_name'] . ': your requested deadline '
-                 . date('d M Y', strtotime($req['requested_end'])) . ' was '
-                 . ($action === 'approve' ? 'approved.' : 'rejected.')
-                 . ($note !== '' ? ' Note: ' . $note : '');
+                . date('d M Y', strtotime($req['requested_end'])) . ' was '
+                . ($action === 'approve' ? 'approved.' : 'rejected.')
+                . ($note !== '' ? ' Note: ' . $note : '');
 
         $uid = (int) $req['student_user_id'];
         $stmt = mysqli_prepare($conn, "
@@ -171,9 +171,9 @@ foreach ($projectTopics as &$topicOption) {
     $topicOption['selection_summary'] = null;
     if ($project['topic_mode'] === 'Multi') {
         $topicOption['selection_summary'] = topicSelectionSummary(
-            $conn,
-            $projectId,
-            (int) $topicOption['id']
+                $conn,
+                $projectId,
+                (int) $topicOption['id']
         );
     }
 }
@@ -439,8 +439,8 @@ mysqli_stmt_close($stmt);
 
 $unassignedStudents = max(0, $enrolledStudents - $assignedStudents);
 $formationPercent   = $enrolledStudents > 0
-    ? (int) round($assignedStudents / $enrolledStudents * 100)
-    : 0;
+        ? (int) round($assignedStudents / $enrolledStudents * 100)
+        : 0;
 
 
 // =========================================================
@@ -606,9 +606,9 @@ foreach ($milestones as $m) {
     }
 
     $calEvents[(int) date('j', $endTs)][] = array(
-        'label' => $m['name'],
-        'class' => $cls,
-        'title' => $m['name'] . ' · due ' . date('d M Y', $endTs),
+            'label' => $m['name'],
+            'class' => $cls,
+            'title' => $m['name'] . ' · due ' . date('d M Y', $endTs),
     );
     $calEventCount++;
 }
@@ -617,9 +617,9 @@ if (!empty($project['period_end'])) {
     $deadlineTs = strtotime($project['period_end']);
     if (date('Y-m', $deadlineTs) === $calendarMonth) {
         $calEvents[(int) date('j', $deadlineTs)][] = array(
-            'label' => 'Project deadline',
-            'class' => 'deadline',
-            'title' => 'Project deadline: ' . date('d M Y', $deadlineTs),
+                'label' => 'Project deadline',
+                'class' => 'deadline',
+                'title' => 'Project deadline: ' . date('d M Y', $deadlineTs),
         );
         $calEventCount++;
     }
@@ -629,9 +629,9 @@ if (!empty($project['period_start'])) {
     $startTs = strtotime($project['period_start']);
     if (date('Y-m', $startTs) === $calendarMonth) {
         $calEvents[(int) date('j', $startTs)][] = array(
-            'label' => 'Project starts',
-            'class' => 'start',
-            'title' => 'Project starts: ' . date('d M Y', $startTs),
+                'label' => 'Project starts',
+                'class' => 'start',
+                'title' => 'Project starts: ' . date('d M Y', $startTs),
         );
         $calEventCount++;
     }
@@ -2096,8 +2096,8 @@ foreach ($tasks as $t) {
                             <span class="pf-chip"><?= htmlspecialchars($ann['status']) ?></span>
                             <span class="muted">
                                 <?= $ann['status'] === 'Scheduled' && $ann['scheduled_at']
-                                    ? 'Scheduled for ' . date('d M Y H:i', strtotime($ann['scheduled_at']))
-                                    : htmlspecialchars(timeAgo($ann['sent_at'] ?: $ann['created_at'])) ?>
+                                        ? 'Scheduled for ' . date('d M Y H:i', strtotime($ann['scheduled_at']))
+                                        : htmlspecialchars(timeAgo($ann['sent_at'] ?: $ann['created_at'])) ?>
                             </span>
                         </div>
                         <div class="ann-row-msg"><?= nl2br(htmlspecialchars($ann['message'])) ?></div>
@@ -2136,15 +2136,18 @@ foreach ($tasks as $t) {
                 $teamNumber = trim(preg_replace('/\D+/', '', (string) $t['name']));
                 $teamNumber = $teamNumber !== '' ? str_pad(substr($teamNumber, -2), 2, '0', STR_PAD_LEFT) : 'T';
                 $teamStatusLabels = array(
-                    'Waiting_Send' => 'Ready to Submit',
-                    'Voting'       => 'Choosing Leader',
-                    'Executing'    => 'Active',
-                    'Completed'    => 'Completed',
+                        'Waiting_Send' => 'Ready to Submit',
+                        'Voting'       => 'Choosing Leader',
+                        'Executing'    => 'Active',
+                        'Completed'    => 'Completed',
                 );
-                $displayTeamStatus = $teamStatusLabels[$t['status']] ?? $t['status'];
+                // ★ 修正 1：?? → isset() ? :
+                $displayTeamStatus = isset($teamStatusLabels[$t['status']])
+                        ? $teamStatusLabels[$t['status']]
+                        : $t['status'];
                 $teamTopicTitle = $project['topic_mode'] === 'Fixed'
-                    ? (count($projectTopics) > 0 ? $projectTopics[0]['title'] : '')
-                    : (string) $t['topic_title'];
+                        ? (count($projectTopics) > 0 ? $projectTopics[0]['title'] : '')
+                        : (string) $t['topic_title'];
                 ?>
                 <a class="team-card <?= $overdue > 0 ? 'is-late' : '' ?>"
                    href="team_detail.php?id=<?= (int) $t['id'] ?>">
@@ -2325,16 +2328,16 @@ foreach ($tasks as $t) {
                         <span class="settings-label">Course</span>
                         <span class="settings-value">
                             <?= $project['course_code']
-                                ? htmlspecialchars($project['course_code'] . ' — ' . $project['course_name'])
-                                : '<span class="muted">—</span>' ?>
+                                    ? htmlspecialchars($project['course_code'] . ' — ' . $project['course_name'])
+                                    : '<span class="muted">—</span>' ?>
                         </span>
                     </div>
                     <div class="settings-item">
                         <span class="settings-label">Class</span>
                         <span class="settings-value">
                             <?= !empty($project['class_code'])
-                                ? htmlspecialchars($project['class_code'])
-                                : '<span class="muted">—</span>' ?>
+                                    ? htmlspecialchars($project['class_code'])
+                                    : '<span class="muted">—</span>' ?>
                         </span>
                     </div>
                     <div class="settings-item">
@@ -2356,11 +2359,14 @@ foreach ($tasks as $t) {
                         <span class="settings-value">
                             <?php
                             $teamModeLabels = array(
-                                'Free'             => 'Free — students form teams',
-                                'Random'           => 'Random assignment',
-                                'Teacher_Assigned' => 'Teacher assigns members',
+                                    'Free'             => 'Free — students form teams',
+                                    'Random'           => 'Random assignment',
+                                    'Teacher_Assigned' => 'Teacher assigns members',
                             );
-                            echo htmlspecialchars($teamModeLabels[$project['team_mode']] ?? $project['team_mode']);
+                            // ★ 修正 2：?? → isset() ? :
+                            echo htmlspecialchars(isset($teamModeLabels[$project['team_mode']])
+                                    ? $teamModeLabels[$project['team_mode']]
+                                    : $project['team_mode']);
                             ?>
                         </span>
                     </div>
@@ -2378,8 +2384,8 @@ foreach ($tasks as $t) {
                         <span class="settings-label">Cross-class teams</span>
                         <span class="settings-value">
                             <?= !empty($project['allow_cross_class'])
-                                ? 'Allowed — ' . htmlspecialchars($project['cross_class_codes'] ?: 'No partner classes selected')
-                                : 'Not allowed' ?>
+                                    ? 'Allowed — ' . htmlspecialchars($project['cross_class_codes'] ?: 'No partner classes selected')
+                                    : 'Not allowed' ?>
                         </span>
                     </div>
                     <div class="settings-item">
@@ -2387,10 +2393,13 @@ foreach ($tasks as $t) {
                         <span class="settings-value">
                             <?php
                             $postLabels = array(
-                                'Lock'   => 'Lock Team — requires teacher approval',
-                                'Notify' => 'Notify teacher only',
+                                    'Lock'   => 'Lock Team — requires teacher approval',
+                                    'Notify' => 'Notify teacher only',
                             );
-                            echo htmlspecialchars($postLabels[$project['post_deadline_action']] ?? $project['post_deadline_action']);
+                            // ★ 修正 3：?? → isset() ? :
+                            echo htmlspecialchars(isset($postLabels[$project['post_deadline_action']])
+                                    ? $postLabels[$project['post_deadline_action']]
+                                    : $project['post_deadline_action']);
                             ?>
                         </span>
                     </div>
@@ -2400,8 +2409,8 @@ foreach ($tasks as $t) {
                             <?php
                             $perms = json_decode((string) $project['leader_permissions'], true);
                             $permLabels = array(
-                                'invite' => 'Invite', 'remove' => 'Remove', 'rename' => 'Rename',
-                                'assign' => 'Assign tasks', 'submit' => 'Submit files',
+                                    'invite' => 'Invite', 'remove' => 'Remove', 'rename' => 'Rename',
+                                    'assign' => 'Assign tasks', 'submit' => 'Submit files',
                             );
                             if (is_array($perms) && count($perms) > 0) {
                                 $out = array();
@@ -2419,8 +2428,8 @@ foreach ($tasks as $t) {
                         <span class="settings-label">Deadline reminder</span>
                         <span class="settings-value">
                             <?= (int) $project['reminder_days'] > 0
-                                ? (int) $project['reminder_days'] . ' day(s) before the deadline'
-                                : 'Disabled' ?>
+                                    ? (int) $project['reminder_days'] . ' day(s) before the deadline'
+                                    : 'Disabled' ?>
                         </span>
                     </div>
                     <div class="settings-item">

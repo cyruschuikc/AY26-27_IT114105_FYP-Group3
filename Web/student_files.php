@@ -119,7 +119,7 @@ if (!function_exists('renderFileItem')) {
 }
 
 // =========================================================
-// 1. Unread notifications
+// 1. Unread notifications + preview
 // =========================================================
 $userID = (int) $_SESSION['userID'];
 
@@ -130,6 +130,23 @@ mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 $rc = mysqli_fetch_assoc($rs);
 $unreadNotifications = (int)$rc['c'];
+mysqli_stmt_close($stmt);
+
+// 未讀通知預覽（最多 8 條）
+$unreadList = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT id, type, title, message, created_at
+    FROM `notifications`
+    WHERE user_id = ? AND is_read = 0
+    ORDER BY created_at DESC
+    LIMIT 8
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($rowN = mysqli_fetch_assoc($rs)) {
+    $unreadList[] = $rowN;
+}
 mysqli_stmt_close($stmt);
 
 // =========================================================
@@ -380,10 +397,21 @@ foreach ($files as $f) {
         .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
         .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
+        /* =========================================================
+           鈴鐺 + 未讀通知預覽
+           ========================================================= */
+        .bell-wrap {
+            position: absolute;
+            right: 0; top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+        }
         .bell-link {
-            position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+            position: relative;
             display: flex; align-items: center; justify-content: center;
-            width: 44px; height: 44px; border-radius: 50%; transition: background 0.3s;
+            width: 44px; height: 44px; border-radius: 50%;
+            transition: background 0.3s;
+            text-decoration: none;
         }
         .bell-link:hover { background: rgba(255, 255, 255, 0.15); }
         .bell-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
@@ -395,6 +423,108 @@ foreach ($files as $f) {
             display: flex; align-items: center; justify-content: center;
             border: 2px solid black;
         }
+
+        .bell-preview {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 340px;
+            max-height: 420px;
+            background: white;
+            color: #222;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+            overflow: hidden;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+        }
+        .bell-wrap:hover .bell-preview {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .bell-preview::before {
+            content: "";
+            position: absolute;
+            top: -6px;
+            right: 18px;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            border-top: 1px solid #e0e0e0;
+            transform: rotate(45deg);
+        }
+        .bell-preview-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #333;
+            background: #fafbfc;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .bell-preview-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            max-height: 320px;
+        }
+        .bell-preview-item {
+            display: block;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f2f3f5;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+        .bell-preview-item:hover { background: #f7f8fa; }
+        .bell-preview-item:last-child { border-bottom: none; }
+        .bell-preview-title {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bell-preview-msg {
+            display: block;
+            font-size: 11.5px;
+            color: #777;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .bell-preview-time {
+            display: block;
+            font-size: 10.5px;
+            color: #9aa0a6;
+        }
+        .bell-preview-footer {
+            padding: 10px 14px;
+            text-align: center;
+            background: #fafbfc;
+            border-top: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #175196;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .bell-preview-footer:hover { background: #f0f6fd; }
 
         .function-menu {
             width: 100%; display: flex; justify-content: center; align-items: center;
@@ -692,6 +822,9 @@ foreach ($files as $f) {
             .navbar { padding: 15px; }
             .logo-area img { width: 55px; height: 55px; }
             .logo-area span { font-size: 26px; }
+            .bell-link { width: 38px; height: 38px; }
+            .bell-link img { width: 22px; height: 22px; }
+            .bell-preview { width: calc(100vw - 40px); right: -8px; }
             .function-menu { flex-direction: column; gap: 12px; }
             .main-content { width: 94%; margin: 25px auto; }
             .page-heading h1 { font-size: 28px; }
@@ -715,12 +848,38 @@ foreach ($files as $f) {
             <span>TeamBox</span>
         </div>
 
-        <a href="student_notifications.php" class="bell-link" title="Notifications">
-            <img src="bell.png" alt="Notifications">
-            <?php if ($unreadNotifications > 0): ?>
-                <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+        <div class="bell-wrap">
+            <a href="student_notifications.php" class="bell-link" title="Notifications">
+                <img src="bell.png" alt="Notifications">
+                <?php if ($unreadNotifications > 0): ?>
+                    <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+                <?php endif; ?>
+            </a>
+
+            <?php if (count($unreadList) > 0): ?>
+                <div class="bell-preview">
+                    <div class="bell-preview-header">
+                        Unread Notifications (<?php echo count($unreadList); ?>)
+                    </div>
+                    <div class="bell-preview-list">
+                        <?php foreach ($unreadList as $n): ?>
+                            <a href="student_notifications.php" class="bell-preview-item">
+                                <span class="bell-preview-title"><?php echo htmlspecialchars($n['title']); ?></span>
+                                <?php if (!empty($n['message'])): ?>
+                                    <span class="bell-preview-msg"><?php echo htmlspecialchars($n['message']); ?></span>
+                                <?php endif; ?>
+                                <span class="bell-preview-time">
+                                    <?php echo date('d M Y H:i', strtotime($n['created_at'])); ?>
+                                </span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <a href="student_notifications.php" class="bell-preview-footer">
+                        View all notifications →
+                    </a>
+                </div>
             <?php endif; ?>
-        </a>
+        </div>
     </div>
 
     <div class="function-menu">

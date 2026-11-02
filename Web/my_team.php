@@ -9,7 +9,6 @@ if (!isset($conn) || !$conn) {
     die('Database connection not available. Check db.php.');
 }
 
-// 沒登入 → 回登入頁
 if (!isset($_SESSION['userID'])) {
     header('Location: login.php');
     exit;
@@ -17,11 +16,7 @@ if (!isset($_SESSION['userID'])) {
 
 $userID = (int) $_SESSION['userID'];
 
-// =========================================================
-// 1. 取 student_id
-// =========================================================
 $studentID = 0;
-
 $stmt = mysqli_prepare($conn, "SELECT id FROM `students` WHERE user_id = ? LIMIT 1");
 mysqli_stmt_bind_param($stmt, "i", $userID);
 mysqli_stmt_execute($stmt);
@@ -36,14 +31,36 @@ if (!$rc) {
 $studentID = (int) $rc['id'];
 
 // =========================================================
-// 2. 取我所有 group
-//    只顯示已 send 去 supervisor 之後嘅 group：
-//      Recruiting   → 唔顯示
-//      Waiting_Send → 唔顯示
-//      Voting       → 顯示
-//      Executing    → 顯示
-//      Completed    → 唔顯示
+// Unread notifications + preview
 // =========================================================
+$unreadNotifications = 0;
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c FROM `notifications`
+    WHERE user_id = ? AND is_read = 0
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$unreadNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+$unreadList = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT id, type, title, message, created_at
+    FROM `notifications`
+    WHERE user_id = ? AND is_read = 0
+    ORDER BY created_at DESC
+    LIMIT 8
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($rowN = mysqli_fetch_assoc($rs)) {
+    $unreadList[] = $rowN;
+}
+mysqli_stmt_close($stmt);
+
 $myGroups = array();
 
 $stmt = mysqli_prepare($conn, "
@@ -85,17 +102,12 @@ $stmt = mysqli_prepare($conn, "
 mysqli_stmt_bind_param($stmt, "i", $studentID);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
-
 while ($row = mysqli_fetch_assoc($rs)) {
     $myGroups[] = $row;
 }
 mysqli_stmt_close($stmt);
 
-// =========================================================
-// 2.5 額外查：有冇「未 send」嘅 group
-// =========================================================
 $pendingGroupCount = 0;
-
 $stmt = mysqli_prepare($conn, "
     SELECT COUNT(*) AS c
     FROM `group_members` gm
@@ -107,43 +119,36 @@ mysqli_stmt_bind_param($stmt, "i", $studentID);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 $rc = mysqli_fetch_assoc($rs);
-$pendingGroupCount = (int)$rc['c'];
+$pendingGroupCount = (int) $rc['c'];
 mysqli_stmt_close($stmt);
 
-// =========================================================
-// 3. 決定 active group
-// =========================================================
 $activeGroupID = 0;
-
 if (isset($_GET['group_id'])) {
     $activeGroupID = (int) $_GET['group_id'];
 }
 
 $myGroup = null;
-
 if ($activeGroupID > 0) {
     foreach ($myGroups as $g) {
-        if ((int)$g['group_id'] === $activeGroupID) {
+        if ((int) $g['group_id'] === $activeGroupID) {
             $myGroup = $g;
             break;
         }
     }
 }
-
 if (!$myGroup && count($myGroups) > 0) {
     $myGroup = $myGroups[0];
     $activeGroupID = (int) $myGroup['group_id'];
 }
 
-// Pending deadline-extension request for the current project
 $pendingExtension = null;
 
 if ($myGroup) {
     $teamTopic = latestTeamTopicProposal($conn, (int) $myGroup['group_id']);
     $teamTopicOptions = activeProjectTopics($conn, (int) $myGroup['project_id']);
     $fixedTeamTopic = ($myGroup['topic_mode'] === 'Fixed' && count($teamTopicOptions) > 0)
-        ? $teamTopicOptions[0]
-        : null;
+            ? $teamTopicOptions[0]
+            : null;
 
     $stmt = mysqli_prepare($conn, "
         SELECT id, requested_end, status
@@ -160,9 +165,6 @@ if ($myGroup) {
     mysqli_stmt_close($stmt);
 }
 
-// =========================================================
-// 4. 如果有 group → 拎 group 詳細資料
-// =========================================================
 $groupMembers = array();
 $tasks        = array();
 $activities   = array();
@@ -176,7 +178,6 @@ if ($myGroup) {
 
     $groupID = (int) $myGroup['group_id'];
 
-    // -------- 4.1 Group members --------
     $stmt = mysqli_prepare($conn, "
         SELECT
             s.id            AS student_id,
@@ -205,7 +206,6 @@ if ($myGroup) {
     }
     mysqli_stmt_close($stmt);
 
-    // -------- 4.2 Group tasks --------
     $stmt = mysqli_prepare($conn, "
         SELECT
             t.id,
@@ -245,7 +245,6 @@ if ($myGroup) {
         $progress['pct'] = (int) round($progress['done'] / $progress['total'] * 100);
     }
 
-    // -------- 4.3 Recent activity --------
     $stmt = mysqli_prepare($conn, "
         SELECT
             a.action,
@@ -267,9 +266,6 @@ if ($myGroup) {
     mysqli_stmt_close($stmt);
 }
 
-// =========================================================
-// 5. Helper functions
-// =========================================================
 if (!function_exists('initials')) {
     function initials($name) {
         $parts = preg_split('/\s+/', trim($name));
@@ -311,14 +307,153 @@ if (!function_exists('timeAgo')) {
             background: black;
             display: flex;
             flex-direction: column;
-            align-items: center;
             gap: 15px;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
         }
 
-        .logo-area { display: flex; justify-content: center; align-items: center; gap: 12px; }
+        .navbar-top {
+            position: relative;
+            width: 100%;
+            min-height: 65px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo-area { display: flex; align-items: center; gap: 12px; }
         .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
         .logo-area span { color: white; font-size: 30px; font-weight: bold; }
+
+        /* =========================================================
+           鈴鐺 + 未讀通知預覽
+           ========================================================= */
+        .bell-wrap {
+            position: absolute;
+            right: 0; top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+        }
+        .bell-link {
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            transition: background 0.3s;
+            text-decoration: none;
+        }
+        .bell-link:hover { background: rgba(255, 255, 255, 0.15); }
+        .bell-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
+        .bell-badge {
+            position: absolute; top: 2px; right: 2px;
+            min-width: 18px; height: 18px; padding: 0 5px;
+            background: #d93025; color: white;
+            border-radius: 9px;
+            font-size: 11px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid black;
+        }
+
+        .bell-preview {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 340px;
+            max-height: 420px;
+            background: white;
+            color: #222;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+            overflow: hidden;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+        }
+        .bell-wrap:hover .bell-preview {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .bell-preview::before {
+            content: "";
+            position: absolute;
+            top: -6px;
+            right: 18px;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            border-top: 1px solid #e0e0e0;
+            transform: rotate(45deg);
+        }
+        .bell-preview-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #333;
+            background: #fafbfc;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .bell-preview-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            max-height: 320px;
+        }
+        .bell-preview-item {
+            display: block;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f2f3f5;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+        .bell-preview-item:hover { background: #f7f8fa; }
+        .bell-preview-item:last-child { border-bottom: none; }
+        .bell-preview-title {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bell-preview-msg {
+            display: block;
+            font-size: 11.5px;
+            color: #777;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .bell-preview-time {
+            display: block;
+            font-size: 10.5px;
+            color: #9aa0a6;
+        }
+        .bell-preview-footer {
+            padding: 10px 14px;
+            text-align: center;
+            background: #fafbfc;
+            border-top: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #175196;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .bell-preview-footer:hover { background: #f0f6fd; }
 
         .function-menu {
             width: 100%;
@@ -348,7 +483,6 @@ if (!function_exists('timeAgo')) {
         .page-heading h1 { margin-bottom: 10px; font-size: 35px; }
         .page-heading p { color: #666; font-size: 17px; line-height: 1.6; }
 
-        /* Group switcher */
         .group-switcher {
             padding: 20px 24px;
             margin-bottom: 25px;
@@ -370,7 +504,6 @@ if (!function_exists('timeAgo')) {
         }
         .group-switcher select:focus { border-color: black; }
 
-        /* Empty state */
         .empty-state {
             padding: 60px 40px;
             background: white;
@@ -403,9 +536,7 @@ if (!function_exists('timeAgo')) {
             cursor: pointer; transition: 0.3s;
         }
         .empty-state .create-group-btn:hover { background: #333; }
-        .empty-state .create-group-btn:active { transform: scale(0.98); }
 
-        /* Team Overview */
         .team-overview {
             padding: 30px; margin-bottom: 25px;
             background: white; border-left: 6px solid black;
@@ -444,8 +575,8 @@ if (!function_exists('timeAgo')) {
             text-decoration: none; background: #fff;
         }
         .team-topic-link:hover { background: #edf3f9; }
+        button.team-topic-link { cursor: pointer; font-family: inherit; }
 
-        /* Project */
         .project-section {
             padding: 30px; margin-bottom: 25px;
             background: white; border-radius: 15px;
@@ -492,7 +623,6 @@ if (!function_exists('timeAgo')) {
         }
         .progress-note { margin-top: 10px; color: #777; font-size: 14px; }
 
-        /* Content boxes */
         .information-grid {
             display: grid; grid-template-columns: 2fr 1fr;
             gap: 25px; margin-bottom: 25px;
@@ -507,7 +637,6 @@ if (!function_exists('timeAgo')) {
             border-bottom: 2px solid #eeeeee; font-size: 23px;
         }
 
-        /* Members */
         .member-list {
             display: grid; grid-template-columns: repeat(2, 1fr);
             gap: 16px;
@@ -541,13 +670,11 @@ if (!function_exists('timeAgo')) {
         }
         .leader-role { background: black; color: white; }
 
-        /* Details */
         .detail-item { margin-bottom: 20px; }
         .detail-item:last-child { margin-bottom: 0; }
         .detail-item h3 { margin-bottom: 7px; color: #555; font-size: 15px; }
         .detail-item p { color: #222; font-size: 16px; line-height: 1.5; }
 
-        /* Tasks */
         .task-list { display: flex; flex-direction: column; }
         .task-item {
             padding: 17px 0; border-bottom: 1px solid #eeeeee;
@@ -566,7 +693,6 @@ if (!function_exists('timeAgo')) {
         .status-progress  { background: #fff1c2; color: #765900; }
         .status-pending   { background: #eeeeee; color: #555; }
 
-        /* Activity */
         .activity-item {
             padding: 15px 0; border-bottom: 1px solid #eeeeee;
             display: flex; gap: 15px;
@@ -581,7 +707,6 @@ if (!function_exists('timeAgo')) {
 
         .muted { color: #777; font-size: 14px; }
 
-        /* Responsive */
         @media (max-width: 1000px) {
             .team-info-grid { grid-template-columns: repeat(2, 1fr); }
             .info-grid { grid-template-columns: repeat(2, 1fr); }
@@ -591,6 +716,9 @@ if (!function_exists('timeAgo')) {
             .navbar { padding: 15px; }
             .logo-area img { width: 55px; height: 55px; }
             .logo-area span { font-size: 26px; }
+            .bell-link { width: 38px; height: 38px; }
+            .bell-link img { width: 22px; height: 22px; }
+            .bell-preview { width: calc(100vw - 40px); right: -8px; }
             .function-menu { flex-direction: column; gap: 12px; }
             .main-content { width: 94%; margin: 25px auto; }
             .page-heading h1 { font-size: 28px; }
@@ -605,6 +733,7 @@ if (!function_exists('timeAgo')) {
             .member-list { grid-template-columns: 1fr; }
             .task-item { align-items: flex-start; flex-direction: column; }
         }
+
         /* ---------- Deadline extension ---------- */
         .extension-box {
             margin-top: 18px;
@@ -681,15 +810,132 @@ if (!function_exists('timeAgo')) {
             border: 1px solid #f5c2c2;
             color: #a61b1b;
         }
+
+        /* ===== Topic Modal ===== */
+        .topic-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .topic-modal-overlay.active { display: flex; }
+        .topic-modal {
+            background: white;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 900px;
+            height: 85vh;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            animation: topicFadeIn 0.2s ease;
+        }
+        @keyframes topicFadeIn {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .topic-modal-header {
+            padding: 16px 22px;
+            border-bottom: 1px solid #eeeeee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+        .topic-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #222;
+        }
+        .topic-modal-close {
+            width: 34px;
+            height: 34px;
+            background: white;
+            color: #555;
+            border: 1.5px solid #cccccc;
+            border-radius: 7px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .topic-modal-close:hover {
+            background: #c62828;
+            color: white;
+            border-color: #c62828;
+        }
+        .topic-modal-body {
+            flex: 1;
+            min-height: 0;
+            background: #f5f5f5;
+        }
+        .topic-modal-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        @media (max-width: 700px) {
+            .topic-modal { height: 92vh; max-height: 92vh; }
+            .topic-modal-header { padding: 12px 16px; }
+            .topic-modal-header h3 { font-size: 16px; }
+        }
     </style>
 </head>
 
 <body>
 
 <nav class="navbar">
-    <div class="logo-area">
-        <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
-        <span>TeamBox</span>
+    <div class="navbar-top">
+        <div class="logo-area">
+            <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
+            <span>TeamBox</span>
+        </div>
+
+        <div class="bell-wrap">
+            <a href="student_notifications.php" class="bell-link" title="Notifications">
+                <img src="bell.png" alt="Notifications">
+                <?php if ($unreadNotifications > 0): ?>
+                    <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+                <?php endif; ?>
+            </a>
+
+            <?php if (count($unreadList) > 0): ?>
+                <div class="bell-preview">
+                    <div class="bell-preview-header">
+                        Unread Notifications (<?php echo count($unreadList); ?>)
+                    </div>
+                    <div class="bell-preview-list">
+                        <?php foreach ($unreadList as $n): ?>
+                            <a href="student_notifications.php" class="bell-preview-item">
+                                <span class="bell-preview-title"><?php echo htmlspecialchars($n['title']); ?></span>
+                                <?php if (!empty($n['message'])): ?>
+                                    <span class="bell-preview-msg"><?php echo htmlspecialchars($n['message']); ?></span>
+                                <?php endif; ?>
+                                <span class="bell-preview-time">
+                                    <?php echo date('d M Y H:i', strtotime($n['created_at'])); ?>
+                                </span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <a href="student_notifications.php" class="bell-preview-footer">
+                        View all notifications →
+                    </a>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="function-menu">
@@ -738,9 +984,6 @@ if (!function_exists('timeAgo')) {
 
     <?php if (count($myGroups) === 0): ?>
 
-        <!-- =========================================================
-             未 send 去 supervisor → 顯示提示 + Create Group 按鈕
-             ========================================================= -->
         <div class="empty-state">
             <div class="empty-icon">+</div>
 
@@ -775,11 +1018,7 @@ if (!function_exists('timeAgo')) {
 
     <?php else: ?>
 
-        <!-- =========================================================
-             多過一個已 submit group → 顯示切換下拉
-             （下拉唔再顯示 (Executing) / (Voting)）
-             ========================================================= -->
-        <?php if (count($myGroups) > 1): ?>
+    <?php if (count($myGroups) > 1): ?>
         <div class="group-switcher">
             <label for="groupSwitcher">Switch Project / Group:</label>
             <select id="groupSwitcher" onchange="switchGroup(this.value)">
@@ -805,9 +1044,6 @@ if (!function_exists('timeAgo')) {
         </script>
     <?php endif; ?>
 
-        <!-- =========================================================
-             Team Overview（移除右上角狀態 pill）
-             ========================================================= -->
         <section class="team-overview">
             <div class="team-header">
                 <div class="team-title">
@@ -866,9 +1102,11 @@ if (!function_exists('timeAgo')) {
                         <p><?= htmlspecialchars(topicModeLabel($myGroup['topic_mode'])) ?> · No topic submitted yet</p>
                     <?php endif; ?>
                 </div>
-                <a class="team-topic-link" href="student_topic.php?group_id=<?= (int) $myGroup['group_id'] ?>">
+                <button type="button"
+                        class="team-topic-link"
+                        onclick="openTopicModal(<?= (int) $myGroup['group_id'] ?>)">
                     <?= $myGroup['topic_mode'] === 'Self' ? 'Open Project Title' : 'Open Topic' ?>
-                </a>
+                </button>
             </div>
 
             <div class="team-progress">
@@ -885,9 +1123,6 @@ if (!function_exists('timeAgo')) {
             </div>
         </section>
 
-        <!-- =========================================================
-             Project Details
-             ========================================================= -->
         <section class="project-section">
             <h2>Project Details</h2>
 
@@ -971,10 +1206,6 @@ if (!function_exists('timeAgo')) {
             <?php endif; ?>
         </section>
 
-        <!-- =========================================================
-             Members + Team Details
-             （移除「Current Project Stage」同「Team Formation Status」）
-             ========================================================= -->
         <section class="information-grid">
 
             <div class="content-box">
@@ -1033,9 +1264,6 @@ if (!function_exists('timeAgo')) {
 
         </section>
 
-        <!-- =========================================================
-             Tasks + Activity
-             ========================================================= -->
         <section class="information-grid">
 
             <div class="content-box">
@@ -1099,6 +1327,60 @@ if (!function_exists('timeAgo')) {
     <?php endif; ?>
 
 </main>
+
+<!-- Topic Modal (iframe) -->
+<div class="topic-modal-overlay" id="topicModal" aria-hidden="true">
+    <div class="topic-modal" role="dialog" aria-modal="true" aria-labelledby="topicModalTitle">
+        <div class="topic-modal-header">
+            <h3 id="topicModalTitle">Team Topic</h3>
+            <button type="button" class="topic-modal-close" id="topicModalClose" aria-label="Close">✕</button>
+        </div>
+        <div class="topic-modal-body">
+            <iframe id="topicModalIframe" src="about:blank" title="Team Topic"></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var modal  = document.getElementById('topicModal');
+        var iframe = document.getElementById('topicModalIframe');
+        var close  = document.getElementById('topicModalClose');
+        if (!modal || !iframe) return;
+
+        window.openTopicModal = function (groupId) {
+            iframe.src = 'student_topic.php?group_id=' + encodeURIComponent(groupId) + '&embed=1';
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeTopicModal = function () {
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            setTimeout(function () {
+                iframe.src = 'about:blank';
+            }, 200);
+        };
+
+        if (close) {
+            close.addEventListener('click', window.closeTopicModal);
+        }
+
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                window.closeTopicModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                window.closeTopicModal();
+            }
+        });
+    })();
+</script>
 
 </body>
 </html>

@@ -683,7 +683,11 @@ if (count($topicProposals) > 0) {
     );
 }
 usort($queueCandidates, function ($a, $b) {
-    return strtotime($a['time']) <=> strtotime($b['time']);
+    $aTs = strtotime($a['time']);
+    $bTs = strtotime($b['time']);
+    if ($aTs < $bTs) return -1;
+    if ($aTs > $bTs) return 1;
+    return 0;
 });
 $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
 ?>

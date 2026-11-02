@@ -148,12 +148,12 @@ $overdueTasks = 0;
 $overdueTeams = 0;
 
 $statusCounts = array(
-    'all'        => $totalTeams,
-    'pending'    => 0,
-    'Voting'     => 0,
-    'Executing'  => 0,
-    'Completed'  => 0,
-    'overdue'    => 0,
+        'all'        => $totalTeams,
+        'pending'    => 0,
+        'Voting'     => 0,
+        'Executing'  => 0,
+        'Completed'  => 0,
+        'overdue'    => 0,
 );
 
 foreach ($allTeams as &$team) {
@@ -193,7 +193,7 @@ foreach ($allTeams as &$team) {
         $priority = min($priority, 3);
     }
     if (empty($team['last_activity'])
-        || strtotime($team['last_activity']) < strtotime('-7 days')) {
+            || strtotime($team['last_activity']) < strtotime('-7 days')) {
         $reasons[] = 'No activity for 7+ days';
         $priority  = min($priority, 4);
     }
@@ -271,8 +271,8 @@ foreach ($allTeams as $team) {
 
     if ($search !== '') {
         $haystack = $team['name'] . ' ' . $team['project_name'] . ' '
-            . $team['project_category'] . ' ' . (string) $team['leader_name'] . ' '
-            . (string) $team['topic_title'] . ' ' . (string) $team['fixed_topic_title'];
+                . $team['project_category'] . ' ' . (string) $team['leader_name'] . ' '
+                . (string) $team['topic_title'] . ' ' . (string) $team['fixed_topic_title'];
         if (stripos($haystack, $search) === false) {
             continue;
         }
@@ -281,17 +281,22 @@ foreach ($allTeams as $team) {
     $filteredTeams[] = $team;
 }
 
+// ★ 修正 1 & 2：<=> 係 PHP 7.0+，改用 if/else 比較
 usort($filteredTeams, function ($a, $b) use ($sort) {
     if ($sort === 'team') {
         return strnatcasecmp($a['name'], $b['name']);
     }
     if ($sort === 'overdue') {
-        $overdueCompare = (int) $b['overdue_count'] <=> (int) $a['overdue_count'];
-        if ($overdueCompare !== 0) return $overdueCompare;
+        $aVal = (int) $a['overdue_count'];
+        $bVal = (int) $b['overdue_count'];
+        if ($aVal < $bVal) return 1;
+        if ($aVal > $bVal) return -1;
     }
     if ($sort === 'recent') {
-        $recentCompare = strtotime((string) $b['last_activity']) <=> strtotime((string) $a['last_activity']);
-        if ($recentCompare !== 0) return $recentCompare;
+        $aTs = strtotime((string) $a['last_activity']);
+        $bTs = strtotime((string) $b['last_activity']);
+        if ($aTs < $bTs) return 1;
+        if ($aTs > $bTs) return -1;
     }
     $classCompare = strnatcasecmp($a['class_code'] ?: '', $b['class_code'] ?: '');
     if ($classCompare !== 0) return $classCompare;
@@ -301,18 +306,18 @@ usort($filteredTeams, function ($a, $b) use ($sort) {
 });
 
 $teamStatusLabels = array(
-    'Waiting_Send' => 'Ready to Submit',
-    'Voting'       => 'Choosing Leader',
-    'Executing'    => 'Active',
-    'Completed'    => 'Completed',
+        'Waiting_Send' => 'Ready to Submit',
+        'Voting'       => 'Choosing Leader',
+        'Executing'    => 'Active',
+        'Completed'    => 'Completed',
 );
 
 $chipDefs = array(
-    'all'        => 'All',
-    'pending'    => 'Awaiting Approval',
-    'Voting'     => $teamStatusLabels['Voting'],
-    'Executing'  => $teamStatusLabels['Executing'],
-    'Completed'  => $teamStatusLabels['Completed'],
+        'all'        => 'All',
+        'pending'    => 'Awaiting Approval',
+        'Voting'     => $teamStatusLabels['Voting'],
+        'Executing'  => $teamStatusLabels['Executing'],
+        'Completed'  => $teamStatusLabels['Completed'],
 );
 
 $groupedTeams = array();
@@ -320,13 +325,13 @@ foreach ($filteredTeams as $team) {
     $projectKey = (int) $team['project_id'];
     if (!isset($groupedTeams[$projectKey])) {
         $groupedTeams[$projectKey] = array(
-            'project_id' => $projectKey,
-            'project_name' => $team['project_name'],
-            'project_category' => $team['project_category'],
-            'class_code' => $team['class_code'],
-            'teams' => array(),
-            'awaiting' => 0,
-            'overdue_teams' => 0,
+                'project_id' => $projectKey,
+                'project_name' => $team['project_name'],
+                'project_category' => $team['project_category'],
+                'class_code' => $team['class_code'],
+                'teams' => array(),
+                'awaiting' => 0,
+                'overdue_teams' => 0,
         );
     }
     $groupedTeams[$projectKey]['teams'][] = $team;
@@ -338,7 +343,7 @@ foreach ($filteredTeams as $team) {
     }
 }
 $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
-    || $categoryFilter !== 'all' || $sort !== 'project');
+        || $categoryFilter !== 'all' || $sort !== 'project');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -828,7 +833,7 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
                         <option value="all" <?php echo $classFilter === 'all' ? 'selected' : ''; ?>>All classes</option>
                         <?php foreach ($teacherClasses as $classCode): ?>
                             <option value="<?php echo htmlspecialchars($classCode); ?>"
-                                <?php echo $classFilter === $classCode ? 'selected' : ''; ?>>
+                                    <?php echo $classFilter === $classCode ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($classCode); ?>
                             </option>
                         <?php endforeach; ?>
@@ -840,7 +845,7 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
                         <option value="all" <?php echo $categoryFilter === 'all' ? 'selected' : ''; ?>>All categories</option>
                         <?php foreach ($teacherCategories as $category): ?>
                             <option value="<?php echo htmlspecialchars($category); ?>"
-                                <?php echo $categoryFilter === $category ? 'selected' : ''; ?>>
+                                    <?php echo $categoryFilter === $category ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($category); ?>
                             </option>
                         <?php endforeach; ?>
@@ -865,16 +870,16 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
                 <?php foreach ($chipDefs as $key => $label): ?>
                     <?php
                     $chipUrl = 'teacher_teams.php?' . http_build_query(array(
-                        'status' => $key,
-                        'q'      => $search,
-                        'class'  => $classFilter,
-                        'category' => $categoryFilter,
-                        'sort'   => $sort,
-                    ));
+                                    'status' => $key,
+                                    'q'      => $search,
+                                    'class'  => $classFilter,
+                                    'category' => $categoryFilter,
+                                    'sort'   => $sort,
+                            ));
                     ?>
                     <a href="<?php echo htmlspecialchars($chipUrl); ?>"
                        class="<?= $status === $key ? 'active' : '' ?>"
-                       <?php echo $status === $key ? 'aria-current="page"' : ''; ?>>
+                            <?php echo $status === $key ? 'aria-current="page"' : ''; ?>>
                         <?php echo htmlspecialchars($label); ?>
                         <span><?php echo (int) $statusCounts[$key]; ?></span>
                     </a>
@@ -882,12 +887,12 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
             </nav>
             <?php
             $overdueUrl = 'teacher_teams.php?' . http_build_query(array(
-                'status' => 'overdue',
-                'q' => $search,
-                'class' => $classFilter,
-                'category' => $categoryFilter,
-                'sort' => $sort,
-            ));
+                            'status' => 'overdue',
+                            'q' => $search,
+                            'class' => $classFilter,
+                            'category' => $categoryFilter,
+                            'sort' => $sort,
+                    ));
             ?>
             <a href="<?= htmlspecialchars($overdueUrl) ?>"
                class="overdue-filter <?= $status === 'overdue' ? 'active' : '' ?>">
@@ -943,14 +948,19 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
                         $done = (int) $team['completed_tasks'];
                         $total = (int) $team['total_tasks'];
                         $pct = $total > 0 ? (int) round($done / $total * 100) : 0;
+
+                        // ★ 修正 3：?? 係 PHP 7.0+，改用 isset() ? :
                         $displayStatus = $pending > 0
-                            ? 'Awaiting Approval'
-                            : ($teamStatusLabels[$team['status']] ?? $team['status']);
+                                ? 'Awaiting Approval'
+                                : (isset($teamStatusLabels[$team['status']])
+                                        ? $teamStatusLabels[$team['status']]
+                                        : $team['status']);
+
                         $displayTopic = $team['topic_mode'] === 'Fixed'
-                            ? $team['fixed_topic_title']
-                            : $team['topic_title'];
+                                ? $team['fixed_topic_title']
+                                : $team['topic_title'];
                         $canMessage = ($pending === 0
-                            && in_array($team['status'], array('Voting', 'Executing'), true));
+                                && in_array($team['status'], array('Voting', 'Executing'), true));
                         ?>
                         <div class="team-row <?= $overdue > 0 ? 'attention-overdue' : '' ?>">
                             <div class="team-identity">

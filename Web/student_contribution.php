@@ -15,10 +15,10 @@ if (!isset($_SESSION['userID'])) {
 
 $userID = (int) $_SESSION['userID'];
 
-// =========================================================
-// 1. 取 student_id
-// =========================================================
-$studentID = 0;
+/* =========================================================
+   1. student_id
+   ========================================================= */
+$studentID   = 0;
 $studentName = '';
 
 $stmt = mysqli_prepare($conn, "
@@ -41,9 +41,40 @@ if (!$rc) {
 $studentID   = (int) $rc['student_id'];
 $studentName = $rc['username'];
 
-// =========================================================
-// 2. 取我所有 group (Voting / Executing)
-// =========================================================
+/* =========================================================
+   1.5 Unread notifications + preview
+   ========================================================= */
+$unreadNotifications = 0;
+$stmt = mysqli_prepare($conn, "
+    SELECT COUNT(*) AS c FROM `notifications`
+    WHERE user_id = ? AND is_read = 0
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$rc = mysqli_fetch_assoc($rs);
+$unreadNotifications = (int) $rc['c'];
+mysqli_stmt_close($stmt);
+
+$unreadList = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT id, type, title, message, created_at
+    FROM `notifications`
+    WHERE user_id = ? AND is_read = 0
+    ORDER BY created_at DESC
+    LIMIT 8
+");
+mysqli_stmt_bind_param($stmt, "i", $userID);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($rowN = mysqli_fetch_assoc($rs)) {
+    $unreadList[] = $rowN;
+}
+mysqli_stmt_close($stmt);
+
+/* =========================================================
+   2. My groups (Voting / Executing)
+   ========================================================= */
 $myGroups = array();
 
 $stmt = mysqli_prepare($conn, "
@@ -70,9 +101,9 @@ while ($row = mysqli_fetch_assoc($rs)) {
 }
 mysqli_stmt_close($stmt);
 
-// =========================================================
-// 3. 決定 active group
-// =========================================================
+/* =========================================================
+   3. Active group
+   ========================================================= */
 $activeGroupID = 0;
 if (isset($_GET['group_id'])) {
     $activeGroupID = (int) $_GET['group_id'];
@@ -92,17 +123,18 @@ if (!$myGroup && count($myGroups) > 0) {
     $activeGroupID = (int) $myGroup['group_id'];
 }
 
-// =========================================================
-// 4. 計算每位成員的貢獻分數（只計算 Task）
-// =========================================================
-$memberStats = array();
+/* =========================================================
+   4. Score = completed tasks (10 each) + approved logs
+   ========================================================= */
+$memberStats    = array();
 $totalTeamScore = 0;
 $topContributor = '—';
-$topScore = 0;
+$topScore       = 0;
+$totalMembers   = 0;
 
 if ($myGroup) {
 
-    // 4.1 取所有組員
+    /* 4.1 members */
     $members = array();
     $stmt = mysqli_prepare($conn, "
         SELECT
@@ -124,20 +156,25 @@ if ($myGroup) {
     }
     mysqli_stmt_close($stmt);
 
-    // 4.2 初始化每位成員的分數
+    /* 4.2 init stats */
     foreach ($members as $m) {
         $sid = (int)$m['student_id'];
         $memberStats[$sid] = array(
-                'student_id'     => $sid,
-                'student_number' => $m['student_number'],
-                'name'           => $m['name'],
-                'role'           => $m['role'],
-                'tasks_completed'=> 0,
-                'total_points'   => 0
+                'student_id'      => $sid,
+                'student_number'  => $m['student_number'],
+                'name'            => $m['name'],
+                'role'            => $m['role'],
+                'tasks_completed' => 0,
+                'task_points'     => 0,
+                'logged_approved' => 0,
+                'logged_pending'  => 0,
+                'logged_points'   => 0,
+                'total_points'    => 0
         );
     }
+    $totalMembers = count($memberStats);
 
-    // 4.3 任務完成數（Waiting_Confirm 或 Completed）
+    /* 4.3 completed tasks (Waiting_Confirm + Completed = 10 pts each) */
     $stmt = mysqli_prepare($conn, "
         SELECT assigned_to, COUNT(*) AS c
         FROM `tasks`
@@ -153,15 +190,61 @@ if ($myGroup) {
         $sid = (int)$row['assigned_to'];
         if (isset($memberStats[$sid])) {
             $memberStats[$sid]['tasks_completed'] = (int)$row['c'];
-            $memberStats[$sid]['total_points']    = (int)$row['c'] * 10;
+            $memberStats[$sid]['task_points']     = (int)$row['c'] * 10;
         }
     }
     mysqli_stmt_close($stmt);
 
-    // 4.4 計算總分、最高分
+    /* 4.4 approved logged contributions */
+    $stmt = mysqli_prepare($conn, "
+        SELECT
+            student_id,
+            COUNT(*) AS c,
+            SUM(CASE WHEN points_awarded > 0 THEN points_awarded ELSE 10 END) AS pts
+        FROM `contributions`
+        WHERE group_id = ?
+          AND confirmation_status = 'Approved'
+        GROUP BY student_id
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $activeGroupID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    while ($row = mysqli_fetch_assoc($rs)) {
+        $sid = (int)$row['student_id'];
+        if (isset($memberStats[$sid])) {
+            $memberStats[$sid]['logged_approved'] = (int)$row['c'];
+            $memberStats[$sid]['logged_points']   = (int)$row['pts'];
+        }
+    }
+    mysqli_stmt_close($stmt);
+
+    /* 4.5 pending logged contributions (info only) */
+    $stmt = mysqli_prepare($conn, "
+        SELECT student_id, COUNT(*) AS c
+        FROM `contributions`
+        WHERE group_id = ?
+          AND confirmation_status = 'Pending'
+        GROUP BY student_id
+    ");
+    mysqli_stmt_bind_param($stmt, "i", $activeGroupID);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    while ($row = mysqli_fetch_assoc($rs)) {
+        $sid = (int)$row['student_id'];
+        if (isset($memberStats[$sid])) {
+            $memberStats[$sid]['logged_pending'] = (int)$row['c'];
+        }
+    }
+    mysqli_stmt_close($stmt);
+
+    /* 4.6 totals */
+    foreach ($memberStats as $sid => $stat) {
+        $memberStats[$sid]['total_points'] =
+                $stat['task_points'] + $stat['logged_points'];
+    }
+
     foreach ($memberStats as $sid => $stat) {
         $totalTeamScore += $stat['total_points'];
-
         if ($stat['total_points'] > $topScore) {
             $topScore = $stat['total_points'];
             $topContributor = $stat['name'];
@@ -169,13 +252,11 @@ if ($myGroup) {
     }
 }
 
-// =========================================================
-// 5. 統計 Summary
-// =========================================================
-$totalMembers = count($memberStats);
+/* =========================================================
+   5. Summary numbers
+   ========================================================= */
 $averageScore = $totalMembers > 0 ? round($totalTeamScore / $totalMembers) : 0;
 
-// 團隊平衡度（最高分與最低分的差距）
 $balanceLabel = '—';
 if ($totalMembers > 0) {
     $scores = array();
@@ -192,9 +273,9 @@ if ($totalMembers > 0) {
     else                  $balanceLabel = 'Uneven';
 }
 
-// =========================================================
-// 6. 顏色 Palette
-// =========================================================
+/* =========================================================
+   6. Colours
+   ========================================================= */
 $palette = array(
         '#000000', '#555555', '#999999', '#cccccc',
         '#175196', '#2e9d4d', '#e0a030', '#c62828',
@@ -208,10 +289,9 @@ foreach ($memberStats as $sid => $stat) {
     $colorIndex++;
 }
 
-// =========================================================
-// 7. Recent Contribution Activity
-//    ★ 改為直接從 contributions 表讀取（只有加分的活動）
-// =========================================================
+/* =========================================================
+   7. Recent approved contribution activity
+   ========================================================= */
 $recentActivities = array();
 
 if ($myGroup) {
@@ -220,15 +300,19 @@ if ($myGroup) {
             c.id,
             c.title,
             c.notes,
+            c.type,
             c.contribution_date,
+            c.confirmed_at,
             c.created_at,
+            c.points_awarded,
             u.username AS actor_name,
             s.student_number
         FROM `contributions` c
         LEFT JOIN `students` s ON s.id = c.student_id
         LEFT JOIN `users`    u ON u.id = s.user_id
         WHERE c.group_id = ?
-        ORDER BY c.created_at DESC
+          AND c.confirmation_status = 'Approved'
+        ORDER BY COALESCE(c.confirmed_at, c.created_at) DESC
         LIMIT 10
     ");
     mysqli_stmt_bind_param($stmt, "i", $activeGroupID);
@@ -240,9 +324,9 @@ if ($myGroup) {
     mysqli_stmt_close($stmt);
 }
 
-// =========================================================
-// 8. Helper
-// =========================================================
+/* =========================================================
+   8. Helpers
+   ========================================================= */
 if (!function_exists('initials')) {
     function initials($name) {
         $parts = preg_split('/\s+/', trim($name));
@@ -291,10 +375,18 @@ if (!function_exists('timeAgo')) {
         .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
         .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
+        .bell-wrap {
+            position: absolute;
+            right: 0; top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+        }
         .bell-link {
-            position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+            position: relative;
             display: flex; align-items: center; justify-content: center;
-            width: 44px; height: 44px; border-radius: 50%; transition: background 0.3s;
+            width: 44px; height: 44px; border-radius: 50%;
+            transition: background 0.3s;
+            text-decoration: none;
         }
         .bell-link:hover { background: rgba(255, 255, 255, 0.15); }
         .bell-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
@@ -306,6 +398,108 @@ if (!function_exists('timeAgo')) {
             display: flex; align-items: center; justify-content: center;
             border: 2px solid black;
         }
+
+        .bell-preview {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 340px;
+            max-height: 420px;
+            background: white;
+            color: #222;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+            overflow: hidden;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+        }
+        .bell-wrap:hover .bell-preview {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .bell-preview::before {
+            content: "";
+            position: absolute;
+            top: -6px;
+            right: 18px;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            border-top: 1px solid #e0e0e0;
+            transform: rotate(45deg);
+        }
+        .bell-preview-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #333;
+            background: #fafbfc;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .bell-preview-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            max-height: 320px;
+        }
+        .bell-preview-item {
+            display: block;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f2f3f5;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.15s;
+        }
+        .bell-preview-item:hover { background: #f7f8fa; }
+        .bell-preview-item:last-child { border-bottom: none; }
+        .bell-preview-title {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bell-preview-msg {
+            display: block;
+            font-size: 11.5px;
+            color: #777;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .bell-preview-time {
+            display: block;
+            font-size: 10.5px;
+            color: #9aa0a6;
+        }
+        .bell-preview-footer {
+            padding: 10px 14px;
+            text-align: center;
+            background: #fafbfc;
+            border-top: 1px solid #eeeeee;
+            font-size: 12px;
+            font-weight: 700;
+            color: #175196;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .bell-preview-footer:hover { background: #f0f6fd; }
 
         .function-menu {
             width: 100%; display: flex; justify-content: center; align-items: center;
@@ -363,9 +557,6 @@ if (!function_exists('timeAgo')) {
             border-bottom: 2px solid #eeeeee; font-size: 23px;
         }
 
-        /* =========================
-           Pie Chart Section
-        ========================= */
         .chart-wrapper {
             display: flex; align-items: center; justify-content: center;
             gap: 50px; flex-wrap: wrap;
@@ -386,9 +577,6 @@ if (!function_exists('timeAgo')) {
         .legend-info p { color: #777; font-size: 13px; }
         .legend-percent { font-size: 16px; font-weight: bold; white-space: nowrap; }
 
-        /* =========================
-           Member Contribution Rows
-        ========================= */
         .member-contrib { padding: 18px 0; border-bottom: 1px solid #eeeeee; }
         .member-contrib:last-child { border-bottom: none; }
 
@@ -417,11 +605,11 @@ if (!function_exists('timeAgo')) {
             margin-top: 8px;
             display: flex; justify-content: space-between;
             color: #777; font-size: 12px;
+            flex-wrap: wrap;
+            gap: 6px 18px;
         }
+        .contrib-details strong { color: #222; }
 
-        /* =========================
-           Activity Log
-        ========================= */
         .activity-item {
             padding: 15px 0; border-bottom: 1px solid #eeeeee;
             display: flex; gap: 14px;
@@ -495,6 +683,7 @@ if (!function_exists('timeAgo')) {
             .logo-area span { font-size: 26px; }
             .bell-link { width: 38px; height: 38px; }
             .bell-link img { width: 22px; height: 22px; }
+            .bell-preview { width: calc(100vw - 40px); right: -8px; }
             .function-menu { flex-direction: column; gap: 12px; }
             .main-content { width: 94%; margin: 25px auto; }
             .page-heading h1 { font-size: 28px; }
@@ -519,12 +708,38 @@ if (!function_exists('timeAgo')) {
             <span>TeamBox</span>
         </div>
 
-        <a href="student_notifications.php" class="bell-link" title="Notifications">
-            <img src="bell.png" alt="Notifications">
-            <?php if (isset($unreadNotifications) && $unreadNotifications > 0): ?>
-                <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+        <div class="bell-wrap">
+            <a href="student_notifications.php" class="bell-link" title="Notifications">
+                <img src="bell.png" alt="Notifications">
+                <?php if ($unreadNotifications > 0): ?>
+                    <span class="bell-badge"><?php echo $unreadNotifications; ?></span>
+                <?php endif; ?>
+            </a>
+
+            <?php if (count($unreadList) > 0): ?>
+                <div class="bell-preview">
+                    <div class="bell-preview-header">
+                        Unread Notifications (<?php echo count($unreadList); ?>)
+                    </div>
+                    <div class="bell-preview-list">
+                        <?php foreach ($unreadList as $n): ?>
+                            <a href="student_notifications.php" class="bell-preview-item">
+                                <span class="bell-preview-title"><?php echo htmlspecialchars($n['title']); ?></span>
+                                <?php if (!empty($n['message'])): ?>
+                                    <span class="bell-preview-msg"><?php echo htmlspecialchars($n['message']); ?></span>
+                                <?php endif; ?>
+                                <span class="bell-preview-time">
+                                    <?php echo date('d M Y H:i', strtotime($n['created_at'])); ?>
+                                </span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <a href="student_notifications.php" class="bell-preview-footer">
+                        View all notifications →
+                    </a>
+                </div>
             <?php endif; ?>
-        </a>
+        </div>
     </div>
 
     <div class="function-menu">
@@ -594,9 +809,9 @@ if (!function_exists('timeAgo')) {
             <div>
                 <h1>Contribution Analysis</h1>
                 <p>
-                    Track each member's participation. Contribution scores
-                    are based solely on completed tasks. Each completed task
-                    is worth 10 points.
+                    Track each member's participation. Contribution scores combine
+                    completed tasks (10 points each) and voluntary contribution logs
+                    that every other groupmate has approved (10 points each).
                 </p>
             </div>
             <button type="button" class="export-btn">Export Report (PDF)</button>
@@ -638,7 +853,7 @@ if (!function_exists('timeAgo')) {
                 $offset = 25;
                 $chartSegments = array();
                 foreach ($memberStats as $sid => $stat) {
-                    $pct = $totalTeamScore > 0 ? ($stat['total_points'] / $totalTeamScore) * 100 : 0;
+                    $pct  = $totalTeamScore > 0 ? ($stat['total_points'] / $totalTeamScore) * 100 : 0;
                     $dash = round($pct, 2);
                     $gap  = round(100 - $pct, 2);
                     $chartSegments[] = array(
@@ -659,14 +874,16 @@ if (!function_exists('timeAgo')) {
 
                     <?php if ($totalTeamScore > 0): ?>
                         <?php foreach ($chartSegments as $seg): ?>
-                            <circle cx="21" cy="21" r="15.915"
-                                    fill="transparent"
-                                    stroke="<?php echo htmlspecialchars($seg['color']); ?>"
-                                    stroke-width="8"
-                                    stroke-dasharray="<?php echo $seg['dash']; ?> <?php echo $seg['gap']; ?>"
-                                    stroke-dashoffset="<?php echo $seg['offset']; ?>">
-                                <title><?php echo htmlspecialchars($seg['name']); ?> · <?php echo $seg['points']; ?> pts (<?php echo $seg['pct']; ?>%)</title>
-                            </circle>
+                            <?php if ($seg['dash'] > 0): ?>
+                                <circle cx="21" cy="21" r="15.915"
+                                        fill="transparent"
+                                        stroke="<?php echo htmlspecialchars($seg['color']); ?>"
+                                        stroke-width="8"
+                                        stroke-dasharray="<?php echo $seg['dash']; ?> <?php echo $seg['gap']; ?>"
+                                        stroke-dashoffset="<?php echo $seg['offset']; ?>">
+                                    <title><?php echo htmlspecialchars($seg['name']); ?> · <?php echo $seg['points']; ?> pts (<?php echo $seg['pct']; ?>%)</title>
+                                </circle>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
 
@@ -714,7 +931,7 @@ if (!function_exists('timeAgo')) {
 
             <?php foreach ($memberStats as $sid => $stat): ?>
                 <?php
-                $barWidth = $maxMemberScore > 0 ? round(($stat['total_points'] / $maxMemberScore) * 100) : 0;
+                $barWidth    = $maxMemberScore > 0 ? round(($stat['total_points'] / $maxMemberScore) * 100) : 0;
                 $avatarColor = $memberColors[$sid];
                 ?>
                 <div class="member-contrib">
@@ -741,50 +958,45 @@ if (!function_exists('timeAgo')) {
                     </div>
 
                     <div class="contrib-details">
-                        <span>Tasks Completed: <?php echo $stat['tasks_completed']; ?></span>
-                        <span>Points: <?php echo $stat['total_points']; ?></span>
+                        <span>
+                            Tasks Completed: <?php echo (int)$stat['tasks_completed']; ?>
+                            (<?php echo (int)$stat['task_points']; ?> pts)
+                        </span>
+                        <span>
+                            Logged Contributions: <?php echo (int)$stat['logged_approved']; ?>
+                            (<?php echo (int)$stat['logged_points']; ?> pts)
+                            <?php if ($stat['logged_pending'] > 0): ?>
+                                · <?php echo (int)$stat['logged_pending']; ?> pending
+                            <?php endif; ?>
+                        </span>
+                        <span>Total: <strong><?php echo (int)$stat['total_points']; ?> pts</strong></span>
                     </div>
                 </div>
             <?php endforeach; ?>
         </section>
 
-        <!-- Recent Contribution Activity（只顯示已加分的活動） -->
+        <!-- Recent activity (approved logs only) -->
         <section class="content-box">
             <h2>Recent Contribution Activity</h2>
 
             <?php if (count($recentActivities) === 0): ?>
-                <p class="muted">No contribution points have been awarded yet.</p>
+                <p class="muted">No approved contribution logs yet.</p>
             <?php endif; ?>
 
             <?php foreach ($recentActivities as $a): ?>
+                <?php
+                $pts = (int)$a['points_awarded'];
+                if ($pts <= 0) $pts = 10;
+                ?>
                 <div class="activity-item">
                     <div class="activity-icon">✓</div>
                     <div class="activity-content">
                         <h3><?php echo htmlspecialchars($a['actor_name'] ?: 'System'); ?></h3>
                         <p>
-                            <?php
-                            // 顯示「Completed task: <id>」對應的實際任務名稱
-                            if (preg_match('/^Completed task:\s*(\d+)$/', $a['title'], $matches)) {
-                                $tid = (int)$matches[1];
-                                $taskTitle = $a['title'];
-
-                                // 查任務名稱（簡單查詢）
-                                $stmtT = mysqli_prepare($conn, "SELECT title FROM `tasks` WHERE id = ? LIMIT 1");
-                                if ($stmtT) {
-                                    mysqli_stmt_bind_param($stmtT, "i", $tid);
-                                    mysqli_stmt_execute($stmtT);
-                                    $rsT = mysqli_stmt_get_result($stmtT);
-                                    $rowT = mysqli_fetch_assoc($rsT);
-                                    mysqli_stmt_close($stmtT);
-                                    if ($rowT) {
-                                        $taskTitle = $rowT['title'];
-                                    }
-                                }
-                                echo 'Completed task: <strong>' . htmlspecialchars($taskTitle) . '</strong>';
-                            } else {
-                                echo htmlspecialchars($a['title']);
-                            }
-                            ?>
+                            <?php if (!empty($a['type'])): ?>
+                                [<?php echo htmlspecialchars($a['type']); ?>]
+                            <?php endif; ?>
+                            <?php echo htmlspecialchars($a['title']); ?>
                         </p>
                         <?php if (!empty($a['notes'])): ?>
                             <p style="margin-top:4px; color:#999; font-size:12px; font-style:italic;">
@@ -792,18 +1004,21 @@ if (!function_exists('timeAgo')) {
                             </p>
                         <?php endif; ?>
                     </div>
-                    <div class="activity-points">+10 pts</div>
-                    <div class="activity-time"><?php echo timeAgo($a['created_at']); ?></div>
+                    <div class="activity-points">+<?php echo $pts; ?> pts</div>
+                    <div class="activity-time">
+                        <?php echo timeAgo($a['confirmed_at'] ?: $a['created_at']); ?>
+                    </div>
                 </div>
             <?php endforeach; ?>
         </section>
 
-        <!-- Info Note -->
+        <!-- Info note -->
         <div class="info-note">
-            The contribution score is calculated automatically by the
-            system. Only completed tasks count towards the score.
-            Each completed task is worth 10 points. File uploads and
-            chat messages do not contribute to the score.
+            The contribution score is calculated automatically by the system.
+            It includes two parts: (1) completed tasks confirmed by the assigner
+            (10 points each), and (2) voluntary contribution logs that have been
+            approved by groupmates (10 points each). File uploads and chat
+            messages do not contribute to the score.
         </div>
 
     <?php endif; ?>

@@ -87,10 +87,10 @@ mysqli_stmt_close($stmt);
 
 $totalTeams = count($teams);
 $formationCounts = array(
-    'Awaiting Approval' => 0,
-    'Choosing Leader'   => 0,
-    'Active'            => 0,
-    'Completed'         => 0,
+        'Awaiting Approval' => 0,
+        'Choosing Leader'   => 0,
+        'Active'            => 0,
+        'Completed'         => 0,
 );
 $overdueTeamCount = 0;
 $projectTeamHealth = array();
@@ -117,15 +117,15 @@ foreach ($teams as $t) {
     $projectKey = (int) $t['project_id'];
     if (!isset($projectTeamHealth[$projectKey])) {
         $projectTeamHealth[$projectKey] = array(
-            'project_id' => $projectKey,
-            'project_name' => $t['project_name'],
-            'class_code' => $t['class_code'],
-            'total' => 0,
-            'awaiting' => 0,
-            'choosing' => 0,
-            'active' => 0,
-            'completed' => 0,
-            'overdue' => 0,
+                'project_id' => $projectKey,
+                'project_name' => $t['project_name'],
+                'class_code' => $t['class_code'],
+                'total' => 0,
+                'awaiting' => 0,
+                'choosing' => 0,
+                'active' => 0,
+                'completed' => 0,
+                'overdue' => 0,
         );
     }
     $projectTeamHealth[$projectKey]['total']++;
@@ -152,7 +152,7 @@ foreach ($teams as $t) {
         $priority  = min($priority, 2);
     }
     if (empty($t['last_activity'])
-        || strtotime($t['last_activity']) < strtotime('-7 days')) {
+            || strtotime($t['last_activity']) < strtotime('-7 days')) {
         $reasons[] = 'No activity for 7+ days';
         $priority  = min($priority, 4);
     }
@@ -164,11 +164,15 @@ foreach ($teams as $t) {
     }
 }
 
+// 修正：用 PHP 5.x 相容的比較，取代 <=>
 usort($attentionTeams, function ($a, $b) {
     if ($a['priority'] === $b['priority']) {
-        return (int) $b['overdue_count'] <=> (int) $a['overdue_count'];
+        $aOverdue = (int) $a['overdue_count'];
+        $bOverdue = (int) $b['overdue_count'];
+        if ($aOverdue === $bOverdue) return 0;
+        return ($aOverdue < $bOverdue) ? 1 : -1;
     }
-    return $a['priority'] <=> $b['priority'];
+    return ($a['priority'] < $b['priority']) ? -1 : 1;
 });
 $attentionTeamTotal = count($attentionTeams);
 $attentionTeams = array_slice($attentionTeams, 0, 5);
@@ -195,8 +199,12 @@ $rs = mysqli_stmt_get_result($stmt);
 while ($row = mysqli_fetch_assoc($rs)) { $upcomingDeadlines[] = $row; }
 mysqli_stmt_close($stmt);
 
+// 修正：用 PHP 5.x 相容的比較，取代 <=>
 usort($upcomingDeadlines, function ($a, $b) {
-    return strtotime($a['due_date']) <=> strtotime($b['due_date']);
+    $aTime = strtotime($a['due_date']);
+    $bTime = strtotime($b['due_date']);
+    if ($aTime === $bTime) return 0;
+    return ($aTime < $bTime) ? -1 : 1;
 });
 $upcomingDeadlines = array_slice($upcomingDeadlines, 0, 6);
 
@@ -204,7 +212,7 @@ if (!function_exists('dashboardDeadlineLabel')) {
     function dashboardDeadlineLabel($date)
     {
         $days = (int) round(
-            (strtotime($date) - strtotime(date('Y-m-d'))) / 86400
+                (strtotime($date) - strtotime(date('Y-m-d'))) / 86400
         );
 
         if ($days < 0) {
@@ -499,7 +507,7 @@ mysqli_stmt_close($stmt);
             <div>
                 <h1>Instructor Dashboard</h1>
                 <p class="subtitle">
-                    <?= (int) $totalTeams ?> teams across <?= count($projectTeamHealth) ?> projects · 2026/27
+                    <?php echo (int) $totalTeams; ?> teams across <?php echo count($projectTeamHealth); ?> projects · 2026/27
                 </p>
             </div>
             <a href="teacher_teams.php" class="btn-primary">View Teams</a>
@@ -508,36 +516,36 @@ mysqli_stmt_close($stmt);
         <div class="team-state-grid">
             <a href="teacher_teams.php?status=pending" class="team-state-card">
                 <span>Awaiting Approval</span>
-                <strong><?= (int) $formationCounts['Awaiting Approval'] ?></strong>
+                <strong><?php echo (int) $formationCounts['Awaiting Approval']; ?></strong>
                 <small>Teacher action required</small>
             </a>
             <a href="teacher_teams.php?status=Voting" class="team-state-card">
                 <span>Choosing Leader</span>
-                <strong><?= (int) $formationCounts['Choosing Leader'] ?></strong>
+                <strong><?php echo (int) $formationCounts['Choosing Leader']; ?></strong>
                 <small>Leader election in progress</small>
             </a>
             <a href="teacher_teams.php?status=Executing" class="team-state-card is-active">
                 <span>Active</span>
-                <strong><?= (int) $formationCounts['Active'] ?></strong>
+                <strong><?php echo (int) $formationCounts['Active']; ?></strong>
                 <small>Teams currently working</small>
             </a>
             <a href="teacher_teams.php?status=Completed" class="team-state-card is-complete">
                 <span>Completed</span>
-                <strong><?= (int) $formationCounts['Completed'] ?></strong>
+                <strong><?php echo (int) $formationCounts['Completed']; ?></strong>
                 <small>Finished teams</small>
             </a>
         </div>
 
         <?php if ($overdueTeamCount > 0): ?>
             <a href="teacher_teams.php?status=overdue" class="dashboard-alert">
-                <strong><?= (int) $overdueTeamCount ?> teams</strong> have overdue work
+                <strong><?php echo (int) $overdueTeamCount; ?> teams</strong> have overdue work
                 <span>Review teams →</span>
             </a>
         <?php endif; ?>
 
         <div class="section-head">
             <h2>Project Team Health</h2>
-            <span><?= count($projectTeamHealth) ?> projects</span>
+            <span><?php echo count($projectTeamHealth); ?> projects</span>
         </div>
         <div class="card project-health-card">
             <table class="project-health-table">
@@ -564,18 +572,18 @@ mysqli_stmt_close($stmt);
                     ?>
                     <tr>
                         <td>
-                            <a href="project_detail.php?id=<?= (int) $projectHealth['project_id'] ?>"
+                            <a href="project_detail.php?id=<?php echo (int) $projectHealth['project_id']; ?>"
                                class="project-health-name"
-                               title="<?= htmlspecialchars($projectHealth['project_name']) ?>">
-                                <?= htmlspecialchars($projectHealth['project_name']) ?>
+                               title="<?php echo htmlspecialchars($projectHealth['project_name']); ?>">
+                                <?php echo htmlspecialchars($projectHealth['project_name']); ?>
                             </a>
-                            <span><?= htmlspecialchars($projectHealth['class_code'] ?: 'No class') ?></span>
+                            <span><?php echo htmlspecialchars($projectHealth['class_code'] ?: 'No class'); ?></span>
                         </td>
-                        <td><?= (int) $projectHealth['total'] ?></td>
-                        <td><?= (int) $projectHealth['awaiting'] ?></td>
-                        <td><?= (int) $projectHealth['active'] ?></td>
-                        <td class="<?= $projectHealth['overdue'] > 0 ? 'danger-number' : '' ?>"><?= (int) $projectHealth['overdue'] ?></td>
-                        <td><span class="health-pill <?= $healthClass ?>"><?= $healthLabel ?></span></td>
+                        <td><?php echo (int) $projectHealth['total']; ?></td>
+                        <td><?php echo (int) $projectHealth['awaiting']; ?></td>
+                        <td><?php echo (int) $projectHealth['active']; ?></td>
+                        <td class="<?php echo $projectHealth['overdue'] > 0 ? 'danger-number' : ''; ?>"><?php echo (int) $projectHealth['overdue']; ?></td>
+                        <td><span class="health-pill <?php echo $healthClass; ?>"><?php echo $healthLabel; ?></span></td>
                     </tr>
                 <?php endforeach; ?>
             </table>
@@ -584,7 +592,7 @@ mysqli_stmt_close($stmt);
         <!-- Teams needing attention -->
         <div class="section-head">
             <h2>Teams Needing Attention</h2>
-            <span>Top <?= min(5, (int) $attentionTeamTotal) ?> of <?= (int) $attentionTeamTotal ?></span>
+            <span>Top <?php echo min(5, (int) $attentionTeamTotal); ?> of <?php echo (int) $attentionTeamTotal; ?></span>
         </div>
         <div class="card">
             <table class="attention-table">
@@ -611,7 +619,7 @@ mysqli_stmt_close($stmt);
                                 <?php echo htmlspecialchars($t['leader_name'] ?: 'No leader'); ?>
                             </div>
                         </td>
-                        <td title="<?= htmlspecialchars($t['project_name']) ?>">
+                        <td title="<?php echo htmlspecialchars($t['project_name']); ?>">
                             <?php echo htmlspecialchars($t['project_name']); ?>
                         </td>
                         <td>
@@ -640,15 +648,15 @@ mysqli_stmt_close($stmt);
                         <?php $deadlineLabel = dashboardDeadlineLabel($deadline['due_date']); ?>
                         <li>
                             <div class="deadline-main">
-                                <div class="deadline-title"><?= htmlspecialchars($deadline['title']) ?></div>
+                                <div class="deadline-title"><?php echo htmlspecialchars($deadline['title']); ?></div>
                                 <div class="deadline-meta">
-                                    <?= htmlspecialchars($deadline['group_name']) ?>
-                                    · <?= htmlspecialchars($deadline['project_name']) ?>
-                                    · <?= date('d M', strtotime($deadline['due_date'])) ?>
+                                    <?php echo htmlspecialchars($deadline['group_name']); ?>
+                                    · <?php echo htmlspecialchars($deadline['project_name']); ?>
+                                    · <?php echo date('d M', strtotime($deadline['due_date'])); ?>
                                 </div>
                             </div>
-                            <span class="deadline-badge <?= $deadlineLabel['class'] ?>">
-                                <?= htmlspecialchars($deadlineLabel['label']) ?>
+                            <span class="deadline-badge <?php echo $deadlineLabel['class']; ?>">
+                                <?php echo htmlspecialchars($deadlineLabel['label']); ?>
                             </span>
                         </li>
                     <?php endforeach; ?>
@@ -660,7 +668,7 @@ mysqli_stmt_close($stmt);
         <details class="dashboard-details">
             <summary>
                 <span>Recent Activity</span>
-                <small>Latest <?= count($activities) ?> updates</small>
+                <small>Latest <?php echo count($activities); ?> updates</small>
             </summary>
             <div class="card">
                 <ul>
