@@ -187,11 +187,11 @@ body.sg-teacher .sidebar-menu .item.active {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 .stat-card {
     display: block;
-    padding: 18px 20px;
+    padding: 14px 16px;
     border: 1px solid var(--line);
     border-radius: var(--r-card);
     background: var(--surface-solid);
@@ -209,7 +209,7 @@ body.sg-teacher .sidebar-menu .item.active {
 }
 .stat-card-value {
     display: block;
-    margin-top: 10px;
+    margin-top: 6px;
     color: var(--ink);
     font-size: clamp(40px, 4.5vw, 56px);
     font-weight: 300;
@@ -219,7 +219,7 @@ body.sg-teacher .sidebar-menu .item.active {
 }
 .stat-card-note {
     display: block;
-    margin-top: 10px;
+    margin-top: 6px;
     color: var(--ink-2);
     font-size: 12px;
 }
