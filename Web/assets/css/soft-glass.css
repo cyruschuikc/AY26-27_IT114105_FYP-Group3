@@ -15,11 +15,20 @@ body.sg-teacher {
         radial-gradient(1100px 700px at 88% -8%, rgba(255, 255, 255, .50), transparent 62%),
         radial-gradient(900px 650px at -6% 108%, rgba(255, 255, 255, .32), transparent 58%),
         var(--bg);
+    color-scheme: light;
 }
 
 body.sg-teacher,
 body.sg-teacher * {
     font-family: var(--font);
+}
+
+/* 原生 select 展开面板：macOS 弹层为系统渲染，
+   这里统一 option 的底色/字色并强制浅色方案 */
+body.sg-teacher select option {
+    background: var(--surface-solid);
+    color: var(--ink);
+    padding: 8px 10px;
 }
 
 /* 玻璃侧栏文字在浅底上的可读性（只调色，不动内层结构） */
