@@ -265,25 +265,159 @@ mysqli_stmt_close($stmt);
     <title>TeamBox | Instructor</title>
     <link rel="stylesheet" href="teacher.css?v=20261028b">
     <style>
-        .compact-card { margin-bottom: 0; }
-        .empty-note {
-            padding: 24px 16px;
-            color: #8b8f98;
-            font-size: 12px;
-            text-align: center;
+        .dashboard-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 26px;
+        }
+        .dashboard-head h1 { margin-bottom: 6px; font-size: 26px; }
+        .dashboard-head .subtitle { margin-bottom: 0; font-size: 14px; }
+        .dashboard-head .btn-primary {
+            flex: 0 0 auto;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 12px 20px;
         }
 
-        .deadline-list {
-            margin: 0;
-            padding: 0;
-            list-style: none;
+        .team-state-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 30px;
         }
+        .team-state-card {
+            display: block;
+            padding: 20px 18px;
+            border: 1px solid #e3e7eb;
+            border-radius: 10px;
+            background: #fff;
+            color: inherit;
+            text-decoration: none;
+        }
+        .team-state-card:hover { border-color: #b9c9d9; background: #fbfcfd; }
+        .team-state-card > span {
+            display: block;
+            color: #667085;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .team-state-card strong {
+            display: block;
+            margin-top: 8px;
+            color: #2d343d;
+            font-size: 32px;
+            line-height: 1;
+            font-weight: 700;
+        }
+        .team-state-card small {
+            display: block;
+            margin-top: 7px;
+            color: #667085;
+            font-size: 12.5px;
+        }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .section-head h2 { margin-bottom: 0; font-size: 15px; }
+        .section-head > span { color: #667085; font-size: 12.5px; }
+
+        .project-health-card { padding: 20px 22px; }
+        .ph-row { padding: 16px 0; border-bottom: 1px solid #f2f3f5; }
+        .ph-row:first-child { padding-top: 0; }
+        .ph-row:last-child { padding-bottom: 0; border-bottom: none; }
+        .ph-row-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+        .ph-project-name {
+            color: #1f2733;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .ph-project-name:hover { text-decoration: underline; }
+        .ph-project-class {
+            display: block;
+            margin-top: 3px;
+            color: #667085;
+            font-size: 12px;
+        }
+        .ph-meta {
+            display: flex;
+            gap: 18px;
+            color: #667085;
+            font-size: 12.5px;
+            white-space: nowrap;
+        }
+        .ph-meta strong { color: #1f2733; font-weight: 700; }
+        .ph-bar {
+            display: flex;
+            height: 18px;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #f2f3f5;
+        }
+        .ph-bar-seg { height: 100%; }
+        .ph-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 10px;
+            color: #667085;
+            font-size: 12px;
+        }
+        .ph-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+        .ph-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+        .attention-table th { font-size: 12px; }
+        .attention-table td { font-size: 14px; }
+        .attention-table .muted { font-size: 13px; }
+        .team-sub { margin-top: 3px; font-size: 12.5px; }
+        .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .reason-chip {
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: #f4f6f9;
+            color: #4b5058;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .dashboard-bottom {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+        .dashboard-bottom .card { margin-bottom: 0; }
+        .card-head { padding: 18px 20px 12px; border-bottom: 1px solid #f2f3f5; }
+        .card-head .section-head { margin-bottom: 0; }
+
+        .empty-note {
+            padding: 24px 16px;
+            color: #667085;
+            font-size: 13.5px;
+            text-align: center;
+        }
+        .deadline-list { margin: 0; padding: 0; list-style: none; }
         .deadline-list li {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 11px 16px;
+            padding: 13px 20px;
             border-bottom: 1px solid #f2f3f5;
         }
         .deadline-list li:last-child { border-bottom: none; }
@@ -291,208 +425,41 @@ mysqli_stmt_close($stmt);
         .deadline-title {
             overflow: hidden;
             color: #2c2f36;
-            font-size: 12.5px;
+            font-size: 14px;
             font-weight: 600;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
         .deadline-meta {
-            margin-top: 2px;
+            margin-top: 3px;
             overflow: hidden;
-            color: #9aa0a8;
-            font-size: 10.5px;
+            color: #667085;
+            font-size: 12px;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
         .deadline-badge {
             flex-shrink: 0;
-            padding: 3px 9px;
+            padding: 4px 10px;
             border-radius: 999px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-        .deadline-badge.overdue { background: #fdecec; color: #b02a2a; }
-        .deadline-badge.today { background: #fdf3e2; color: #9a6a13; }
-        .deadline-badge.soon { background: #eef2f7; color: #4b5058; }
-
-        .team-sub {
-            margin-top: 2px;
-            font-size: 10.5px;
-        }
-        .reason-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-        .reason-chip {
-            padding: 2px 7px;
-            border-radius: 999px;
-            background: #f4f6f9;
+            background: #eef2f7;
             color: #4b5058;
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        .dashboard-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 20px;
-            margin-bottom: 18px;
-        }
-        .dashboard-head h1 { margin-bottom: 4px; }
-        .dashboard-head .subtitle { margin-bottom: 0; }
-        .dashboard-head .btn-primary {
-            flex: 0 0 auto;
-            text-decoration: none;
-        }
-
-        .team-state-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 14px;
-        }
-        .team-state-card {
-            display: block;
-            padding: 13px 14px;
-            border: 1px solid #e3e7eb;
-            border-radius: 8px;
-            background: #fff;
-            color: inherit;
-            text-decoration: none;
-        }
-        .team-state-card:hover {
-            border-color: #b9c9d9;
-            background: #fbfcfd;
-        }
-        .team-state-card > span {
-            display: block;
-            color: #7e8690;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-        .team-state-card strong {
-            display: block;
-            margin-top: 5px;
-            color: #2d343d;
-            font-size: 24px;
-            line-height: 1;
-        }
-        .team-state-card small {
-            display: block;
-            margin-top: 5px;
-            color: #969da6;
-            font-size: 10px;
-        }
-        .team-state-card.is-active strong { color: #175196; }
-        .team-state-card.is-complete strong { color: #367552; }
-
-        .dashboard-alert {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            padding: 9px 12px;
-            border: 1px solid #efcccc;
-            border-left: 4px solid #b43b3b;
-            border-radius: 7px;
-            background: #fff7f7;
-            color: #7f3737;
-            font-size: 11.5px;
-            text-decoration: none;
-        }
-        .dashboard-alert span { margin-left: auto; font-weight: 700; }
-
-        .section-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-        }
-        .section-head h2 { margin-bottom: 10px; }
-        .section-head > span {
-            margin-bottom: 10px;
-            color: #8b929b;
-            font-size: 10.5px;
-        }
-
-        .project-health-card {
-            overflow-x: auto;
-            margin-bottom: 24px;
-        }
-        .project-health-table { min-width: 680px; }
-        .project-health-table th,
-        .project-health-table td { white-space: nowrap; }
-        .project-health-table td { padding-top: 10px; padding-bottom: 10px; }
-        .project-health-name {
-            display: block;
-            max-width: 330px;
-            overflow: hidden;
-            color: #33404d;
-            font-size: 11.5px;
-            font-weight: 600;
-            text-decoration: none;
-            text-overflow: ellipsis;
-        }
-        .project-health-name + span {
-            display: block;
-            margin-top: 2px;
-            color: #9299a2;
-            font-size: 9.5px;
-        }
-        .danger-number { color: #b42318; font-weight: 700; }
-        .health-pill {
-            display: inline-block;
-            padding: 3px 7px;
-            border-radius: 999px;
-            font-size: 9.5px;
-            font-weight: 700;
-        }
-        .health-pill.at-risk { background: #fdecec; color: #a52e2e; }
-        .health-pill.attention { background: #edf4fb; color: #315f87; }
-        .health-pill.on-track { background: #e8f4ec; color: #34704d; }
-
-        .upcoming-tasks-card { margin-bottom: 24px; }
-        .dashboard-details {
-            margin-top: 8px;
-            border-top: 1px solid #e2e6ea;
-        }
-        .dashboard-details > summary {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 13px 2px;
-            color: #4b5563;
-            cursor: pointer;
-            list-style: none;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 600;
         }
-        .dashboard-details > summary::-webkit-details-marker { display: none; }
-        .dashboard-details > summary::after {
-            content: "›";
-            color: #8b929b;
-            font-size: 18px;
-            transform: rotate(90deg);
-        }
-        .dashboard-details[open] > summary::after { transform: rotate(-90deg); }
-        .dashboard-details > summary small {
-            margin-left: auto;
-            margin-right: 8px;
-            color: #8b929b;
-            font-size: 10px;
-            font-weight: 400;
-        }
+
+        .activity-list li { align-items: flex-start; gap: 14px; font-size: 13.5px; }
+        .activity-list .act-detail { min-width: 0; line-height: 1.5; }
+        .activity-list .act-time { flex-shrink: 0; font-size: 12px; }
 
         @media (max-width: 900px) {
             .team-state-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .dashboard-bottom { grid-template-columns: 1fr; }
         }
         @media (max-width: 600px) {
             .dashboard-head { flex-direction: column; }
             .team-state-grid { grid-template-columns: 1fr; }
+            .ph-row-head { flex-direction: column; align-items: flex-start; gap: 6px; }
         }
     </style>
 </head>
@@ -524,72 +491,82 @@ mysqli_stmt_close($stmt);
                 <strong><?php echo (int) $formationCounts['Choosing Leader']; ?></strong>
                 <small>Leader election in progress</small>
             </a>
-            <a href="teacher_teams.php?status=Executing" class="team-state-card is-active">
+            <a href="teacher_teams.php?status=Executing" class="team-state-card">
                 <span>Active</span>
                 <strong><?php echo (int) $formationCounts['Active']; ?></strong>
                 <small>Teams currently working</small>
             </a>
-            <a href="teacher_teams.php?status=Completed" class="team-state-card is-complete">
+            <a href="teacher_teams.php?status=Completed" class="team-state-card">
                 <span>Completed</span>
                 <strong><?php echo (int) $formationCounts['Completed']; ?></strong>
                 <small>Finished teams</small>
             </a>
         </div>
 
-        <?php if ($overdueTeamCount > 0): ?>
-            <a href="teacher_teams.php?status=overdue" class="dashboard-alert">
-                <strong><?php echo (int) $overdueTeamCount; ?> teams</strong> have overdue work
-                <span>Review teams →</span>
-            </a>
-        <?php endif; ?>
-
         <div class="section-head">
-            <h2>Project Team Health</h2>
+            <h2>Project Overview</h2>
             <span><?php echo count($projectTeamHealth); ?> projects</span>
         </div>
         <div class="card project-health-card">
-            <table class="project-health-table">
-                <tr>
-                    <th>Project</th>
-                    <th>Teams</th>
-                    <th>Awaiting</th>
-                    <th>Active</th>
-                    <th>Overdue</th>
-                    <th>Health</th>
-                </tr>
+            <?php if (count($projectTeamHealth) === 0): ?>
+                <div class="empty-note">No projects yet.</div>
+            <?php else: ?>
+                <?php
+                $barColors = array(
+                    'awaiting'  => '#d7dee8',
+                    'choosing'  => '#aebccd',
+                    'active'    => '#175196',
+                    'completed' => '#4a5d73',
+                );
+                ?>
                 <?php foreach ($projectTeamHealth as $projectHealth): ?>
                     <?php
-                    if ($projectHealth['overdue'] > 0) {
-                        $healthLabel = 'At Risk';
-                        $healthClass = 'at-risk';
-                    } elseif ($projectHealth['awaiting'] > 0) {
-                        $healthLabel = 'Needs Attention';
-                        $healthClass = 'attention';
-                    } else {
-                        $healthLabel = 'On Track';
-                        $healthClass = 'on-track';
-                    }
+                    $barTotal = max(1, (int) $projectHealth['total']);
+                    $barSegments = array(
+                        array('Awaiting', (int) $projectHealth['awaiting'],  $barColors['awaiting']),
+                        array('Choosing',  (int) $projectHealth['choosing'],  $barColors['choosing']),
+                        array('Active',    (int) $projectHealth['active'],    $barColors['active']),
+                        array('Completed', (int) $projectHealth['completed'], $barColors['completed']),
+                    );
                     ?>
-                    <tr>
-                        <td>
-                            <a href="project_detail.php?id=<?php echo (int) $projectHealth['project_id']; ?>"
-                               class="project-health-name"
-                               title="<?php echo htmlspecialchars($projectHealth['project_name']); ?>">
-                                <?php echo htmlspecialchars($projectHealth['project_name']); ?>
-                            </a>
-                            <span><?php echo htmlspecialchars($projectHealth['class_code'] ?: 'No class'); ?></span>
-                        </td>
-                        <td><?php echo (int) $projectHealth['total']; ?></td>
-                        <td><?php echo (int) $projectHealth['awaiting']; ?></td>
-                        <td><?php echo (int) $projectHealth['active']; ?></td>
-                        <td class="<?php echo $projectHealth['overdue'] > 0 ? 'danger-number' : ''; ?>"><?php echo (int) $projectHealth['overdue']; ?></td>
-                        <td><span class="health-pill <?php echo $healthClass; ?>"><?php echo $healthLabel; ?></span></td>
-                    </tr>
+                    <div class="ph-row">
+                        <div class="ph-row-head">
+                            <div>
+                                <a href="project_detail.php?id=<?php echo (int) $projectHealth['project_id']; ?>"
+                                   class="ph-project-name">
+                                    <?php echo htmlspecialchars($projectHealth['project_name']); ?>
+                                </a>
+                                <span class="ph-project-class"><?php echo htmlspecialchars($projectHealth['class_code'] ?: 'No class'); ?></span>
+                            </div>
+                            <div class="ph-meta">
+                                <span><strong><?php echo (int) $projectHealth['total']; ?></strong> teams</span>
+                                <?php if ((int) $projectHealth['overdue'] > 0): ?>
+                                    <span><strong><?php echo (int) $projectHealth['overdue']; ?></strong> overdue</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="ph-bar">
+                            <?php foreach ($barSegments as $seg): ?>
+                                <?php if ($seg[1] > 0): ?>
+                                    <div class="ph-bar-seg"
+                                         style="width: <?php echo round($seg[1] / $barTotal * 100, 2); ?>%; background: <?php echo $seg[2]; ?>;"
+                                         title="<?php echo htmlspecialchars($seg[0] . ': ' . $seg[1]); ?>"></div>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="ph-legend">
+                            <?php foreach ($barSegments as $seg): ?>
+                                <span class="ph-legend-item">
+                                    <i class="ph-legend-dot" style="background: <?php echo $seg[2]; ?>;"></i>
+                                    <?php echo $seg[0]; ?> <?php echo $seg[1]; ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
                 <?php endforeach; ?>
-            </table>
+            <?php endif; ?>
         </div>
 
-        <!-- Teams needing attention -->
         <div class="section-head">
             <h2>Teams Needing Attention</h2>
             <span>Top <?php echo min(5, (int) $attentionTeamTotal); ?> of <?php echo (int) $attentionTeamTotal; ?></span>
@@ -635,61 +612,64 @@ mysqli_stmt_close($stmt);
             </table>
         </div>
 
-        <div class="section-head">
-            <h2>Upcoming Team Tasks</h2>
-            <span>Next 7 days</span>
-        </div>
-        <div class="card compact-card upcoming-tasks-card">
-            <?php if (count($upcomingDeadlines) === 0): ?>
-                <div class="empty-note">No team tasks are due in the next 7 days.</div>
-            <?php else: ?>
-                <ul class="deadline-list">
-                    <?php foreach ($upcomingDeadlines as $deadline): ?>
-                        <?php $deadlineLabel = dashboardDeadlineLabel($deadline['due_date']); ?>
-                        <li>
-                            <div class="deadline-main">
-                                <div class="deadline-title"><?php echo htmlspecialchars($deadline['title']); ?></div>
-                                <div class="deadline-meta">
-                                    <?php echo htmlspecialchars($deadline['group_name']); ?>
-                                    · <?php echo htmlspecialchars($deadline['project_name']); ?>
-                                    · <?php echo date('d M', strtotime($deadline['due_date'])); ?>
-                                </div>
-                            </div>
-                            <span class="deadline-badge <?php echo $deadlineLabel['class']; ?>">
-                                <?php echo htmlspecialchars($deadlineLabel['label']); ?>
-                            </span>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
-
-        <!-- Activity -->
-        <details class="dashboard-details">
-            <summary>
-                <span>Recent Activity</span>
-                <small>Latest <?php echo count($activities); ?> updates</small>
-            </summary>
+        <div class="dashboard-bottom">
             <div class="card">
-                <ul>
+                <div class="card-head">
+                    <div class="section-head">
+                        <h2>Upcoming Team Tasks</h2>
+                        <span>Next 7 days</span>
+                    </div>
+                </div>
+                <?php if (count($upcomingDeadlines) === 0): ?>
+                    <div class="empty-note">No team tasks are due in the next 7 days.</div>
+                <?php else: ?>
+                    <ul class="deadline-list">
+                        <?php foreach ($upcomingDeadlines as $deadline): ?>
+                            <?php $deadlineLabel = dashboardDeadlineLabel($deadline['due_date']); ?>
+                            <li>
+                                <div class="deadline-main">
+                                    <div class="deadline-title"><?php echo htmlspecialchars($deadline['title']); ?></div>
+                                    <div class="deadline-meta">
+                                        <?php echo htmlspecialchars($deadline['group_name']); ?>
+                                        · <?php echo htmlspecialchars($deadline['project_name']); ?>
+                                        · <?php echo date('d M', strtotime($deadline['due_date'])); ?>
+                                    </div>
+                                </div>
+                                <span class="deadline-badge">
+                                    <?php echo htmlspecialchars($deadlineLabel['label']); ?>
+                                </span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="section-head">
+                        <h2>Recent Activity</h2>
+                        <span>Latest <?php echo count($activities); ?></span>
+                    </div>
+                </div>
+                <ul class="activity-list">
                     <?php if (count($activities) === 0): ?>
                         <li class="muted">No activity yet.</li>
                     <?php endif; ?>
 
                     <?php foreach ($activities as $a): ?>
                         <li>
-                            <span>
+                            <span class="act-detail">
                                 <?php if (!empty($a['actor_name'])): ?>
                                     <strong><?php echo htmlspecialchars($a['actor_name']); ?></strong>
                                 <?php endif; ?>
                                 <?php echo htmlspecialchars($a['detail']); ?>
                             </span>
-                            <span class="muted"><?php echo timeAgo($a['created_at']); ?></span>
+                            <span class="muted act-time"><?php echo timeAgo($a['created_at']); ?></span>
                         </li>
                     <?php endforeach; ?>
                 </ul>
             </div>
-        </details>
+        </div>
 
     </div>
 </main>
