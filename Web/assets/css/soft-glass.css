@@ -381,3 +381,113 @@ body.sg-teacher .card {
     .dashboard-head { flex-direction: column; }
     .ph-row-head { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
+
+/* =========================================================
+   Step 4 — 表单 / 按钮 / 表格 / 分页（body.sg-teacher 作用域）
+   ========================================================= */
+
+/* 按钮：主按钮 --ink 底白字，次按钮白底 + --line 边 + 内高光 */
+body.sg-teacher .btn-primary {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: var(--r-pill);
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+}
+body.sg-teacher .btn-primary:hover { background: var(--ink-2); }
+body.sg-teacher .btn-secondary,
+body.sg-teacher .btn-ghost {
+    background: var(--surface-solid);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    box-shadow: inset 0 1px 0 var(--edge);
+}
+body.sg-teacher .btn-secondary:hover,
+body.sg-teacher .btn-ghost:hover { background: var(--sunken); }
+
+/* 焦点环：统一 outline，不用 box-shadow 假装焦点 */
+body.sg-teacher .btn-primary:focus-visible,
+body.sg-teacher .btn-secondary:focus-visible,
+body.sg-teacher .btn-ghost:focus-visible,
+body.sg-teacher .field input:focus-visible,
+body.sg-teacher .field select:focus-visible,
+body.sg-teacher .field textarea:focus-visible {
+    outline: 2px solid rgba(63, 110, 88, .45);
+    outline-offset: 2px;
+}
+
+/* 表单：--sunken 底、无边框、胶囊、高 40px */
+body.sg-teacher .field input,
+body.sg-teacher .field select {
+    height: 40px;
+    padding: 0 14px;
+    background: var(--sunken);
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    font-size: 13px;
+    color: var(--ink);
+}
+body.sg-teacher .field textarea {
+    height: auto;
+    min-height: 100px;
+    padding: 10px 14px;
+    background: var(--sunken);
+    border: 1px solid transparent;
+    border-radius: var(--r-item);
+    font-size: 13px;
+    color: var(--ink);
+}
+
+/* 表格：去灰底、改中性分隔线 */
+body.sg-teacher table th {
+    background: transparent;
+    color: var(--ink-2);
+    border-bottom: 1px solid var(--line-strong);
+}
+body.sg-teacher table td {
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+}
+
+/* 文字链接不靠颜色区分 */
+body.sg-teacher .link {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+body.sg-teacher .link:hover { color: var(--ink-2); }
+
+/* 头像文字归中性 */
+body.sg-teacher .sidebar-avatar { color: var(--ink); }
+
+/* 分页（当前教师页尚未用到，先定义供第 5 步使用） */
+body.sg-teacher .pagination {
+    display: flex;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+body.sg-teacher .pagination a,
+body.sg-teacher .pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-item);
+    background: var(--surface-solid);
+    color: var(--ink-2);
+    font-size: 13px;
+    text-decoration: none;
+}
+body.sg-teacher .pagination a:hover { background: var(--sunken); }
+body.sg-teacher .pagination .current {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+}
