@@ -191,7 +191,7 @@ body.sg-teacher .sidebar-menu .item.active {
 }
 .stat-card {
     display: block;
-    padding: 22px 20px;
+    padding: 18px 20px;
     border: 1px solid var(--line);
     border-radius: var(--r-card);
     background: var(--surface-solid);
@@ -211,7 +211,7 @@ body.sg-teacher .sidebar-menu .item.active {
     display: block;
     margin-top: 10px;
     color: var(--ink);
-    font-size: clamp(56px, 6vw, 84px);
+    font-size: clamp(40px, 4.5vw, 56px);
     font-weight: 300;
     letter-spacing: -.045em;
     line-height: 1;
