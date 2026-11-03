@@ -31,6 +31,95 @@ body.sg-teacher select option {
     padding: 8px 10px;
 }
 
+/* =========================================================
+   自定义下拉（暖白圆角）。无 JS 时原生 select 原样显示；
+   JS 增强后 body 被加上 sg-custom-selects，原生 select 才隐藏。
+   ========================================================= */
+body.sg-teacher .sg-select { position: relative; display: block; }
+body.sg-teacher .sg-select__trigger {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: var(--sunken);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+body.sg-teacher .sg-select__trigger::after {
+    margin-left: auto;
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid var(--ink-2);
+    border-bottom: 1.5px solid var(--ink-2);
+    transform: translateY(-2px) rotate(45deg);
+    content: "";
+}
+body.sg-teacher .sg-select__trigger:hover { background: rgba(20, 20, 25, .05); }
+body.sg-teacher .sg-select__trigger:focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 2px;
+}
+body.sg-teacher .sg-select__trigger.is-placeholder { color: var(--muted-soft); }
+body.sg-teacher .sg-select.is-disabled .sg-select__trigger {
+    opacity: .6;
+    cursor: not-allowed;
+}
+body.sg-teacher .assessment-percent .sg-select__trigger { padding-right: 34px; }
+
+body.sg-teacher .sg-select__panel {
+    position: fixed;
+    z-index: 900;
+    overflow: hidden auto;
+    max-height: 260px;
+    min-width: 180px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-item);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-float);
+}
+body.sg-teacher .sg-select__option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: var(--r-item);
+    color: var(--ink);
+    font-size: 13px;
+    cursor: pointer;
+}
+body.sg-teacher .sg-select__option:hover { background: rgba(0, 0, 0, .04); }
+body.sg-teacher .sg-select__option.is-selected {
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px var(--edge);
+    font-weight: 600;
+}
+body.sg-teacher .sg-select__option.is-placeholder { color: var(--muted-soft); }
+body.sg-teacher .sg-select__option.is-focused { background: rgba(0, 0, 0, .06); }
+
+body.sg-teacher.sg-custom-selects .sg-select > select {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    clip: rect(0 0 0 0);
+}
+
 /* 玻璃侧栏文字在浅底上的可读性（只调色，不动内层结构） */
 body.sg-teacher .sidebar-user-name { color: var(--ink); }
 body.sg-teacher .sidebar-user-role { color: var(--muted); }

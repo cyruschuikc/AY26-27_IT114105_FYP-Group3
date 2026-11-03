@@ -258,6 +258,210 @@
     });
     window.addEventListener('scroll', hideTooltip, true);
 
+    /* ---------- 暖白圆角自定义下拉（无 JS 时原生 select 兜底） ---------- */
+    var sgOpenPanel = null;
+
+    function sgClosePanel() {
+        if (!sgOpenPanel) return;
+        sgOpenPanel.hidden = true;
+        if (sgOpenPanel._sgTrigger) {
+            sgOpenPanel._sgTrigger.setAttribute('aria-expanded', 'false');
+        }
+        sgOpenPanel = null;
+    }
+
+    function sgBuildSelect(native) {
+        if (native.dataset.sgSelect === '1') return;
+        if (native.multiple || (native.size && native.size > 1)) return;
+        native.dataset.sgSelect = '1';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'sg-select';
+        if (native.disabled) wrap.classList.add('is-disabled');
+
+        var trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'sg-select__trigger';
+        trigger.disabled = native.disabled;
+        trigger.setAttribute('role', 'combobox');
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.setAttribute('aria-haspopup', 'listbox');
+
+        var panel = document.createElement('div');
+        panel.className = 'sg-select__panel';
+        panel.setAttribute('role', 'listbox');
+        panel.hidden = true;
+        panel._sgTrigger = trigger;
+
+        var uid = 'sgc-' + Math.random().toString(36).slice(2, 9);
+        trigger.id = uid;
+        panel.setAttribute('aria-labelledby', uid);
+        native.setAttribute('aria-hidden', 'true');
+
+        native.insertAdjacentElement('afterend', wrap);
+        wrap.appendChild(native);
+        wrap.appendChild(trigger);
+        document.body.appendChild(panel);
+
+        function currentText() {
+            var opt = native.options[native.selectedIndex];
+            return opt ? opt.text : '';
+        }
+        function isPlaceholder() {
+            var opt = native.options[native.selectedIndex];
+            return !opt || opt.value === '' || native.classList.contains('is-placeholder');
+        }
+        function syncTrigger() {
+            trigger.textContent = currentText();
+            trigger.classList.toggle('is-placeholder', isPlaceholder());
+        }
+        function renderPanel() {
+            panel.textContent = '';
+            for (var i = 0; i < native.options.length; i++) {
+                var opt = native.options[i];
+                var item = document.createElement('div');
+                item.className = 'sg-select__option';
+                item.setAttribute('role', 'option');
+                item.dataset.sgIndex = String(i);
+                item.tabIndex = -1;
+                item.textContent = opt.text;
+                if (opt.value === '') item.classList.add('is-placeholder');
+                if (i === native.selectedIndex) {
+                    item.classList.add('is-selected');
+                    item.setAttribute('aria-selected', 'true');
+                } else {
+                    item.setAttribute('aria-selected', 'false');
+                }
+                panel.appendChild(item);
+            }
+        }
+        function focusOption(index, scroll) {
+            var items = panel.querySelectorAll('.sg-select__option');
+            for (var i = 0; i < items.length; i++) {
+                items[i].classList.toggle('is-focused', i === index);
+            }
+            var el = items[index];
+            if (el) {
+                el.focus();
+                if (scroll && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+            }
+        }
+        function openPanel(initialIndex) {
+            if (native.disabled) return;
+            if (sgOpenPanel && sgOpenPanel !== panel) sgClosePanel();
+            renderPanel();
+            panel.hidden = false;
+            var rect = trigger.getBoundingClientRect();
+            panel.style.left = '0px';
+            panel.style.top = '0px';
+            var pr = panel.getBoundingClientRect();
+            var left = Math.max(10, Math.min(window.innerWidth - pr.width - 10, rect.left));
+            var top = (rect.bottom + pr.height + 8 > window.innerHeight)
+                    ? rect.top - pr.height - 8
+                    : rect.bottom + 6;
+            panel.style.left = left + 'px';
+            panel.style.top = top + 'px';
+            sgOpenPanel = panel;
+            trigger.setAttribute('aria-expanded', 'true');
+            focusOption(initialIndex !== undefined ? initialIndex : Math.max(0, native.selectedIndex), false);
+        }
+        function choose(index) {
+            var opt = native.options[index];
+            if (!opt) return;
+            if (native.selectedIndex !== index) {
+                native.selectedIndex = index;
+                native.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            syncTrigger();
+            sgClosePanel();
+            trigger.focus();
+        }
+
+        trigger.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (sgOpenPanel === panel) { sgClosePanel(); return; }
+            openPanel(native.selectedIndex);
+        });
+        trigger.addEventListener('keydown', function (event) {
+            var key = event.key;
+            if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter' || key === ' ') {
+                event.preventDefault();
+                if (sgOpenPanel === panel) {
+                    var items = panel.querySelectorAll('.sg-select__option');
+                    var idx = 0;
+                    for (var i = 0; i < items.length; i++) {
+                        if (items[i].classList.contains('is-focused')) idx = i;
+                    }
+                    if (key === 'ArrowDown') focusOption(Math.min(items.length - 1, idx + 1), true);
+                    else if (key === 'ArrowUp') focusOption(Math.max(0, idx - 1), true);
+                } else {
+                    openPanel(native.selectedIndex);
+                }
+            } else if (key === 'Escape') {
+                sgClosePanel();
+                trigger.focus();
+            }
+        });
+        panel.addEventListener('click', function (event) {
+            var item = event.target.closest ? event.target.closest('.sg-select__option') : null;
+            if (item) choose(parseInt(item.dataset.sgIndex, 10));
+        });
+        panel.addEventListener('keydown', function (event) {
+            var key = event.key;
+            var items = panel.querySelectorAll('.sg-select__option');
+            var idx = -1;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].classList.contains('is-focused')) idx = i;
+            }
+            if (key === 'ArrowDown') {
+                event.preventDefault();
+                focusOption(Math.min(items.length - 1, idx + 1), true);
+            } else if (key === 'ArrowUp') {
+                event.preventDefault();
+                focusOption(Math.max(0, idx - 1), true);
+            } else if (key === 'Home') {
+                event.preventDefault();
+                focusOption(0, true);
+            } else if (key === 'End') {
+                event.preventDefault();
+                focusOption(items.length - 1, true);
+            } else if (key === 'Enter' || key === ' ') {
+                event.preventDefault();
+                var focused = panel.querySelector('.sg-select__option.is-focused');
+                if (focused) choose(parseInt(focused.dataset.sgIndex, 10));
+            } else if (key === 'Escape') {
+                event.preventDefault();
+                sgClosePanel();
+                trigger.focus();
+            } else if (key === 'Tab') {
+                sgClosePanel();
+            }
+        });
+        native.addEventListener('change', syncTrigger);
+        syncTrigger();
+    }
+
+    function sgInitSelects(root) {
+        if (!document.body || !document.body.classList.contains('sg-teacher')) return;
+        var selects = (root || document).querySelectorAll('select');
+        for (var i = 0; i < selects.length; i++) {
+            sgBuildSelect(selects[i]);
+        }
+        if ((root || document).querySelector('.sg-select')) {
+            document.body.classList.add('sg-custom-selects');
+        }
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!sgOpenPanel) return;
+        var wrap = sgOpenPanel._sgTrigger.parentNode;
+        if (!sgOpenPanel.contains(event.target) && !wrap.contains(event.target)) {
+            sgClosePanel();
+        }
+    });
+    window.addEventListener('scroll', sgClosePanel, true);
+    window.addEventListener('resize', sgClosePanel);
+
     window.TeamBoxUI = {
         toast: toast,
         openModal: openModal,
@@ -268,6 +472,11 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         initTooltips(document);
+        sgInitSelects(document);
+        var sgObserver = new MutationObserver(function () {
+            sgInitSelects(document);
+        });
+        sgObserver.observe(document.body, { childList: true, subtree: true });
         if (window.TEACHER_FLASH && window.TEACHER_FLASH.message) {
             toast(window.TEACHER_FLASH.message, window.TEACHER_FLASH.type || 'info');
         }
