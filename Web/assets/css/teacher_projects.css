@@ -36,26 +36,26 @@
     outline-offset: 2px;
 }
 
-/* KPI 深色反转色带（单色体系里的唯一深色块） */
+/* KPI 浅色卡片 */
 .projects-kpi {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     overflow: hidden;
     margin-bottom: 16px;
-    border: 1px solid var(--ink);
+    border: 1px solid var(--line);
     border-radius: var(--r-card);
-    background: var(--ink);
+    background: var(--surface-solid);
 }
 .kpi-item {
     min-width: 0;
     padding: 13px 16px;
-    border-right: 1px solid rgba(255, 255, 255, .12);
+    border-right: 1px solid var(--line);
 }
 .kpi-item:last-child { border-right: none; }
 .kpi-label {
     display: block;
     overflow: hidden;
-    color: rgba(255, 255, 255, .72);
+    color: var(--muted);
     font-size: 11.5px;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -66,7 +66,7 @@
 .kpi-value {
     display: block;
     margin-top: 4px;
-    color: #fff;
+    color: var(--ink);
     font-size: 25px;
     font-variant-numeric: tabular-nums;
     font-weight: 650;
@@ -342,7 +342,7 @@
     .page-head-simple { flex-direction: column; gap: 6px; }
     .projects-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kpi-item:nth-child(2) { border-right: none; }
-    .kpi-item:nth-child(-n+2) { border-bottom: 1px solid rgba(255, 255, 255, .12); }
+    .kpi-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
     .projects-grid { grid-template-columns: 1fr; }
     .archived-empty { align-items: flex-start; flex-direction: column; gap: 5px; }
     .archived-row {
