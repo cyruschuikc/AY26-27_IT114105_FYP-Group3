@@ -832,7 +832,7 @@
             display: inline-block;
             width: 10px;
             height: 10px;
-            border-radius: 3px;
+            border-radius: var(--r-pill);
             margin-right: 6px;
             vertical-align: middle;
         }

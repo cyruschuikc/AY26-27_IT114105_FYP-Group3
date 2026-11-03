@@ -245,6 +245,28 @@ body.sg-teacher .sidebar-logout:hover { color: var(--danger); }
     }
 }
 
+/* ---------- 打印：玻璃降级为白底 ---------- */
+@media print {
+    body.sg-teacher {
+        display: block;
+        height: auto;
+        padding: 0;
+        background: white;
+    }
+    body.sg-teacher .sidebar,
+    body.sg-teacher .main,
+    body.sg-teacher .teams-control-bar {
+        background: white;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+    body.sg-teacher .sidebar { position: static; width: 100%; }
+    body.sg-teacher .main { margin: 0; padding: 0; overflow: visible; }
+}
+
 /* =========================================================
    目录列表项 .item（侧栏菜单，所有 sg 页面共用）
    样板页 teacher_index.php 的专属样式见 assets/css/teacher_index.css
