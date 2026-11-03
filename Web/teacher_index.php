@@ -465,7 +465,7 @@ mysqli_stmt_close($stmt);
         }
     </style>
 </head>
-<body>
+<body class="sg-teacher">
 
 <?php include 'teacher_nav.php'; ?>
 

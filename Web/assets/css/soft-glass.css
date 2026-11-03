@@ -1,10 +1,145 @@
 /* =========================================================
    TeamBox — Soft Glass（暖白磨砂玻璃）样式
-   变量在 assets/css/theme.css。
-   分层推进：
-     Step 2  外壳（body 三栏 grid / 浮岛面板）
-     Step 3  样板页组件（目录 / 卡片 / 数字）
-     Step 4  表单 / 按钮 / 表格 / 空态 / 分页
-     Step 5  批量套用其余教师页
-   Step 1：占位文件，无任何规则，确保 <link> 接入不影响现有样式。
+   变量在 assets/css/theme.css，加载顺序：
+   teacher.css → theme.css → soft-glass.css
    ========================================================= */
+
+/* =========================================================
+   Step 2 — 外壳（body.sg-teacher 三栏 grid + 玻璃浮岛）
+   .sidebar 占第 1–2 列，.main 占第 3 列；
+   <main> 内部结构与样式本次不动。
+   ========================================================= */
+
+body.sg-teacher {
+    background:
+        radial-gradient(1100px 700px at 88% -8%, rgba(255, 255, 255, .50), transparent 62%),
+        radial-gradient(900px 650px at -6% 108%, rgba(255, 255, 255, .32), transparent 58%),
+        var(--bg);
+}
+
+body.sg-teacher,
+body.sg-teacher * {
+    font-family: var(--font);
+}
+
+/* 玻璃侧栏文字在浅底上的可读性（只调色，不动内层结构） */
+body.sg-teacher .sidebar-user-name { color: var(--ink); }
+body.sg-teacher .sidebar-user-role { color: var(--muted); }
+body.sg-teacher .sidebar-menu { border-top-color: var(--line); }
+body.sg-teacher .sidebar-menu a { color: var(--ink-2); }
+body.sg-teacher .sidebar-menu a:hover {
+    color: var(--ink);
+    background: var(--sunken);
+}
+body.sg-teacher .sidebar-menu a.active {
+    color: var(--ink);
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px var(--edge), var(--shadow-item);
+}
+body.sg-teacher .sidebar-footer { border-top-color: var(--line); }
+body.sg-teacher .sidebar-logout { color: var(--muted); }
+body.sg-teacher .sidebar-logout:hover { color: var(--danger); }
+
+/* ---------- 桌面外壳（≥901px） ---------- */
+@media (min-width: 901px) {
+    body.sg-teacher {
+        display: grid;
+        grid-template-columns: 64px 340px minmax(0, 1fr);
+        grid-template-rows: 100%;
+        gap: 14px;
+        height: 100vh;
+        padding: 20px;
+        overflow: hidden;
+    }
+
+    body.sg-teacher .sidebar {
+        position: static;
+        grid-column: 1 / 3;
+        grid-row: 1;
+        width: auto;
+        height: 100%;
+        min-height: 0;
+        border: 1px solid var(--edge);
+        border-radius: var(--r-panel);
+        background: var(--surface);
+        box-shadow: var(--shadow-panel);
+        -webkit-backdrop-filter: blur(24px) saturate(1.15);
+        backdrop-filter: blur(24px) saturate(1.15);
+    }
+
+    body.sg-teacher .main {
+        position: relative;
+        grid-column: 3 / 4;
+        grid-row: 1;
+        margin-left: 0;
+        padding: 32px;
+        min-height: 0;
+        height: 100%;
+        overflow-y: auto;
+        border: 1px solid var(--edge);
+        border-radius: var(--r-panel);
+        background: var(--surface);
+        box-shadow: var(--shadow-panel);
+        -webkit-backdrop-filter: blur(24px) saturate(1.15);
+        backdrop-filter: blur(24px) saturate(1.15);
+    }
+
+    body.sg-teacher .content {
+        padding-top: 0;
+    }
+
+    body.sg-teacher .sidebar-toggle {
+        top: 36px;
+        left: calc(20px + 64px + 14px + 340px - 18px);
+    }
+
+    body.sg-teacher.sidebar-collapsed .sidebar {
+        grid-column: 1 / 2;
+        width: auto;
+    }
+    body.sg-teacher.sidebar-collapsed .main {
+        grid-column: 2 / 4;
+        margin-left: 0;
+    }
+    body.sg-teacher.sidebar-collapsed .sidebar-toggle {
+        left: calc(20px + 64px - 18px);
+    }
+}
+
+/* 玻璃不可用时降级为实心 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    @media (min-width: 901px) {
+        body.sg-teacher .sidebar,
+        body.sg-teacher .main {
+            background: var(--surface-solid);
+        }
+    }
+}
+
+/* ---------- 移动端（≤900px）沿用旧抽屉行为 ---------- */
+@media (max-width: 900px) {
+    body.sg-teacher {
+        display: block;
+        height: auto;
+        min-height: 100vh;
+        padding: 0;
+        overflow: visible;
+    }
+    body.sg-teacher .sidebar {
+        border: none;
+        border-radius: 0;
+        background: var(--surface-solid);
+        box-shadow: none;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+    body.sg-teacher .main {
+        margin-left: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
