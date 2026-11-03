@@ -375,11 +375,9 @@ body.sg-teacher .card {
 .activity-list .act-time { flex-shrink: 0; font-size: 12px; }
 
 @media (max-width: 900px) {
-    .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dashboard-bottom { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
     .dashboard-head { flex-direction: column; }
-    .stat-grid { grid-template-columns: 1fr; }
     .ph-row-head { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
