@@ -223,9 +223,10 @@ mysqli_stmt_close($stmt);
     <link rel="stylesheet" href="teacher.css?v=<?= filemtime('teacher.css') ?>">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
+    <link rel="stylesheet" href="assets/css/teacher_files.css?v=<?= filemtime('assets/css/teacher_files.css') ?>">
     <link rel="stylesheet" href="teacher_ui.css?v=<?= filemtime('teacher_ui.css') ?>">
 </head>
-<body>
+<body class="sg-teacher">
 
 <?php include 'teacher_nav.php'; ?>
 
@@ -268,7 +269,7 @@ mysqli_stmt_close($stmt);
 
                 <?php if (count($recentUploads) === 0): ?>
                     <tr>
-                        <td colspan="7" class="muted" style="text-align: center; padding: 30px;">
+                        <td colspan="7" class="muted empty-cell">
                             No task attachments uploaded yet.
                         </td>
                     </tr>
@@ -375,7 +376,7 @@ mysqli_stmt_close($stmt);
 
                 <?php if (count($teamFiles) === 0): ?>
                     <tr>
-                        <td colspan="4" class="muted" style="text-align: center; padding: 30px;">
+                        <td colspan="4" class="muted empty-cell">
                             No team has task attachments yet.
                         </td>
                     </tr>
@@ -398,84 +399,6 @@ mysqli_stmt_close($stmt);
     </div>
 </main>
 
-<style>
-.summary-grid-3 { grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 700px) {
-    .summary-grid-3 { grid-template-columns: 1fr; }
-}
-.table-scroll { overflow-x: auto; }
-.files-table { min-width: 720px; }
-.files-table td { vertical-align: top; white-space: normal; }
-.files-table td.muted,
-.files-table .file-actions { white-space: nowrap; }
-.summary-note {
-    margin-top: 2px;
-    color: #8b8f98;
-    font-size: 10.5px;
-}
-.version-chip {
-    display: inline-block;
-    margin-left: 5px;
-    padding: 1px 6px;
-    border-radius: 999px;
-    background: #eef2f7;
-    color: #4b5058;
-    font-size: 9.5px;
-    font-weight: 700;
-    text-decoration: none;
-    cursor: pointer;
-    vertical-align: middle;
-}
-.version-chip:hover { background: #e2e8f0; color: #175196; }
-.version-chip.open { background: #175196; color: #fff; }
-.resubmit-badge {
-    display: inline-block;
-    margin-left: 5px;
-    padding: 1px 7px;
-    border-radius: 999px;
-    background: #e8f0fa;
-    color: #175196;
-    font-size: 9.5px;
-    font-weight: 700;
-    vertical-align: middle;
-}
-.file-meta {
-    margin-top: 3px;
-    color: #9aa0a8;
-    font-size: 10.5px;
-    line-height: 1.5;
-}
-.pill-unviewed { background: #fdf3e2; color: #9a6a13; }
-.pill-accepted { background: #e8f6ee; color: #256b3f; }
-.pill-rejected { background: #fdecec; color: #a61b1b; }
-.history-row[hidden] { display: none; }
-.history-row td {
-    padding: 8px 16px 14px !important;
-    background: #fafbfc;
-}
-.history-panel {
-    padding-left: 12px;
-    border-left: 3px solid #dbe5f1;
-}
-.history-table {
-    width: 100%;
-    table-layout: auto;
-}
-.history-table th {
-    padding: 6px 8px;
-    background: #f2f4f7;
-    color: #6b6f78;
-    font-size: 9.5px;
-    white-space: nowrap;
-}
-.history-table td {
-    padding: 6px 8px !important;
-    border-bottom: 1px solid #eef0f2;
-    background: transparent !important;
-    font-size: 11px;
-    white-space: normal;
-}
-</style>
 
 <script>
 document.addEventListener('click', function (event) {
