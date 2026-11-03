@@ -1,13 +1,20 @@
+/* =========================================================
+   TeamBox — System feedback layer
+   tooltip / toast / alert / popconfirm / modal animation
+   颜色与尺寸统一取自 assets/css/theme.css。
+   z-index 1200 / 1250 / 1300 三层保持不动。
+   ========================================================= */
+
 .tb-tooltip {
     position: fixed;
     z-index: 1200;
     max-width: 260px;
     padding: 6px 9px;
-    border: 1px solid #2b3440;
-    border-radius: 6px;
-    background: #20252c;
+    border: 1px solid transparent;
+    border-radius: var(--r-item);
+    background: var(--ink);
     color: #fff;
-    font-size: 10.5px;
+    font-size: 12px;
     line-height: 1.45;
     text-align: left;
     pointer-events: none;
@@ -35,28 +42,28 @@
 
 .tb-toast {
     display: grid;
-    grid-template-columns: 4px minmax(0, 1fr) auto;
+    grid-template-columns: 3px minmax(0, 1fr) auto;
     overflow: hidden;
-    border: 1px solid #dfe4e9;
-    border-radius: 9px;
-    background: #fff;
-    box-shadow: 0 12px 36px rgba(19, 31, 45, 0.18);
+    border: 1px solid var(--line);
+    border-radius: var(--r-item);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-float);
     pointer-events: auto;
     animation: tb-toast-in 0.2s ease both;
 }
 
 .tb-toast::before {
-    background: #2e6da4;
+    background: var(--ink);
     content: "";
 }
-.tb-toast--success::before { background: #3d7f5a; }
-.tb-toast--error::before { background: #b43b3b; }
-.tb-toast--warning::before { background: #c58a2b; }
+.tb-toast--success::before { background: var(--accent-ink); }
+.tb-toast--error::before { background: var(--danger); }
+.tb-toast--warning::before { background: var(--warn); }
 
 .tb-toast__body {
     padding: 11px 12px;
-    color: #343b45;
-    font-size: 12px;
+    color: var(--ink-2);
+    font-size: 13px;
     line-height: 1.5;
 }
 
@@ -65,13 +72,13 @@
     padding: 8px 10px;
     border: 0;
     background: transparent;
-    color: #8b929b;
+    color: var(--muted);
     font-size: 16px;
     line-height: 1;
     cursor: pointer;
 }
 
-.tb-toast__close:hover { color: #2c323a; }
+.tb-toast__close:hover { color: var(--ink); }
 .tb-toast.is-leaving { animation: tb-toast-out 0.18s ease both; }
 
 @keyframes tb-toast-in {
@@ -89,26 +96,26 @@
     gap: 10px;
     margin-bottom: 18px;
     padding: 11px 13px;
-    border: 1px solid #d9e2eb;
-    border-left: 4px solid #2e6da4;
-    border-radius: 8px;
-    background: #f5f8fb;
-    color: #465566;
-    font-size: 12px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--ink);
+    border-radius: var(--r-item);
+    background: var(--alert-info);
+    color: var(--ink-2);
+    font-size: 13px;
     line-height: 1.55;
 }
-.tb-alert--success { border-left-color: #3d7f5a; background: #f3f9f5; color: #365f46; }
-.tb-alert--warning { border-left-color: #c58a2b; background: #fffaf0; color: #71571f; }
-.tb-alert--error { border-left-color: #b43b3b; background: #fff6f6; color: #7d3636; }
+.tb-alert--success { border-left-color: var(--accent-ink); background: var(--alert-success); color: var(--accent-ink); }
+.tb-alert--warning { border-left-color: var(--warn); background: var(--alert-warning); color: var(--ink-2); }
+.tb-alert--error { border-left-color: var(--danger); background: var(--alert-error); color: var(--danger); }
 .tb-alert strong { color: inherit; }
 .tb-alert__action {
     margin-left: auto;
     flex: 0 0 auto;
     padding: 5px 9px;
     border: 1px solid currentColor;
-    border-radius: 5px;
+    border-radius: var(--r-item);
     color: inherit;
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 700;
     text-decoration: none;
     white-space: nowrap;
@@ -120,21 +127,21 @@
     z-index: 1250;
     width: min(280px, calc(100vw - 28px));
     padding: 13px;
-    border: 1px solid #dfe3e8;
-    border-radius: 9px;
-    background: #fff;
-    box-shadow: 0 12px 30px rgba(24, 36, 50, 0.18);
+    border: 1px solid var(--line);
+    border-radius: var(--r-item);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-float);
 }
 .tb-popconfirm__title {
     display: block;
     margin-bottom: 5px;
-    color: #272d35;
-    font-size: 12.5px;
+    color: var(--ink);
+    font-size: 13px;
 }
 .tb-popconfirm__message {
     margin: 0 0 12px;
-    color: #6e7680;
-    font-size: 11px;
+    color: var(--ink-2);
+    font-size: 12px;
     line-height: 1.5;
 }
 .tb-popconfirm__actions {
