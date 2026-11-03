@@ -1,0 +1,47 @@
+/* =========================================================
+   TeamBox — Design Tokens（唯一变量源）
+   暖白磨砂玻璃 · 单色极简
+   颜色 / 圆角 / 阴影 / 动效统一从这里取值。
+   ========================================================= */
+
+:root {
+    --bg: #EDEBE7;
+    --bg-edge: #E3E1DC;
+    --surface: rgba(255, 255, 255, .72);
+    --surface-solid: #F8F7F4;
+    --sunken: rgba(20, 20, 25, .035);
+    --rail: #2A2A2C;
+    --ink: #17171A;
+    --ink-2: #55554F;
+    --muted: #9A9A96;
+    --line: rgba(0, 0, 0, .07);
+    --line-strong: rgba(0, 0, 0, .12);
+    --edge: rgba(255, 255, 255, .60);
+    --accent: #CFE7DA;
+    --accent-soft: rgba(207, 231, 218, .55);
+    --accent-ink: #3F6E58;
+    --danger: #C4574A;
+    --warn: #A5803C;
+
+    --r-panel: 28px;
+    --r-card: 16px;
+    --r-item: 12px;
+    --r-pill: 999px;
+
+    --shadow-panel: 0 24px 60px -20px rgba(20, 20, 25, .18),
+                    0 2px 8px rgba(20, 20, 25, .04);
+    --shadow-item: 0 8px 20px -12px rgba(20, 20, 25, .20);
+    --shadow-float: 0 18px 40px -12px rgba(20, 20, 25, .22);
+
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --dur: 160ms;
+
+    --font: "Inter", -apple-system, "Helvetica Neue", "PingFang SC",
+            "Microsoft YaHei", sans-serif;
+
+    /* 系统反馈层（alert/toast）低透明度背景，teacher_ui.css 改造时引用 */
+    --alert-info: rgba(20, 20, 25, .04);
+    --alert-success: rgba(63, 110, 88, .08);
+    --alert-warning: rgba(165, 128, 60, .08);
+    --alert-error: rgba(196, 87, 74, .08);
+}
