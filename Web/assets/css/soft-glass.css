@@ -23,6 +23,9 @@ body.sg-teacher * {
     font-family: var(--font);
 }
 
+/* 表格等作用域内，.muted 文本色不能被 td 的 ink 覆盖 */
+body.sg-teacher .muted { color: var(--muted); }
+
 /* 原生 select 展开面板：macOS 弹层为系统渲染，
    这里统一 option 的底色/字色并强制浅色方案 */
 body.sg-teacher select option {
