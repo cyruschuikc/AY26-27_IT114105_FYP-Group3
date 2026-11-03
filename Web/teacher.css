@@ -58,7 +58,7 @@ body {
     justify-content: center;
     font-size: 15px;
     font-weight: 700;
-    color: #175196;
+    color: var(--ink);
     letter-spacing: 0.03em;
 }
 
@@ -249,7 +249,7 @@ h2 {
 .entry-card {
     background: #fff;
     border: 1px solid #e6e8eb;
-    border-left: 4px solid #175196;
+    border-left: 4px solid var(--ink);
     border-radius: 10px;
     padding: 24px 22px;
     text-decoration: none;
@@ -270,7 +270,7 @@ h2 {
     height: 38px;
     border-radius: 8px;
     background: #f2f3f5;
-    color: #175196;
+    color: var(--ink-2);
     font-size: 14px;
     font-weight: 700;
     display: flex;
@@ -294,7 +294,9 @@ h2 {
 .entry-card .entry-meta {
     margin-top: auto;
     font-size: 12px;
-    color: #175196;
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
     font-weight: 600;
 }
 
@@ -347,7 +349,7 @@ h2 {
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-    border-color: #175196;
+    border-color: var(--ink);
 }
 
 .field-search input {
@@ -456,7 +458,7 @@ ul li:last-child {
    Buttons
    ========================================================= */
 .btn-primary {
-    background: #175196;
+    background: var(--ink);
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -468,13 +470,13 @@ ul li:last-child {
 }
 
 .btn-primary:hover {
-    background: #123f75;
+    background: var(--ink-2);
 }
 
 .btn-secondary {
     background: #fff;
-    color: #175196;
-    border: 1px solid #175196;
+    color: var(--ink);
+    border: 1px solid var(--line);
     border-radius: 6px;
     padding: 8px 16px;
     font-size: 13px;
@@ -488,13 +490,13 @@ ul li:last-child {
 }
 
 .btn-secondary:hover {
-    background: #f2f7fd;
+    background: var(--sunken);
 }
 
 .btn-ghost {
     background: #fff;
-    color: #175196;
-    border: 1px solid #175196;
+    color: var(--ink);
+    border: 1px solid var(--line);
     border-radius: 6px;
     padding: 10px 18px;
     font-size: 13px;
@@ -506,7 +508,7 @@ ul li:last-child {
 }
 
 .btn-ghost:hover {
-    background: #f2f7fd;
+    background: var(--sunken);
 }
 
 /* =========================================================
@@ -533,29 +535,6 @@ ul li:last-child {
 /* =========================================================
    Progress
    ========================================================= */
-.progress {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 13px;
-    color: #6b6f78;
-}
-
-.progress .bar {
-    width: 120px;
-    height: 6px;
-    background: #eceef1;
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.progress .bar span {
-    display: block;
-    height: 100%;
-    background: #175196;
-    border-radius: 6px;
-}
-
 /* =========================================================
    sr-only
    ========================================================= */
@@ -604,7 +583,7 @@ ul li:last-child {
 }
 
 .info-card-head {
-    background: #175196;
+    background: var(--ink);
     color: #fff;
     font-size: 14px;
     font-weight: 600;
@@ -659,7 +638,6 @@ ul li:last-child {
     padding: 26px 28px;
     background: #fff;
     border: 1px solid #e6e8eb;
-    border-left: 4px solid #175196;
     border-radius: 10px;
 }
 
@@ -702,7 +680,7 @@ ul li:last-child {
     outline: none;
 }
 
-.status-inline select:focus { border-color: #175196; }
+.status-inline select:focus { border-color: var(--ink); }
 
 /* Comment */
 .comment-block {
@@ -733,7 +711,7 @@ ul li:last-child {
     outline: none;
 }
 
-.comment-block textarea:focus { border-color: #175196; }
+.comment-block textarea:focus { border-color: var(--ink); }
 
 /* Review actions */
 .review-actions {
@@ -781,7 +759,7 @@ ul li:last-child {
 
 .modal p .confirm-status {
     font-weight: 600;
-    color: #175196;
+    color: var(--ink);
 }
 
 .modal-actions {
@@ -929,13 +907,13 @@ ul li:last-child {
 
 .notif-bell:hover,
 .notif-wrap.open .notif-bell {
-    color: #175196;
-    border-color: #b9cfe9;
-    background: #f7faff;
+    color: var(--ink);
+    border-color: var(--line-strong);
+    background: var(--sunken);
 }
 
 .notif-bell:focus-visible {
-    outline: 2px solid #8db8ea;
+    outline: 2px solid var(--accent-ink);
     outline-offset: 2px;
 }
 
@@ -1082,10 +1060,11 @@ ul li:last-child {
 .notif-more {
     display: block;
     padding: 3px 16px 6px;
-    color: #175196;
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
     font-size: 11.5px;
     font-weight: 600;
-    text-decoration: none;
 }
 
 .notif-more:hover {
@@ -1113,10 +1092,11 @@ ul li:last-child {
 }
 
 .notif-foot a {
-    color: #175196;
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
     font-size: 12.5px;
     font-weight: 600;
-    text-decoration: none;
 }
 
 .notif-foot a:hover {
@@ -1188,17 +1168,16 @@ ul li:last-child {
     background: rgba(255, 255, 255, 0.96);
     color: #46505c;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(22, 32, 45, 0.06);
     transition: left 0.18s ease, border-color 0.15s, color 0.15s;
 }
 
 .sidebar-toggle:hover {
-    border-color: #aebbc8;
-    color: #1f4d78;
+    border-color: var(--line-strong);
+    color: var(--ink);
 }
 
 .sidebar-toggle:focus-visible {
-    outline: 2px solid #6da5de;
+    outline: 2px solid var(--accent-ink);
     outline-offset: 2px;
 }
 

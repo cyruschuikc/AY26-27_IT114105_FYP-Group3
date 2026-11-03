@@ -203,8 +203,13 @@ body.sg-teacher .btn-ghost:focus-visible,
 body.sg-teacher .field input:focus-visible,
 body.sg-teacher .field select:focus-visible,
 body.sg-teacher .field textarea:focus-visible {
-    outline: 2px solid rgba(63, 110, 88, .45);
+    outline: 2px solid var(--accent-ink);
     outline-offset: 2px;
+}
+
+/* 深色导轨上的焦点环（.rail 拆分为独立面板后生效） */
+body.sg-teacher .rail :focus-visible {
+    outline-color: rgba(255, 255, 255, .85);
 }
 
 /* 表单：--sunken 底、无边框、胶囊、高 40px */

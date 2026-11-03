@@ -565,20 +565,20 @@ if (isset($_GET['msg'])) {
         place-items: center;
         border-radius: 50%;
         background: conic-gradient(
-                #2f6fa8 calc(var(--progress) * 1%),
-                #e9edf1 0
+                var(--ink) calc(var(--progress) * 1%),
+                rgba(20, 20, 25, .06) 0
         );
     }
     .progress-ring::before {
         position: absolute;
         inset: 5px;
         border-radius: 50%;
-        background: #fff;
+        background: var(--surface-solid);
         content: "";
     }
     .progress-ring span {
         position: relative;
-        color: #303741;
+        color: var(--accent-ink);
         font-size: 11px;
         font-variant-numeric: tabular-nums;
         font-weight: 700;

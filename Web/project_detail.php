@@ -774,14 +774,14 @@ foreach ($tasks as $t) {
             position: absolute;
             inset: 6px;
             border-radius: inherit;
-            background: #fff;
+            background: var(--surface-solid);
             content: "";
         }
 
         .progress-ring strong {
             position: relative;
             z-index: 1;
-            color: #2c2f36;
+            color: var(--accent-ink);
             font-size: 13px;
             font-weight: 700;
         }
@@ -1957,7 +1957,7 @@ foreach ($tasks as $t) {
                 <span>Project progress</span>
                 <div class="progress-summary">
                     <div class="progress-ring"
-                         style="background: conic-gradient(#175196 0 <?= (int) $project['progress'] ?>%, #edf0f3 <?= (int) $project['progress'] ?>% 100%);">
+                         style="background: conic-gradient(var(--ink) 0 <?= (int) $project['progress'] ?>%, rgba(20, 20, 25, .06) <?= (int) $project['progress'] ?>% 100%);">
                         <strong><?= (int) $project['progress'] ?>%</strong>
                     </div>
                     <span class="progress-caption">Overall<br>completion</span>
