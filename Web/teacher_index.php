@@ -266,6 +266,7 @@ mysqli_stmt_close($stmt);
     <link rel="stylesheet" href="teacher.css?v=20261028b">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
+    <link rel="stylesheet" href="teacher_ui.css?v=20261028b">
 </head>
 <body class="sg-teacher">
 
