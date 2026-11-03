@@ -90,10 +90,10 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Messages | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028b">
+    <link rel="stylesheet" href="teacher.css?v=<?= filemtime('teacher.css') ?>">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
-    <link rel="stylesheet" href="teacher_ui.css?v=20261028b">
+    <link rel="stylesheet" href="teacher_ui.css?v=<?= filemtime('teacher_ui.css') ?>">
     <style>
         .chat-page { padding-top: 44px; }
         .chat-shell {
@@ -813,5 +813,6 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
 </script>
 <?php endif; ?>
 
+<script src="teacher_ui.js?v=<?= filemtime('teacher_ui.js') ?>"></script>
 </body>
 </html>

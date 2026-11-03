@@ -657,10 +657,10 @@ foreach ($tasks as $t) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($project['name']); ?> | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028b">
+    <link rel="stylesheet" href="teacher.css?v=<?= filemtime('teacher.css') ?>">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
-    <link rel="stylesheet" href="teacher_ui.css?v=20261028b">
+    <link rel="stylesheet" href="teacher_ui.css?v=<?= filemtime('teacher_ui.css') ?>">
 
     <style>
         .page-head {
@@ -2542,5 +2542,6 @@ foreach ($tasks as $t) {
     </div>
 </main>
 
+<script src="teacher_ui.js?v=<?= filemtime('teacher_ui.js') ?>"></script>
 </body>
 </html>

@@ -151,11 +151,11 @@ if (isset($_GET['msg'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projects | TeamBox</title>
-    <link rel="stylesheet" href="teacher.css?v=20261028b">
+    <link rel="stylesheet" href="teacher.css?v=<?= filemtime('teacher.css') ?>">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
     <link rel="stylesheet" href="assets/css/teacher_projects.css?v=<?= filemtime('assets/css/teacher_projects.css') ?>">
-    <link rel="stylesheet" href="teacher_ui.css?v=20261028b">
+    <link rel="stylesheet" href="teacher_ui.css?v=<?= filemtime('teacher_ui.css') ?>">
 </head>
 <body class="sg-teacher">
 
@@ -347,7 +347,7 @@ if (isset($_GET['msg'])) {
     </div>
 </main>
 
-<script src="teacher_ui.js?v=20261028b"></script>
+<script src="teacher_ui.js?v=<?= filemtime('teacher_ui.js') ?>"></script>
 <script>
     window.TEACHER_FLASH = <?= json_encode(
             $flashMessage !== '' ? array('message' => $flashMessage, 'type' => $flashType) : null,
