@@ -462,6 +462,61 @@
     window.addEventListener('scroll', sgClosePanel, true);
     window.addEventListener('resize', sgClosePanel);
 
+    /* ---------- Dashboard 时钟 + 截止倒计时（每秒刷新） ---------- */
+    function initDashboardTicker() {
+        var clock = document.getElementById('tbClock');
+        var clockDate = document.getElementById('tbClockDate');
+        var cd = document.getElementById('tbCountdown');
+        if (!clock && !cd) return;
+
+        var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+        function tickClock(now) {
+            if (clock) {
+                clock.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+            }
+            if (clockDate) {
+                clockDate.textContent = dayNames[now.getDay()] + ', ' + now.getDate() + ' ' + monthNames[now.getMonth()] + ' ' + now.getFullYear();
+            }
+        }
+
+        function tickCountdown(now) {
+            if (!cd) return;
+            var target = parseInt(cd.getAttribute('data-target'), 10);
+            if (!target) return;
+            var start = parseInt(cd.getAttribute('data-start') || '0', 10);
+            var remain = Math.max(0, target - now.getTime());
+            var label = document.getElementById('tbCountdownLabel');
+            if (remain <= 0) {
+                cd.textContent = 'Due now';
+                if (label) label.textContent = 'Deadline passed';
+                return;
+            }
+            var d = Math.floor(remain / 86400000);
+            var h = Math.floor((remain % 86400000) / 3600000);
+            var m = Math.floor((remain % 3600000) / 60000);
+            var s = Math.floor((remain % 60000) / 1000);
+            cd.textContent = d + 'd ' + pad(h) + ':' + pad(m) + ':' + pad(s);
+            var bar = document.getElementById('tbCountdownBar');
+            if (bar && start > 0 && target > start) {
+                var total = target - start;
+                var elapsed = Math.max(0, now.getTime() - start);
+                bar.style.width = Math.min(100, Math.round(elapsed / total * 100)) + '%';
+            }
+        }
+
+        function tick() {
+            var now = new Date();
+            tickClock(now);
+            tickCountdown(now);
+        }
+        tick();
+        setInterval(tick, 1000);
+    }
+
     window.TeamBoxUI = {
         toast: toast,
         openModal: openModal,
@@ -473,6 +528,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         initTooltips(document);
         sgInitSelects(document);
+        initDashboardTicker();
         var sgObserver = new MutationObserver(function () {
             sgInitSelects(document);
         });

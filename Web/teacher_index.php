@@ -208,6 +208,51 @@ usort($upcomingDeadlines, function ($a, $b) {
 });
 $upcomingDeadlines = array_slice($upcomingDeadlines, 0, 6);
 
+// =========================================================
+// 3b. 最近的项目截止（只读查询，右栏倒计时用）
+// =========================================================
+$nextDeadline = null;
+$stmt = mysqli_prepare($conn, "
+    SELECT p.id, p.name, p.period_start, p.period_end, cl.class_code
+    FROM `projects` p
+    LEFT JOIN `classes` cl ON cl.id = p.class_id
+    WHERE p.supervisor_id = ?
+      AND p.period_end IS NOT NULL
+      AND p.period_end >= CURDATE()
+    ORDER BY p.period_end ASC
+    LIMIT 1
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+$nextDeadline = mysqli_fetch_assoc($rs);
+mysqli_stmt_close($stmt);
+
+$countdown = null;
+if ($nextDeadline) {
+    $countdown = array(
+        'id'         => (int) $nextDeadline['id'],
+        'name'       => (string) $nextDeadline['name'],
+        'class_code' => (string) ($nextDeadline['class_code'] !== null ? $nextDeadline['class_code'] : ''),
+        'end_label'  => date('d M Y', strtotime($nextDeadline['period_end'])),
+        'end_ts'     => strtotime($nextDeadline['period_end'] . ' 23:59:59'),
+        'start_ts'   => 0,
+    );
+    $startTs = $nextDeadline['period_start'] !== null ? strtotime($nextDeadline['period_start']) : 0;
+    $nowTs   = time();
+    if ($startTs > 0 && $countdown['end_ts'] > $startTs) {
+        $countdown['start_ts']    = $startTs;
+        $countdown['elapsed_pct'] = min(100, (int) round(($nowTs - $startTs) / ($countdown['end_ts'] - $startTs) * 100));
+    } else {
+        $countdown['elapsed_pct'] = 0;
+    }
+    $remain = max(0, $countdown['end_ts'] - $nowTs);
+    $countdown['days']  = (int) floor($remain / 86400);
+    $countdown['hours'] = (int) floor(($remain % 86400) / 3600);
+    $countdown['mins']  = (int) floor(($remain % 3600) / 60);
+    $countdown['secs']  = $remain % 60;
+}
+
 if (!function_exists('dashboardDeadlineLabel')) {
     function dashboardDeadlineLabel($date)
     {
@@ -276,94 +321,33 @@ mysqli_stmt_close($stmt);
 <main class="main">
     <div class="content">
 
-        <div class="dashboard-head">
-            <div>
-                <h1>Instructor Dashboard</h1>
-                <p class="subtitle">
-                    <?php echo (int) $totalTeams; ?> teams across <?php echo count($projectTeamHealth); ?> projects · 2026/27
-                </p>
-            </div>
-            <a href="teacher_teams.php" class="btn-primary">View Teams</a>
-        </div>
+        <h1 class="sr-only">Instructor Dashboard</h1>
 
-        <div class="stat-grid">
-            <a href="teacher_teams.php?status=pending" class="stat-card">
-                <span class="stat-card-label">Awaiting Approval</span>
-                <strong class="stat-card-value"><?php echo (int) $formationCounts['Awaiting Approval']; ?></strong>
-                <small class="stat-card-note">Teacher action required</small>
-            </a>
-            <a href="teacher_teams.php?status=Voting" class="stat-card">
-                <span class="stat-card-label">Choosing Leader</span>
-                <strong class="stat-card-value"><?php echo (int) $formationCounts['Choosing Leader']; ?></strong>
-                <small class="stat-card-note">Leader election in progress</small>
-            </a>
-            <a href="teacher_teams.php?status=Executing" class="stat-card">
-                <span class="stat-card-label">Active</span>
-                <strong class="stat-card-value"><?php echo (int) $formationCounts['Active']; ?></strong>
-                <small class="stat-card-note">Teams currently working</small>
-            </a>
-            <a href="teacher_teams.php?status=Completed" class="stat-card">
-                <span class="stat-card-label">Completed</span>
-                <strong class="stat-card-value"><?php echo (int) $formationCounts['Completed']; ?></strong>
-                <small class="stat-card-note">Finished teams</small>
-            </a>
-        </div>
+        <div class="dash-layout">
+            <div class="dash-main">
 
-        <div class="section-head">
-            <h2>Project Overview</h2>
-            <span><?php echo count($projectTeamHealth); ?> projects</span>
-        </div>
-        <div class="card project-health-card">
-            <?php if (count($projectTeamHealth) === 0): ?>
-                <div class="empty-note">No projects yet.</div>
-            <?php else: ?>
-                <?php foreach ($projectTeamHealth as $projectHealth): ?>
-                    <?php
-                    $barTotal = max(1, (int) $projectHealth['total']);
-                    $barSegments = array(
-                        array('Awaiting', (int) $projectHealth['awaiting'],  'awaiting'),
-                        array('Choosing',  (int) $projectHealth['choosing'],  'choosing'),
-                        array('Active',    (int) $projectHealth['active'],    'active'),
-                        array('Completed', (int) $projectHealth['completed'], 'completed'),
-                    );
-                    ?>
-                    <div class="ph-row">
-                        <div class="ph-row-head">
-                            <div>
-                                <a href="project_detail.php?id=<?php echo (int) $projectHealth['project_id']; ?>"
-                                   class="ph-project-name">
-                                    <?php echo htmlspecialchars($projectHealth['project_name']); ?>
-                                </a>
-                                <span class="ph-project-class"><?php echo htmlspecialchars($projectHealth['class_code'] ?: 'No class'); ?></span>
-                            </div>
-                            <div class="ph-meta">
-                                <span><strong><?php echo (int) $projectHealth['total']; ?></strong> teams</span>
-                                <?php if ((int) $projectHealth['overdue'] > 0): ?>
-                                    <span><strong><?php echo (int) $projectHealth['overdue']; ?></strong> overdue</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="ph-bar">
-                            <?php foreach ($barSegments as $seg): ?>
-                                <?php if ($seg[1] > 0): ?>
-                                    <div class="ph-seg ph-seg--<?php echo $seg[2]; ?>"
-                                         style="width: <?php echo round($seg[1] / $barTotal * 100, 2); ?>%;"
-                                         title="<?php echo htmlspecialchars($seg[0] . ': ' . $seg[1]); ?>"></div>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </div>
-                        <div class="ph-legend">
-                            <?php foreach ($barSegments as $seg): ?>
-                                <span class="ph-legend-item">
-                                    <i class="ph-dot ph-dot--<?php echo $seg[2]; ?>"></i>
-                                    <?php echo $seg[0]; ?> <?php echo $seg[1]; ?>
-                                </span>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
+                <div class="attention-strip">
+                    <?php $stripEmpty = true; ?>
+                    <?php if ((int) $formationCounts['Awaiting Approval'] > 0): $stripEmpty = false; ?>
+                        <a href="teacher_teams.php?status=pending" class="strip-chip">
+                            <strong><?php echo (int) $formationCounts['Awaiting Approval']; ?></strong> awaiting approval
+                        </a>
+                    <?php endif; ?>
+                    <?php if ($overdueTeamCount > 0): $stripEmpty = false; ?>
+                        <a href="teacher_teams.php?status=overdue" class="strip-chip">
+                            <strong><?php echo (int) $overdueTeamCount; ?></strong> teams overdue
+                        </a>
+                    <?php endif; ?>
+                    <?php if ((int) $formationCounts['Choosing Leader'] > 0): $stripEmpty = false; ?>
+                        <a href="teacher_teams.php?status=Voting" class="strip-chip">
+                            <strong><?php echo (int) $formationCounts['Choosing Leader']; ?></strong> choosing leader
+                        </a>
+                    <?php endif; ?>
+                    <?php if ($stripEmpty): ?>
+                        <span class="strip-ok">All teams are up to date.</span>
+                    <?php endif; ?>
+                    <a href="teacher_teams.php" class="strip-link">View teams →</a>
+                </div>
 
         <div class="section-head">
             <h2>Teams Needing Attention</h2>
@@ -467,6 +451,88 @@ mysqli_stmt_close($stmt);
                     <?php endforeach; ?>
                 </ul>
             </div>
+        </div>
+
+            </div>
+
+            <aside class="dash-rail">
+                <div class="rail-card">
+                    <h3>Today</h3>
+                    <div class="clock-time" id="tbClock"><?php echo date('H:i:s'); ?></div>
+                    <div class="clock-date" id="tbClockDate"><?php echo date('l, j M Y'); ?></div>
+                    <div class="clock-term">Academic year 2026/27</div>
+                </div>
+
+                <div class="rail-card">
+                    <h3>Next Deadline</h3>
+                    <?php if ($countdown): ?>
+                        <a href="project_detail.php?id=<?php echo (int) $countdown['id']; ?>" class="countdown-name">
+                            <?php echo htmlspecialchars($countdown['name']); ?>
+                        </a>
+                        <div class="countdown-days"
+                             id="tbCountdown"
+                             data-target="<?php echo $countdown['end_ts'] * 1000; ?>"
+                             data-start="<?php echo $countdown['start_ts'] * 1000; ?>">
+                            <?php echo (int) $countdown['days']; ?>d
+                            <?php printf('%02d:%02d:%02d', $countdown['hours'], $countdown['mins'], $countdown['secs']); ?>
+                        </div>
+                        <div class="countdown-label" id="tbCountdownLabel">
+                            until deadline · <?php echo htmlspecialchars($countdown['end_label']); ?>
+                        </div>
+                        <div class="countdown-track">
+                            <div class="countdown-fill" id="tbCountdownBar"
+                                 style="width: <?php echo (int) $countdown['elapsed_pct']; ?>%;"></div>
+                        </div>
+                        <div class="countdown-meta">
+                            <?php echo htmlspecialchars($countdown['class_code'] ?: 'No class'); ?>
+                            · due <?php echo htmlspecialchars($countdown['end_label']); ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="empty-note">No upcoming project deadlines.</div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="rail-card">
+                    <h3>Project Overview</h3>
+                    <?php if (count($projectTeamHealth) === 0): ?>
+                        <div class="empty-note">No projects yet.</div>
+                    <?php else: ?>
+                        <?php foreach ($projectTeamHealth as $projectHealth): ?>
+                            <?php
+                            $barTotal = max(1, (int) $projectHealth['total']);
+                            $barSegments = array(
+                                array('awaiting',  (int) $projectHealth['awaiting']),
+                                array('choosing',  (int) $projectHealth['choosing']),
+                                array('active',    (int) $projectHealth['active']),
+                                array('completed', (int) $projectHealth['completed']),
+                            );
+                            ?>
+                            <div class="rail-ph-row">
+                                <a href="project_detail.php?id=<?php echo (int) $projectHealth['project_id']; ?>"
+                                   class="rail-ph-name">
+                                    <?php echo htmlspecialchars($projectHealth['project_name']); ?>
+                                </a>
+                                <span class="rail-ph-meta">
+                                    <?php echo htmlspecialchars($projectHealth['class_code'] ?: 'No class'); ?>
+                                    · <?php echo (int) $projectHealth['total']; ?> teams
+                                    <?php if ((int) $projectHealth['overdue'] > 0): ?>
+                                        · <strong><?php echo (int) $projectHealth['overdue']; ?></strong> overdue
+                                    <?php endif; ?>
+                                </span>
+                                <div class="rail-ph-bar">
+                                    <?php foreach ($barSegments as $seg): ?>
+                                        <?php if ($seg[1] > 0): ?>
+                                            <div class="rail-ph-seg ph-seg--<?php echo $seg[0]; ?>"
+                                                 style="width: <?php echo round($seg[1] / $barTotal * 100, 2); ?>%;"
+                                                 title="<?php echo htmlspecialchars(ucfirst($seg[0]) . ': ' . $seg[1]); ?>"></div>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </aside>
         </div>
 
     </div>
