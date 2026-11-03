@@ -166,13 +166,11 @@ if ($navTeacherId > 0) {
 
 $navReviewCount = $navPendingFiles + $navPendingRequests;
 
-// 头像圆圈背景：从几个浅色里按名字挑一个（同名同色）
+// 头像圆圈背景：三档中性灰，按名字哈希取色（单色体系内不再出现彩色头像）
 $avatarPalette = array(
-        '#dbeafe', // 浅蓝
-        '#e9d5ff', // 浅紫
-        '#fce7f3', // 浅粉
-        '#d1fae5', // 浅绿
-        '#fef3c7', // 浅黄
+        '#EFEDE8',
+        '#E4E1DB',
+        '#DAD6CF',
 );
 $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
 ?>
