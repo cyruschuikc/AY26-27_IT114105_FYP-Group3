@@ -2,7 +2,7 @@
    TeamBox — team_detail.php 页面样式（由内联迁移）
    加载顺序：teacher.css → theme.css → soft-glass.css
              → team_detail.css
-   语义色 #6488b5 / #7d6aa8 / #6a4fb3 / #f1ecfb 待用户拍板，暂保留。
+   状态色已收敛：状态点见 .status-dot 矩阵，药丸见四桶分组注释。
    ========================================================= */
 
 .assigned-note {
@@ -37,15 +37,20 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .status-pending    { background: var(--alert-warning); color: var(--ink-2); }
-        .status-waiting    { background: var(--alert-warning); color: var(--ink-2); }
-        .status-recruiting { background: var(--sunken); color: var(--ink-2); }
-        .status-voting     { background: #f1ecfb; color: #6a4fb3; }
-        .status-executing  { background: var(--sunken); color: var(--ink); }
-        .status-completed  { background: var(--alert-success); color: var(--accent-ink); }
-        .status-unviewed   { background: var(--alert-warning); color: var(--ink-2); }
-        .status-accepted   { background: var(--alert-success); color: var(--accent-ink); }
-        .status-rejected   { background: var(--alert-error); color: var(--danger); }
+        /* 状态药丸四桶（分组注释，非新变量）：
+           中性   recruiting, executing                → --sunken / --ink-2
+           待处理 pending, waiting, unviewed, voting   → --alert-warning / --ink-2
+           成功   completed, accepted                  → --alert-success / --accent-ink
+           异常   rejected                             → --alert-error / --danger */
+        .status-recruiting,
+        .status-executing { background: var(--sunken); color: var(--ink-2); }
+        .status-pending,
+        .status-waiting,
+        .status-unviewed,
+        .status-voting { background: var(--alert-warning); color: var(--ink-2); }
+        .status-completed,
+        .status-accepted { background: var(--alert-success); color: var(--accent-ink); }
+        .status-rejected { background: var(--alert-error); color: var(--danger); }
 
         .btn-secondary {
             display: inline-block;
@@ -244,17 +249,35 @@
             background: var(--sunken);
             color: var(--ink-2);
         }
-        .task-status-pill::before {
+        /* 状态点矩阵（颜色 + 形状双编码，task-status-pill 与 milestone-status 共用）：
+           pending         空心圈 1.5px / var(--muted)
+           in-progress     实心圆 / var(--ink-2)
+           waiting-confirm 双环：实心 var(--ink) + inset 白环
+           completed       实心圆 / var(--accent-ink)
+           rejected        方点 / var(--danger)（与 completed 明度接近，靠形状区分） */
+        .status-dot::before {
             content: "";
             width: 6px;
             height: 6px;
+            flex: 0 0 6px;
+            box-sizing: border-box;
             border-radius: 50%;
             background: var(--muted-soft);
         }
-        .task-status-pill.in-progress::before     { background: #6488b5; }
-        .task-status-pill.pending::before         { background: var(--ink-2); }
-        .task-status-pill.completed::before       { background: var(--accent-ink); }
-        .task-status-pill.waiting-confirm::before { background: #7d6aa8; }
+        .status-dot[data-state="pending"]::before {
+            background: transparent;
+            border: 1.5px solid var(--muted);
+        }
+        .status-dot[data-state="in-progress"]::before { background: var(--ink-2); }
+        .status-dot[data-state="waiting-confirm"]::before {
+            background: var(--ink);
+            box-shadow: inset 0 0 0 2px #fff;
+        }
+        .status-dot[data-state="completed"]::before { background: var(--accent-ink); }
+        .status-dot[data-state="rejected"]::before {
+            background: var(--danger);
+            border-radius: 2px;
+        }
 
         .completed-tasks {
             margin-top: 10px;
@@ -789,15 +812,6 @@
             font-weight: 600;
             white-space: nowrap;
         }
-        .milestone-status::before {
-            content: "";
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--muted-soft);
-        }
-        .milestone-status.completed::before { background: var(--accent-ink); }
-        .milestone-status.in-progress::before { background: #6488b5; }
         .milestone-empty {
             padding: 24px 16px;
             color: var(--muted);

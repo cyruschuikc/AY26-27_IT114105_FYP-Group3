@@ -1054,7 +1054,7 @@ if (!$selectedMember && count($members) > 0) {
                             <span><?php echo (int) $milestone['progress']; ?>%</span>
                         </div>
                         <div>
-                            <span class="milestone-status <?php echo $milestoneClass; ?>">
+                            <span class="milestone-status status-dot <?php echo $milestoneClass; ?>" data-state="<?php echo htmlspecialchars($milestoneClass); ?>">
                                 <?php echo htmlspecialchars($milestone['status']); ?>
                             </span>
                         </div>
@@ -1122,7 +1122,7 @@ if (!$selectedMember && count($members) > 0) {
                             </a>
                         </div>
                         <div>
-                            <span class="task-status-pill <?php echo $statusClass; ?>">
+                            <span class="task-status-pill status-dot <?php echo $statusClass; ?>" data-state="<?php echo htmlspecialchars($statusClass); ?>">
                                 <?php echo htmlspecialchars($t['status']); ?>
                             </span>
                         </div>
