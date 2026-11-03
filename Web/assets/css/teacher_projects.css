@@ -6,7 +6,7 @@
 
 .page-head-simple {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 20px;
     margin-bottom: 16px;
@@ -339,7 +339,8 @@
 .archived-row > a:hover { color: var(--ink-2); }
 
 @media (max-width: 900px) {
-    .page-head-simple { flex-direction: column; gap: 6px; }
+    .page-head-simple { flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+    .page-head-simple .create-project-btn { margin-left: auto; }
     .projects-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kpi-item:nth-child(2) { border-right: none; }
     .kpi-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
