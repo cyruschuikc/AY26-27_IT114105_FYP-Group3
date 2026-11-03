@@ -194,7 +194,7 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
 
     <!-- 菜单 -->
     <nav class="sidebar-menu">
-        <a href="teacher_index.php" class="<?= $active==='dashboard'?'active':'' ?>" title="Dashboard" aria-label="Dashboard">
+        <a href="teacher_index.php" class="item <?= $active==='dashboard'?'active':'' ?>" title="Dashboard" aria-label="Dashboard">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
                 <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
@@ -203,13 +203,13 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
             </svg>
             <span class="nav-label">Dashboard</span>
         </a>
-        <a href="teacher_projects.php" class="<?= $active==='projects'?'active':'' ?>" title="Projects" aria-label="Projects">
+        <a href="teacher_projects.php" class="item <?= $active==='projects'?'active':'' ?>" title="Projects" aria-label="Projects">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"></path>
             </svg>
             <span class="nav-label">Projects</span>
         </a>
-        <a href="teacher_teams.php" class="<?= $active==='teams'?'active':'' ?>" title="Teams" aria-label="Teams">
+        <a href="teacher_teams.php" class="item <?= $active==='teams'?'active':'' ?>" title="Teams" aria-label="Teams">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
@@ -220,7 +220,7 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
                 <span class="nav-dot" title="<?= (int) $navOverdueTasks ?> overdue task<?= $navOverdueTasks === 1 ? '' : 's' ?>" aria-label="<?= (int) $navOverdueTasks ?> overdue tasks"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_students.php" class="<?= $active==='students'?'active':'' ?>" title="Students" aria-label="Students">
+        <a href="teacher_students.php" class="item <?= $active==='students'?'active':'' ?>" title="Students" aria-label="Students">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="m2 9 10-5 10 5-10 5z"></path>
                 <path d="M6 11.5V16c2.5 2 9.5 2 12 0v-4.5M22 9v6"></path>
@@ -230,7 +230,7 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
                 <span class="nav-dot" title="<?= (int) $navUnsubmittedStudents ?> student<?= $navUnsubmittedStudents === 1 ? '' : 's' ?> with no submissions" aria-label="<?= (int) $navUnsubmittedStudents ?> students with no submissions"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_review.php" class="<?= $active==='review'?'active':'' ?>" title="Review Center" aria-label="Review Center">
+        <a href="teacher_review.php" class="item <?= $active==='review'?'active':'' ?>" title="Review Center" aria-label="Review Center">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="4" y="3" width="16" height="18" rx="2"></rect>
                 <path d="m8 12 2.2 2.2L16 9"></path>
@@ -240,7 +240,7 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
                 <span class="nav-dot" title="<?= (int) $navReviewCount ?> item<?= $navReviewCount === 1 ? '' : 's' ?> waiting for review" aria-label="<?= (int) $navReviewCount ?> items waiting for review"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_files.php" class="<?= $active==='files'?'active':'' ?>" title="Files" aria-label="Files">
+        <a href="teacher_files.php" class="item <?= $active==='files'?'active':'' ?>" title="Files" aria-label="Files">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <path d="M14 2v6h6M8 13h8M8 17h6"></path>
@@ -250,7 +250,7 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
                 <span class="nav-dot" title="<?= (int) $navPendingFiles ?> unviewed file<?= $navPendingFiles === 1 ? '' : 's' ?>" aria-label="<?= (int) $navPendingFiles ?> unviewed files"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_messages.php" class="<?= $active==='messages'?'active':'' ?>" title="Messages" aria-label="Messages">
+        <a href="teacher_messages.php" class="item <?= $active==='messages'?'active':'' ?>" title="Messages" aria-label="Messages">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M21 15a4 4 0 0 1-4 4H8l-5 2 1.5-4A4 4 0 0 1 3 14V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
             </svg>
@@ -259,13 +259,13 @@ $avatarBg = $avatarPalette[abs(crc32($teacherName)) % count($avatarPalette)];
                 <span class="nav-dot" title="<?= (int) $navUnreadMessages ?> unread message<?= $navUnreadMessages === 1 ? '' : 's' ?>" aria-label="<?= (int) $navUnreadMessages ?> unread messages"></span>
             <?php endif; ?>
         </a>
-        <a href="teacher_announcements.php" class="<?= $active==='announcements'?'active':'' ?>" title="Announcements" aria-label="Announcements">
+        <a href="teacher_announcements.php" class="item <?= $active==='announcements'?'active':'' ?>" title="Announcements" aria-label="Announcements">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="m3 11 18-7-5 16-4-5-5-1zM12 15l4 1"></path>
             </svg>
             <span class="nav-label">Announcements</span>
         </a>
-        <a href="teacher_profile.php" class="<?= $active==='profile'?'active':'' ?>" title="Profile" aria-label="Profile">
+        <a href="teacher_profile.php" class="item <?= $active==='profile'?'active':'' ?>" title="Profile" aria-label="Profile">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="8" r="4"></circle>
                 <path d="M4 21a8 8 0 0 1 16 0"></path>

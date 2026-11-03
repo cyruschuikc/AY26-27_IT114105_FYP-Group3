@@ -284,26 +284,26 @@ mysqli_stmt_close($stmt);
             <a href="teacher_teams.php" class="btn-primary">View Teams</a>
         </div>
 
-        <div class="team-state-grid">
-            <a href="teacher_teams.php?status=pending" class="team-state-card">
-                <span>Awaiting Approval</span>
-                <strong><?php echo (int) $formationCounts['Awaiting Approval']; ?></strong>
-                <small>Teacher action required</small>
+        <div class="stat-grid">
+            <a href="teacher_teams.php?status=pending" class="stat-card">
+                <span class="stat-card-label">Awaiting Approval</span>
+                <strong class="stat-card-value"><?php echo (int) $formationCounts['Awaiting Approval']; ?></strong>
+                <small class="stat-card-note">Teacher action required</small>
             </a>
-            <a href="teacher_teams.php?status=Voting" class="team-state-card">
-                <span>Choosing Leader</span>
-                <strong><?php echo (int) $formationCounts['Choosing Leader']; ?></strong>
-                <small>Leader election in progress</small>
+            <a href="teacher_teams.php?status=Voting" class="stat-card">
+                <span class="stat-card-label">Choosing Leader</span>
+                <strong class="stat-card-value"><?php echo (int) $formationCounts['Choosing Leader']; ?></strong>
+                <small class="stat-card-note">Leader election in progress</small>
             </a>
-            <a href="teacher_teams.php?status=Executing" class="team-state-card">
-                <span>Active</span>
-                <strong><?php echo (int) $formationCounts['Active']; ?></strong>
-                <small>Teams currently working</small>
+            <a href="teacher_teams.php?status=Executing" class="stat-card">
+                <span class="stat-card-label">Active</span>
+                <strong class="stat-card-value"><?php echo (int) $formationCounts['Active']; ?></strong>
+                <small class="stat-card-note">Teams currently working</small>
             </a>
-            <a href="teacher_teams.php?status=Completed" class="team-state-card">
-                <span>Completed</span>
-                <strong><?php echo (int) $formationCounts['Completed']; ?></strong>
-                <small>Finished teams</small>
+            <a href="teacher_teams.php?status=Completed" class="stat-card">
+                <span class="stat-card-label">Completed</span>
+                <strong class="stat-card-value"><?php echo (int) $formationCounts['Completed']; ?></strong>
+                <small class="stat-card-note">Finished teams</small>
             </a>
         </div>
 
@@ -315,22 +315,14 @@ mysqli_stmt_close($stmt);
             <?php if (count($projectTeamHealth) === 0): ?>
                 <div class="empty-note">No projects yet.</div>
             <?php else: ?>
-                <?php
-                $barColors = array(
-                    'awaiting'  => '#d7dee8',
-                    'choosing'  => '#aebccd',
-                    'active'    => '#175196',
-                    'completed' => '#4a5d73',
-                );
-                ?>
                 <?php foreach ($projectTeamHealth as $projectHealth): ?>
                     <?php
                     $barTotal = max(1, (int) $projectHealth['total']);
                     $barSegments = array(
-                        array('Awaiting', (int) $projectHealth['awaiting'],  $barColors['awaiting']),
-                        array('Choosing',  (int) $projectHealth['choosing'],  $barColors['choosing']),
-                        array('Active',    (int) $projectHealth['active'],    $barColors['active']),
-                        array('Completed', (int) $projectHealth['completed'], $barColors['completed']),
+                        array('Awaiting', (int) $projectHealth['awaiting'],  'awaiting'),
+                        array('Choosing',  (int) $projectHealth['choosing'],  'choosing'),
+                        array('Active',    (int) $projectHealth['active'],    'active'),
+                        array('Completed', (int) $projectHealth['completed'], 'completed'),
                     );
                     ?>
                     <div class="ph-row">
@@ -352,8 +344,8 @@ mysqli_stmt_close($stmt);
                         <div class="ph-bar">
                             <?php foreach ($barSegments as $seg): ?>
                                 <?php if ($seg[1] > 0): ?>
-                                    <div class="ph-bar-seg"
-                                         style="width: <?php echo round($seg[1] / $barTotal * 100, 2); ?>%; background: <?php echo $seg[2]; ?>;"
+                                    <div class="ph-seg ph-seg--<?php echo $seg[2]; ?>"
+                                         style="width: <?php echo round($seg[1] / $barTotal * 100, 2); ?>%;"
                                          title="<?php echo htmlspecialchars($seg[0] . ': ' . $seg[1]); ?>"></div>
                                 <?php endif; ?>
                             <?php endforeach; ?>
@@ -361,7 +353,7 @@ mysqli_stmt_close($stmt);
                         <div class="ph-legend">
                             <?php foreach ($barSegments as $seg): ?>
                                 <span class="ph-legend-item">
-                                    <i class="ph-legend-dot" style="background: <?php echo $seg[2]; ?>;"></i>
+                                    <i class="ph-dot ph-dot--<?php echo $seg[2]; ?>"></i>
                                     <?php echo $seg[0]; ?> <?php echo $seg[1]; ?>
                                 </span>
                             <?php endforeach; ?>
