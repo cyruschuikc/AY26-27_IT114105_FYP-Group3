@@ -92,6 +92,7 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
     <title>Messages | TeamBox</title>
     <link rel="stylesheet" href="teacher.css?v=20261028b">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
+    <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
     <link rel="stylesheet" href="teacher_ui.css?v=20261028b">
     <style>
         .chat-page { padding-top: 44px; }

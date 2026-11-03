@@ -292,6 +292,7 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
     <title>Students | TeamBox</title>
     <link rel="stylesheet" href="teacher.css?v=20261028b">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
+    <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
     <link rel="stylesheet" href="teacher_ui.css?v=20261028b">
     <style>
         .student-toolbar { margin-bottom: 12px; }

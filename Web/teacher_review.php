@@ -699,6 +699,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
     <title>Review Center | TeamBox</title>
     <link rel="stylesheet" href="teacher.css?v=20261028b">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
+    <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
 
     <style>
         .review-title-row h1 { margin-bottom: 2px; }
