@@ -700,473 +700,11 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
     <link rel="stylesheet" href="teacher.css?v=<?= filemtime('teacher.css') ?>">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
+    <link rel="stylesheet" href="assets/css/teacher_review.css?v=<?= filemtime('assets/css/teacher_review.css') ?>">
 
-    <style>
-        .review-title-row h1 { margin-bottom: 2px; }
-        .review-title-row .subtitle { margin-bottom: 14px; }
-        .review-desktop-actions { display: none; }
-
-        /* ===== Tabs ===== */
-        .tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-bottom: 14px;
-            border-bottom: 1px solid #e6e8eb;
-        }
-
-        .tab {
-            padding: 9px 14px;
-            font-size: 13px;
-            color: #6b6f78;
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            font-family: inherit;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .tab:hover { color: #2c2f36; }
-
-        .tab.active {
-            color: #175196;
-            font-weight: 600;
-            border-bottom-color: #175196;
-        }
-
-        .tab .tab-count {
-            display: inline-block;
-            margin-left: 6px;
-            background: #f2f3f5;
-            color: #6b6f78;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 1px 7px;
-            border-radius: 10px;
-        }
-
-        .tab.active .tab-count {
-            background: #175196;
-            color: #fff;
-        }
-
-        .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
-
-        /* ===== Filter bar ===== */
-        .filter-bar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-end;
-            gap: 14px;
-            padding: 12px 14px;
-            margin-bottom: 12px;
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-radius: 8px;
-        }
-
-        .filter-field {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .filter-field[hidden] { display: none !important; }
-
-        .filter-field label {
-            font-size: 12px;
-            color: #6b6f78;
-            font-weight: 500;
-            letter-spacing: 0.03em;
-        }
-
-        .filter-field input,
-        .filter-field select {
-            height: 36px;
-            padding: 0 10px;
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #2c2f36;
-            font-family: inherit;
-            outline: none;
-        }
-
-        .filter-field input:focus,
-        .filter-field select:focus { border-color: #175196; }
-
-        .filter-field.search input { width: 240px; }
-        .filter-field.date input   { width: 160px; }
-        .filter-field.status select{ width: 160px; }
-
-        .filter-actions {
-            display: flex;
-            gap: 10px;
-            margin-left: auto;
-        }
-
-        .btn-secondary {
-            background: #fff;
-            color: #175196;
-            border: 1px solid #175196;
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            font-family: inherit;
-            text-decoration: none;
-            display: inline-block;
-            height: 36px;
-            line-height: 18px;
-        }
-
-        .btn-secondary:hover { background: #f2f7fd; }
-        .btn-primary:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        /* ===== Result info ===== */
-        .result-info {
-            font-size: 13px;
-            color: #6b6f78;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .result-info .range-text { color: #8b8f98; }
-
-        /* ===== File table ===== */
-        .file-table { table-layout: auto; }
-
-        .file-table th,
-        .file-table td {
-            white-space: normal;
-            word-break: break-word;
-        }
-
-        .file-name-cell { max-width: 320px; }
-
-        .file-name-link {
-            color: #175196;
-            font-weight: 500;
-            text-decoration: none;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.4;
-        }
-
-        .file-name-link:hover { text-decoration: underline; }
-
-        .file-task-label {
-            margin-top: 2px;
-            color: #9aa0a8;
-            font-size: 10.5px;
-            line-height: 1.4;
-        }
-        .file-version-label {
-            margin-top: 3px;
-            color: #526f88;
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        .row-actions {
-            display: flex;
-            gap: 12px;
-            white-space: nowrap;
-        }
-
-        /* ===== Status pill ===== */
-        .status-pill {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        .status-pill.unviewed {
-            background: #f7f8fa;
-            color: #6b6f78;
-            border: 1px solid #e6e8eb;
-        }
-
-        .status-pill.accepted {
-            background: #eaf7ee;
-            color: #176b2c;
-            border: 1px solid #8bc79a;
-        }
-
-        .status-pill.rejected {
-            background: #fdeeee;
-            color: #a21b1b;
-            border: 1px solid #e6a0a0;
-        }
-        .pill-pending {
-            background: #edf4fb;
-            color: #315f87;
-        }
-
-        /* ===== Group Request card ===== */
-        .request-card {
-            border: 1px solid #e6e8eb;
-            border-left: 4px solid #175196;
-            border-radius: 8px;
-            background: #fff;
-            margin-bottom: 12px;
-            overflow: hidden;
-        }
-
-        .request-head {
-            padding: 14px 17px;
-            background: #f7f8fa;
-            border-bottom: 1px solid #e6e8eb;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 20px;
-        }
-
-        .request-head h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #2c2f36;
-            margin-bottom: 4px;
-        }
-
-        .request-head .request-meta {
-            font-size: 13px;
-            color: #8b8f98;
-        }
-
-        .request-body { padding: 6px 0; }
-
-        .request-body table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
-        .request-body table th {
-            text-align: left;
-            font-size: 12px;
-            font-weight: 500;
-            color: #6b6f78;
-            background: #fbfbfc;
-            padding: 10px 22px;
-            border-bottom: 1px solid #f2f3f5;
-        }
-
-        .request-body table td {
-            padding: 12px 22px;
-            border-bottom: 1px solid #f2f3f5;
-            color: #2c2f36;
-            white-space: normal;
-        }
-
-        .request-body table tr:last-child td { border-bottom: none; }
-
-        .request-foot {
-            padding: 16px 22px;
-            background: #fafbfc;
-            border-top: 1px solid #e6e8eb;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .member-toggle {
-            display: none;
-            align-items: center;
-            padding: 6px 9px;
-            border: 1px solid #d7dee5;
-            border-radius: 5px;
-            background: #fff;
-            color: #56616d;
-            font-family: inherit;
-            font-size: 10.5px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .member-toggle:hover { border-color: #9eb0c1; background: #f4f7fa; }
-
-        .topic-review-card {
-            margin-bottom: 12px;
-            overflow: hidden;
-            border: 1px solid #e2e6ea;
-            border-left: 4px solid #537da7;
-            border-radius: 8px;
-            background: #fff;
-        }
-        .topic-review-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 18px;
-            padding: 16px 20px;
-            border-bottom: 1px solid #edf0f3;
-            background: #f8fafc;
-        }
-        .topic-review-head h3 {
-            margin: 0 0 4px;
-            color: #252b33;
-            font-size: 16px;
-        }
-        .topic-review-meta {
-            color: #7f8791;
-            font-size: 11.5px;
-            line-height: 1.55;
-        }
-        .topic-review-body { padding: 16px 20px; }
-        .topic-review-description {
-            margin: 0 0 14px;
-            color: #4f5761;
-            font-size: 12.5px;
-            line-height: 1.65;
-        }
-        .topic-selection-summary {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 14px;
-        }
-        .topic-selection-summary span {
-            padding: 5px 8px;
-            border-radius: 6px;
-            background: #eef3f8;
-            color: #4e6275;
-            font-size: 10.5px;
-            font-weight: 600;
-        }
-        .topic-review-actions {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto auto;
-            gap: 8px;
-            align-items: center;
-        }
-        .topic-review-actions input {
-            min-width: 0;
-            padding: 8px 10px;
-            border: 1px solid #dfe3e8;
-            border-radius: 6px;
-            color: #3e4650;
-            font-family: inherit;
-            font-size: 12px;
-        }
-        .quick-replies {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 8px;
-        }
-        .quick-reply-btn {
-            padding: 5px 8px;
-            border: 1px solid #d7dee5;
-            border-radius: 5px;
-            background: #fff;
-            color: #56616d;
-            font-family: inherit;
-            font-size: 10.5px;
-            cursor: pointer;
-        }
-        .quick-reply-btn:hover { border-color: #8fa7bd; background: #f5f8fb; }
-
-        /* ===== Responsive ===== */
-        @media (max-width: 900px) {
-            .filter-bar { flex-direction: column; align-items: stretch; }
-            .filter-field.search input,
-            .filter-field.date input,
-            .filter-field.status select { width: 100%; }
-            .filter-actions { margin-left: 0; }
-            .filter-actions .btn-primary,
-            .filter-actions .btn-secondary { flex: 1; text-align: center; }
-        }
-
-        @media (max-width: 700px) {
-            .request-head { flex-direction: column; gap: 10px; }
-            .request-foot { flex-direction: column; }
-            .row-actions { flex-direction: column; gap: 4px; }
-            .topic-review-head { flex-direction: column; }
-            .topic-review-actions { grid-template-columns: 1fr; }
-        }
-
-        /* Desktop-only hierarchy; mobile rules above remain unchanged. */
-        @media (min-width: 901px) {
-            .review-title-row {
-                display: flex;
-                align-items: flex-start;
-                justify-content: space-between;
-                gap: 20px;
-            }
-            .review-title-row h1 { margin-bottom: 4px; }
-            .review-title-row .subtitle { margin-bottom: 16px; }
-            .review-desktop-actions {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                flex: 0 0 auto;
-                padding-top: 3px;
-            }
-            .review-desktop-actions > span {
-                color: #7d858f;
-                font-size: 11px;
-                font-weight: 600;
-            }
-            .review-desktop-actions .btn-primary {
-                min-height: 34px;
-                padding: 7px 12px;
-                text-decoration: none;
-            }
-            .tb-alert.review-attention-alert { display: none; }
-            .review-title-row + .tabs { margin-top: 2px; }
-            .filter-bar {
-                padding: 10px;
-                border-color: #e3e7eb;
-                box-shadow: none;
-            }
-            .filter-bar .filter-field label { font-size: 10.5px; }
-            .filter-bar .btn-primary {
-                background: #fff;
-                color: #175196;
-                border: 1px solid #afc3d8;
-            }
-            .filter-bar .btn-primary:hover { background: #f3f7fb; }
-            .request-head { padding: 12px 15px; }
-            .request-head h3 { font-size: 13px; }
-            .request-head .request-meta { font-size: 11px; }
-            .request-body table { font-size: 12px; }
-            .request-body table th { padding: 8px 15px; }
-            .request-body table td { padding: 9px 15px; }
-            .request-foot { padding: 10px 15px; }
-            .request-members { display: none; }
-            .request-members.is-expanded { display: block; }
-            .member-toggle { display: inline-flex; margin-right: auto; }
-            .topic-review-list {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 12px;
-            }
-            .topic-review-card { margin-bottom: 0; }
-            .topic-review-head { padding: 13px 15px; }
-            .topic-review-head h3 { font-size: 14px; }
-            .topic-review-body { padding: 13px 15px; }
-            .topic-review-description { font-size: 11.5px; }
-        }
-    </style>
     <link rel="stylesheet" href="teacher_ui.css?v=<?= filemtime('teacher_ui.css') ?>">
 </head>
-<body>
+<body class="sg-teacher">
 
 <?php include 'teacher_nav.php'; ?>
 
@@ -1283,7 +821,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
 
                     <?php if ($filteredCount === 0): ?>
                         <tr>
-                            <td colspan="7" class="muted" style="text-align: center; padding: 30px;">
+                        <td colspan="7" class="muted empty-cell">
                                 No files match your filter.
                             </td>
                         </tr>
@@ -1338,7 +876,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
         <div class="tab-panel" id="panel-unviewed">
 
             <h2>Unviewed Files</h2>
-            <p class="muted" style="margin-bottom: 16px;">
+            <p class="muted gap-below">
                 Task attachments that students uploaded but you have not reviewed yet.
                 Open one to accept or reject it.
             </p>
@@ -1356,7 +894,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
 
                     <?php if (count($unviewedFiles) === 0): ?>
                         <tr>
-                            <td colspan="6" class="muted" style="text-align: center; padding: 30px;">
+                            <td colspan="6" class="muted empty-cell">
                                 Nothing to review — all files have been viewed.
                             </td>
                         </tr>
@@ -1401,14 +939,14 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
         <div class="tab-panel" id="panel-requests">
 
             <h2>Group Formation Requests</h2>
-            <p class="muted" style="margin-bottom: 16px;">
+            <p class="muted gap-below">
                 Each request lists the group members. The team is only formed
                 after the teacher accepts the request.
             </p>
 
             <?php if (count($groupRequests) === 0): ?>
                 <div class="card">
-                    <div class="muted" style="text-align: center; padding: 30px;">
+                    <div class="muted empty-cell">
                         No pending group requests.
                     </div>
                 </div>
@@ -1422,7 +960,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                             <h3>
                                 <?php echo htmlspecialchars($req['group_name']); ?>
                                 ·
-                                <span class="muted" style="font-weight: normal;">
+                                <span class="muted fw-normal">
                                     <?php echo htmlspecialchars($req['project_name']); ?>
                                 </span>
                             </h3>
@@ -1436,7 +974,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                     </div>
 
                     <?php if (count($req['review_issues']) > 0): ?>
-                        <div class="tb-alert tb-alert--error" style="margin:12px 17px;">
+                        <div class="tb-alert tb-alert--error review-alert-inset">
                             <?= htmlspecialchars(implode(' ', $req['review_issues'])) ?>
                         </div>
                     <?php endif; ?>
@@ -1494,13 +1032,13 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
         ========================================================= -->
         <div class="tab-panel" id="panel-topics">
             <h2>Topic Proposals</h2>
-            <p class="muted" style="margin-bottom: 16px;">
+            <p class="muted gap-below">
                 Review one submission per team. Rejections preserve the version history so the team leader can submit a revised proposal.
             </p>
 
             <?php if (count($topicProposals) === 0): ?>
                 <div class="card">
-                    <div class="muted" style="text-align: center; padding: 30px;">
+                    <div class="muted empty-cell">
                         No topic proposals are waiting for review.
                     </div>
                 </div>
@@ -1538,7 +1076,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                             </div>
                         <?php endif; ?>
 
-                        <div class="request-foot" style="padding:0; background:transparent; border-top:0;">
+                        <div class="request-foot request-foot-flat">
                             <button type="button" class="btn-primary js-topic-review"
                                     data-action="approve"
                                     data-id="<?= (int) $proposal['id'] ?>"
@@ -1594,8 +1132,8 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
             <input type="hidden" name="action" value="reject">
             <input type="hidden" name="requestId" id="rejectRequestId" value="">
 
-            <div class="comment-block" style="margin-bottom:18px;">
-                <label for="rejectNote">Reason for rejection <span style="color:#d32f2f;">*</span></label>
+            <div class="comment-block comment-gap">
+                <label for="rejectNote">Reason for rejection <span class="req">*</span></label>
                 <textarea id="rejectNote" name="reviewNote" required
                           placeholder="Explain why this group request is rejected..."></textarea>
             </div>
@@ -1618,7 +1156,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
             <input type="hidden" name="topicAction" id="topicReviewAction" value="approve">
             <input type="hidden" name="proposalId" id="topicReviewId" value="">
 
-            <div class="comment-block" style="margin-bottom:18px;">
+            <div class="comment-block comment-gap">
                 <label for="topicReviewNote" id="topicReviewNoteLabel">Feedback</label>
                 <div class="quick-replies" aria-label="Quick feedback templates">
                     <button type="button" class="quick-reply-btn" data-topic-reply="Please provide a clearer project scope and expected outcome.">Clarify scope</button>

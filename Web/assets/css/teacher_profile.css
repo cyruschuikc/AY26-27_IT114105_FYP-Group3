@@ -1,0 +1,9 @@
+/* =========================================================
+   TeamBox — teacher_profile.php 页面样式
+   加载顺序：teacher.css → theme.css → soft-glass.css
+             → teacher_profile.css
+   ========================================================= */
+
+form.announcement-block.stack .field {
+    margin-bottom: 16px;
+}

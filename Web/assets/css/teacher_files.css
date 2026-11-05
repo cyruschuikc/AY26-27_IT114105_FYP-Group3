@@ -1,0 +1,86 @@
+/* =========================================================
+   TeamBox — teacher_files.php 页面样式（由内联迁移）
+   加载顺序：teacher.css → theme.css → soft-glass.css
+             → teacher_files.css
+   ========================================================= */
+
+.summary-grid-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 700px) {
+    .summary-grid-3 { grid-template-columns: 1fr; }
+}
+.table-scroll { overflow-x: auto; }
+.files-table { min-width: 720px; }
+.files-table td { vertical-align: top; white-space: normal; }
+.files-table td.muted,
+.files-table .file-actions { white-space: nowrap; }
+.summary-note {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 12px;
+}
+.version-chip {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    background: var(--sunken);
+    color: var(--ink-2);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    vertical-align: middle;
+}
+.version-chip:hover { background: rgba(0, 0, 0, .04); color: var(--ink); }
+.version-chip.open { background: var(--ink); color: #fff; }
+.resubmit-badge {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 2px 9px;
+    border-radius: var(--r-pill);
+    background: var(--sunken);
+    color: var(--ink);
+    font-size: 11.5px;
+    font-weight: 700;
+    vertical-align: middle;
+}
+.file-meta {
+    margin-top: 3px;
+    color: var(--muted-soft);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.pill-unviewed { background: var(--alert-warning); color: var(--ink-2); }
+.pill-accepted { background: var(--alert-success); color: var(--accent-ink); }
+.pill-rejected { background: var(--alert-error); color: var(--danger); }
+.history-row[hidden] { display: none; }
+.history-row td {
+    padding: 8px 16px 14px !important;
+    background: var(--sunken);
+}
+.history-panel {
+    padding-left: 12px;
+    border-left: 3px solid var(--line-strong);
+}
+.history-table {
+    width: 100%;
+    table-layout: auto;
+}
+.history-table th {
+    padding: 6px 8px;
+    background: var(--sunken);
+    color: var(--ink-2);
+    font-size: 11px;
+    white-space: nowrap;
+}
+.history-table td {
+    padding: 6px 8px !important;
+    border-bottom: 1px solid var(--line);
+    background: transparent !important;
+    font-size: 12px;
+    white-space: normal;
+}
+.empty-cell {
+    text-align: center;
+    padding: 30px;
+}

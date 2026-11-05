@@ -184,9 +184,10 @@ $displayDept = !empty($teacher['department']) ? $teacher['department'] : '—';
     <link rel="stylesheet" href="teacher.css?v=<?= filemtime('teacher.css') ?>">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
+    <link rel="stylesheet" href="assets/css/teacher_profile.css?v=<?= filemtime('assets/css/teacher_profile.css') ?>">
     <link rel="stylesheet" href="teacher_ui.css?v=<?= filemtime('teacher_ui.css') ?>">
 </head>
-<body>
+<body class="sg-teacher">
 
 <?php include 'teacher_nav.php'; ?>
 
@@ -203,27 +204,27 @@ $displayDept = !empty($teacher['department']) ? $teacher['department'] : '—';
         <div class="card">
             <table>
                 <tr>
-                    <td style="width:40%; color:#6b6f78;">Full Name</td>
+                    <td style="width:40%;" class="muted">Full Name</td>
                     <td><?php echo htmlspecialchars($teacher['username']); ?></td>
                 </tr>
                 <tr>
-                    <td style="color:#6b6f78;">Email</td>
+                    <td class="muted">Email</td>
                     <td><?php echo htmlspecialchars($teacher['email']); ?></td>
                 </tr>
                 <tr>
-                    <td style="color:#6b6f78;">Role</td>
+                    <td class="muted">Role</td>
                     <td><?php echo htmlspecialchars($displayRole); ?></td>
                 </tr>
                 <tr>
-                    <td style="color:#6b6f78;">Department</td>
+                    <td class="muted">Department</td>
                     <td><?php echo htmlspecialchars($displayDept); ?></td>
                 </tr>
                 <tr>
-                    <td style="color:#6b6f78;">Title</td>
+                    <td class="muted">Title</td>
                     <td><?php echo htmlspecialchars($displayTitle); ?></td>
                 </tr>
                 <tr>
-                    <td style="color:#6b6f78;">Hire Date</td>
+                    <td class="muted">Hire Date</td>
                     <td><?php echo htmlspecialchars($hireDate); ?></td>
                 </tr>
             </table>
@@ -237,15 +238,12 @@ $displayDept = !empty($teacher['department']) ? $teacher['department'] : '—';
             <form method="post" action="teacher_profile.php" class="announcement-block stack">
 
                 <?php if ($profileMsg !== ''): ?>
-                    <div style="padding:12px 16px; margin-bottom:16px; border-radius:8px;
-                            background: <?php echo $profileType==='success' ? '#eaf7ee' : '#fdeeee'; ?>;
-                            color: <?php echo $profileType==='success' ? '#176b2c' : '#a21b1b'; ?>;
-                            border-left: 4px solid <?php echo $profileType==='success' ? '#2e9d4d' : '#d32f2f'; ?>;">
+                    <div class="tb-alert <?php echo $profileType === 'success' ? 'tb-alert--success' : 'tb-alert--error'; ?>">
                         <?php echo htmlspecialchars($profileMsg); ?>
                     </div>
                 <?php endif; ?>
 
-                <div class="field" style="margin-bottom: 16px;">
+                <div class="field">
                     <label for="fullName">Full Name</label>
                     <input
                             type="text"
@@ -256,7 +254,7 @@ $displayDept = !empty($teacher['department']) ? $teacher['department'] : '—';
                     >
                 </div>
 
-                <div class="field" style="margin-bottom: 16px;">
+                <div class="field">
                     <label for="email">Email</label>
                     <input
                             type="email"
@@ -280,25 +278,22 @@ $displayDept = !empty($teacher['department']) ? $teacher['department'] : '—';
             <form method="post" action="teacher_profile.php" class="announcement-block stack">
 
                 <?php if ($pwdMsg !== ''): ?>
-                    <div style="padding:12px 16px; margin-bottom:16px; border-radius:8px;
-                            background: <?php echo $pwdType==='success' ? '#eaf7ee' : '#fdeeee'; ?>;
-                            color: <?php echo $pwdType==='success' ? '#176b2c' : '#a21b1b'; ?>;
-                            border-left: 4px solid <?php echo $pwdType==='success' ? '#2e9d4d' : '#d32f2f'; ?>;">
+                    <div class="tb-alert <?php echo $pwdType === 'success' ? 'tb-alert--success' : 'tb-alert--error'; ?>">
                         <?php echo htmlspecialchars($pwdMsg); ?>
                     </div>
                 <?php endif; ?>
 
-                <div class="field" style="margin-bottom: 16px;">
+                <div class="field">
                     <label for="currentPassword">Current Password</label>
                     <input type="password" id="currentPassword" name="currentPassword" required>
                 </div>
 
-                <div class="field" style="margin-bottom: 16px;">
+                <div class="field">
                     <label for="newPassword">New Password</label>
                     <input type="password" id="newPassword" name="newPassword" required>
                 </div>
 
-                <div class="field" style="margin-bottom: 16px;">
+                <div class="field">
                     <label for="confirmPassword">Confirm New Password</label>
                     <input type="password" id="confirmPassword" name="confirmPassword" required>
                 </div>

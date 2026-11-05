@@ -1,0 +1,132 @@
+/* =========================================================
+   TeamBox — teacher_announcements.php 页面样式（由内联迁移）
+   加载顺序：teacher.css → theme.css → soft-glass.css
+             → teacher_announcements.css
+   ========================================================= */
+
+/* ===== Recipient picker ===== */
+form.announcement-block.stack .field {
+    margin-bottom: 16px;
+}
+form.announcement-block.stack .help-under {
+    margin-top: 6px;
+    font-size: 12px;
+}
+.empty-cell {
+    text-align: center;
+    padding: 30px;
+}
+
+.recipient-picker {
+    position: relative;
+}
+
+.recipient-box {
+    min-height: 48px;
+    padding: 6px 10px;
+    background: var(--surface-solid);
+    border: 1px solid var(--line);
+    border-radius: var(--r-item);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    cursor: text;
+    transition: border-color 0.15s;
+}
+
+.recipient-box:focus-within {
+    border-color: var(--ink);
+}
+
+.recipient-box input {
+    flex: 1;
+    min-width: 160px;
+    height: 30px;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    font-family: inherit;
+    background: transparent;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--sunken);
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-pill);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.chip .chip-x {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--ink-2);
+    padding: 0 2px;
+}
+
+.chip .chip-x:hover { color: var(--danger); }
+
+.chip.chip-group  { background: var(--alert-success); border-color: var(--accent-ink); color: var(--accent-ink); }
+.chip.chip-course { background: var(--alert-warning); border-color: var(--warn); color: var(--ink-2); }
+
+.recipient-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--surface-solid);
+    border: 1px solid var(--line);
+    border-radius: var(--r-item);
+    box-shadow: var(--shadow-float);
+    z-index: 50;
+    display: none;
+}
+
+.recipient-dropdown.open { display: block; }
+
+.recipient-item {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.recipient-item:last-child { border-bottom: none; }
+
+.recipient-item:hover { background: rgba(0, 0, 0, .04); }
+
+.recipient-item .item-name { font-weight: 500; }
+
+.recipient-item .item-meta { color: var(--muted); font-size: 12px; }
+
+.recipient-item.empty {
+    color: var(--muted-soft);
+    cursor: default;
+    justify-content: center;
+}
+
+.recipient-item.empty:hover { background: var(--surface-solid); }
+
+/* 快捷项高亮 */
+.recipient-item.shortcut {
+    background: rgba(207, 231, 218, .35);
+}
+
+.recipient-item.shortcut:hover {
+    background: var(--accent-soft);
+}

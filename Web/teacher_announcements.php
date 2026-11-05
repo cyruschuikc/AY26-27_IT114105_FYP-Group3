@@ -263,126 +263,10 @@ mysqli_stmt_close($stmt);
     <link rel="stylesheet" href="teacher.css?v=<?= filemtime('teacher.css') ?>">
     <link rel="stylesheet" href="assets/css/theme.css?v=<?= filemtime('assets/css/theme.css') ?>">
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
+    <link rel="stylesheet" href="assets/css/teacher_announcements.css?v=<?= filemtime('assets/css/teacher_announcements.css') ?>">
     <link rel="stylesheet" href="teacher_ui.css?v=<?= filemtime('teacher_ui.css') ?>">
-
-    <style>
-        /* ===== Recipient picker ===== */
-        .recipient-picker {
-            position: relative;
-        }
-
-        .recipient-box {
-            min-height: 48px;
-            padding: 6px 10px;
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-radius: 8px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 6px;
-            cursor: text;
-            transition: border-color 0.15s;
-        }
-
-        .recipient-box:focus-within {
-            border-color: #175196;
-        }
-
-        .recipient-box input {
-            flex: 1;
-            min-width: 160px;
-            height: 30px;
-            border: none;
-            outline: none;
-            font-size: 13px;
-            font-family: inherit;
-            background: transparent;
-        }
-
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            background: #eef4fb;
-            color: #175196;
-            border: 1px solid #cfe0f5;
-            border-radius: 16px;
-            font-size: 13px;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
-        .chip .chip-x {
-            cursor: pointer;
-            font-weight: 700;
-            color: #6b6f78;
-            padding: 0 2px;
-        }
-
-        .chip .chip-x:hover { color: #d32f2f; }
-
-        .chip.chip-group  { background: #eaf7ee; border-color: #b7e0c2; color: #176b2c; }
-        .chip.chip-course { background: #fef7e2; border-color: #f1dda4; color: #765900; }
-
-        .recipient-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            margin-top: 4px;
-            max-height: 260px;
-            overflow-y: auto;
-            background: #fff;
-            border: 1px solid #e6e8eb;
-            border-radius: 8px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-            z-index: 50;
-            display: none;
-        }
-
-        .recipient-dropdown.open { display: block; }
-
-        .recipient-item {
-            padding: 10px 14px;
-            font-size: 13px;
-            color: #2c2f36;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid #f2f3f5;
-        }
-
-        .recipient-item:last-child { border-bottom: none; }
-
-        .recipient-item:hover { background: #f7f9fc; }
-
-        .recipient-item .item-name { font-weight: 500; }
-
-        .recipient-item .item-meta { color: #8b8f98; font-size: 12px; }
-
-        .recipient-item.empty {
-            color: #a8acb4;
-            cursor: default;
-            justify-content: center;
-        }
-
-        .recipient-item.empty:hover { background: #fff; }
-
-        /* 快捷项高亮 */
-        .recipient-item.shortcut {
-            background: #f0f7ff;
-        }
-
-        .recipient-item.shortcut:hover {
-            background: #e4f0ff;
-        }
-    </style>
 </head>
-<body>
+<body class="sg-teacher">
 
 <?php include 'teacher_nav.php'; ?>
 
@@ -402,15 +286,12 @@ mysqli_stmt_close($stmt);
                   id="annForm">
 
                 <?php if ($sendMsg !== ''): ?>
-                    <div style="padding:12px 16px; margin-bottom:16px; border-radius:8px;
-                            background: <?php echo $sendType==='success' ? '#eaf7ee' : '#fdeeee'; ?>;
-                            color: <?php echo $sendType==='success' ? '#176b2c' : '#a21b1b'; ?>;
-                            border-left: 4px solid <?php echo $sendType==='success' ? '#2e9d4d' : '#d32f2f'; ?>;">
+                    <div class="tb-alert <?php echo $sendType === 'success' ? 'tb-alert--success' : 'tb-alert--error'; ?>">
                         <?php echo htmlspecialchars($sendMsg); ?>
                     </div>
                 <?php endif; ?>
 
-                <div class="field" style="margin-bottom: 16px;">
+                <div class="field">
                     <label for="annTitle">Title</label>
                     <input
                             type="text"
@@ -421,7 +302,7 @@ mysqli_stmt_close($stmt);
                     >
                 </div>
 
-                <div class="field" style="margin-bottom: 16px;">
+                <div class="field">
                     <label for="annMessage">Message</label>
                     <textarea
                             id="annMessage"
@@ -431,7 +312,7 @@ mysqli_stmt_close($stmt);
                     ></textarea>
                 </div>
 
-                <div class="field" style="margin-bottom: 16px;">
+                <div class="field">
                     <label for="recipientInput">Send To</label>
 
                     <div class="recipient-picker">
@@ -447,7 +328,7 @@ mysqli_stmt_close($stmt);
                         <div class="recipient-dropdown" id="recipientDropdown"></div>
                     </div>
 
-                    <p class="muted" style="margin-top:6px; font-size:12px;">
+                    <p class="muted help-under">
                         Type to search students, groups or courses. Type <strong>all</strong> to select all your students.
                     </p>
                 </div>
@@ -475,7 +356,7 @@ mysqli_stmt_close($stmt);
 
                 <?php if (count($sentHistory) === 0): ?>
                     <tr>
-                        <td colspan="4" class="muted" style="text-align: center; padding: 30px;">
+                        <td colspan="4" class="muted empty-cell">
                             You haven't sent any announcements yet.
                         </td>
                     </tr>
