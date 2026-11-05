@@ -123,89 +123,169 @@ if (isset($_POST['userId'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | TeamBox</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-
+        :root {
+            --navy: #0b1220;
+            --navy-soft: #13213a;
+            --blue: #4f7cff;
+            --blue-dark: #315fdb;
+            --text: #152033;
+            --muted: #697386;
+            --line: #dde3ec;
+            --surface: rgba(255,255,255,.94);
+            --danger: #b42318;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background: #f5f5f5;
-            height: 100vh;
-            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 32px;
+            color: var(--text);
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            background:
+                    radial-gradient(circle at 15% 15%, rgba(79,124,255,.20), transparent 34%),
+                    radial-gradient(circle at 85% 85%, rgba(26,188,156,.12), transparent 30%),
+                    linear-gradient(135deg, #edf2f9 0%, #f8fafc 52%, #e9eff8 100%);
         }
-
         .container {
-            width: 1000px; height: 550px;
-            background: #fff;
-            border-radius: 20px; overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-            display: flex;
+            width: min(1080px, 100%);
+            min-height: 620px;
+            display: grid;
+            grid-template-columns: 46% 54%;
+            overflow: hidden;
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,.9);
+            border-radius: 28px;
+            box-shadow: 0 30px 80px rgba(15,30,55,.18);
+            backdrop-filter: blur(18px);
         }
-
         .logo-section {
-            width: 50%; background: black;
-            display: flex; justify-content: center; align-items: center;
+            position: relative;
+            min-height: 620px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 54px;
+            overflow: hidden;
+            background: linear-gradient(145deg, var(--navy) 0%, var(--navy-soft) 60%, #234b87 100%);
         }
-
-        .logo-section img { width: 85%; max-width: 450px; height: auto; }
-
+        .logo-section::before,
+        .logo-section::after {
+            content: "";
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,.10);
+        }
+        .logo-section::before { width: 390px; height: 390px; left: -180px; top: -150px; }
+        .logo-section::after { width: 300px; height: 300px; right: -150px; bottom: -105px; }
+        .logo-section img {
+            position: relative;
+            z-index: 1;
+            width: min(88%, 400px);
+            height: auto;
+            filter: drop-shadow(0 16px 28px rgba(0,0,0,.30));
+        }
         .login-section {
-            width: 50%; padding: 60px;
-            display: flex; flex-direction: column; justify-content: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 68px clamp(42px, 7vw, 86px);
         }
 
-        .login-section h1 { color: #222; font-size: 42px; margin-bottom: 12px; }
-        .subtitle { color: #666; font-size: 18px; margin-bottom: 35px; }
-
+        .login-section h1 {
+            margin-bottom: 10px;
+            color: var(--text);
+            font-size: clamp(38px, 5vw, 50px);
+            line-height: 1.05;
+            letter-spacing: -1.7px;
+            text-align: center;
+        }
+        .subtitle {
+            margin-bottom: 34px;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.6;
+            text-align: center;
+        }
         .error-message {
-            padding: 12px 16px; margin-bottom: 20px;
-            background: #ffe1e1; color: #a21b1b;
-            border-left: 4px solid #a21b1b; border-radius: 8px;
-            font-size: 14px; line-height: 1.5;
+            margin-bottom: 22px;
+            padding: 13px 15px;
+            color: var(--danger);
+            background: #fff1f0;
+            border: 1px solid #f7c7c3;
+            border-left: 4px solid var(--danger);
+            border-radius: 11px;
+            font-size: 14px;
+            line-height: 1.5;
         }
-
-        .form-group { margin-bottom: 22px; }
-
+        .form-group { margin-bottom: 20px; }
         .form-group label {
-            display: block; color: #222;
-            font-size: 17px; font-weight: bold; margin-bottom: 9px;
+            display: block;
+            margin-bottom: 8px;
+            color: #344054;
+            font-size: 14px;
+            font-weight: 700;
         }
-
         .form-group input {
-            width: 100%; height: 52px; padding: 0 15px;
-            background: #fff; color: #000;
-            border: 2px solid #ccc; border-radius: 9px;
-            font-size: 17px; outline: none;
-            transition: 0.3s;
-            font-family: inherit;
+            width: 100%;
+            height: 54px;
+            padding: 0 16px;
+            color: var(--text);
+            background: #fbfcfe;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            outline: none;
+            font: inherit;
+            transition: border-color .2s, box-shadow .2s, background .2s;
         }
-
+        .form-group input::placeholder { color: #98a2b3; }
+        .form-group input:hover { border-color: #b9c3d0; background: #fff; }
         .form-group input:focus {
-            border-color: #000;
-            box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
+            background: #fff;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 4px rgba(79,124,255,.13);
         }
-
         .login-btn {
-            width: 100%; height: 58px; margin-top: 8px;
-            background: #fff; color: #000;
-            border: 2px solid #000; border-radius: 10px;
-            font-size: 20px; font-weight: bold;
-            cursor: pointer; transition: 0.3s;
+            width: 100%;
+            height: 54px;
+            margin-top: 7px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+            border: 0;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 750;
+            cursor: pointer;
+            box-shadow: 0 12px 24px rgba(49,95,219,.25);
+            transition: transform .18s, box-shadow .18s, filter .18s;
         }
-
-        .login-btn:hover { background: #000; color: #fff; }
-        .login-btn:active { background: #333; color: #fff; transform: scale(0.98); }
-
+        .login-btn:hover { transform: translateY(-1px); box-shadow: 0 16px 28px rgba(49,95,219,.30); filter: brightness(1.04); }
+        .login-btn:active { transform: translateY(0); }
+        .login-btn:focus-visible { outline: 3px solid rgba(79,124,255,.28); outline-offset: 3px; }
         .login-hint {
-            padding: 14px 16px; margin-top: 20px;
-            background: #f7f7f7; border-left: 4px solid #000; border-radius: 8px;
-            color: #666; font-size: 13px; line-height: 1.6;
+            margin-top: 24px;
+            padding: 14px 16px;
+            color: #667085;
+            background: #f7f9fc;
+            border: 1px solid #e7ebf1;
+            border-radius: 11px;
+            font-size: 12px;
+            line-height: 1.7;
         }
-
-        .login-hint strong { color: #222; }
-
-        @media (max-width: 900px) {
-            .container { width: 95%; height: auto; flex-direction: column; }
-            .logo-section { width: 100%; height: 220px; }
-            .login-section { width: 100%; padding: 40px 25px; }
-            .login-section h1 { font-size: 32px; }
+        .login-hint strong { color: #344054; }
+        @media (max-width: 820px) {
+            body { padding: 18px; }
+            .container { min-height: auto; grid-template-columns: 1fr; border-radius: 22px; }
+            .logo-section { min-height: 185px; padding: 30px; }
+            .logo-section img { width: min(68%, 310px); }
+            .login-section { padding: 44px 30px 38px; }
+        }
+        @media (max-width: 430px) {
+            body { padding: 0; background: #fff; }
+            .container { min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+            .logo-section { min-height: 155px; }
+            .login-section { justify-content: flex-start; padding: 34px 22px; }
+            .login-section h1 { font-size: 36px; }
         }
     </style>
 </head>
@@ -214,7 +294,7 @@ if (isset($_POST['userId'])) {
 <div class="container">
 
     <div class="logo-section">
-        <img src="TeamBox_logo_black.png" alt="TeamBox Logo">
+        <img src="logo_white.png" alt="TeamBox Logo">
     </div>
 
     <div class="login-section">
