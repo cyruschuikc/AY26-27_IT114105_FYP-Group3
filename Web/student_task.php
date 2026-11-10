@@ -271,12 +271,16 @@ if (isset($_POST['createTask']) && $myGroup) {
     $description = trim(isset($_POST['taskDescription']) ? $_POST['taskDescription'] : '');
     $assignedTo  = isset($_POST['assignedTo']) ? $_POST['assignedTo'] : '';
     $deadline    = trim(isset($_POST['taskDeadline'])    ? $_POST['taskDeadline']    : '');
+    $deadlineTime = trim(isset($_POST['taskDeadlineTime']) ? $_POST['taskDeadlineTime'] : '');
     $priority    = trim(isset($_POST['taskPriority'])    ? $_POST['taskPriority']    : 'Medium');
 
     $assignedToID = (int) $assignedTo;
 
-    if ($title === '' || $description === '' || $deadline === '' || $assignedToID === 0) {
+    if ($title === '' || $description === '' || $deadline === '' || $deadlineTime === '' || $assignedToID === 0) {
         $flashMsg  = 'Please fill in all required fields.';
+        $flashType = 'error';
+    } elseif (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $deadlineTime)) {
+        $flashMsg = 'Please enter a valid deadline time.';
         $flashType = 'error';
     } elseif (!in_array($priority, array('Low', 'Medium', 'High'), true)) {
         $priority = 'Medium';
@@ -302,15 +306,15 @@ if (isset($_POST['createTask']) && $myGroup) {
         } else {
             $stmt = mysqli_prepare($conn, "
                 INSERT INTO `tasks`
-                    (project_id, group_id, title, description, assigned_to, created_by, status, priority, due_date)
-                VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?, ?)
+                    (project_id, group_id, title, description, assigned_to, created_by, status, priority, due_date, due_time)
+                VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?)
             ");
             $projectId = (int) $myGroup['project_id'];
 
             mysqli_stmt_bind_param(
-                    $stmt, "iissiiss",
+                    $stmt, "iissiisss",
                     $projectId, $activeGroupID, $title, $description,
-                    $assignedToID, $userID, $priority, $deadline
+                    $assignedToID, $userID, $priority, $deadline, $deadlineTime
             );
 
             if (mysqli_stmt_execute($stmt)) {
@@ -764,6 +768,7 @@ if ($myGroup) {
             t.status,
             t.priority,
             t.due_date,
+            t.due_time,
             t.assigned_to,
             t.completed_at,
             t.created_by,
@@ -940,6 +945,24 @@ if ($myGroup) {
         .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
         .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
+        /* Calendar logo beside notification bell */
+        .calendar-link {
+            position: absolute;
+            right: 52px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 7px;
+            border-radius: 50%;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .calendar-link:hover { background: rgba(255, 255, 255, 0.15); }
+        .calendar-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
         /* =========================================================
            鈴鐺 + 未讀通知預覽
            ========================================================= */
@@ -1326,7 +1349,11 @@ if ($myGroup) {
         }
         .priority-high   { background: #ffe1e1; color: #a21b1b; }
         .priority-medium { background: #fff1c2; color: #765900; }
-        .priority-low    { background: #e5f0ff; color: #245889; }
+        .priority-low    { background: #dff5e5; color: #146c2e; }
+        .priority::before { content:""; display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; vertical-align:1px; }
+        .priority-high::before { background:#d93025; }
+        .priority-medium::before { background:#e0a030; }
+        .priority-low::before { background:#2e9d4d; }
 
         .task-files {
             margin-top: 18px;
@@ -1712,6 +1739,8 @@ if ($myGroup) {
             .navbar { padding: 15px; }
             .logo-area img { width: 55px; height: 55px; }
             .logo-area span { font-size: 26px; }
+            .calendar-link { right: 44px; width: 38px; height: 38px; }
+            .calendar-link img { width: 22px; height: 22px; }
             .bell-link { width: 38px; height: 38px; }
             .bell-link img { width: 22px; height: 22px; }
             .bell-preview { width: calc(100vw - 40px); right: -8px; }
@@ -1749,6 +1778,9 @@ if ($myGroup) {
             <span>TeamBox</span>
         </div>
 
+        <a href="student_calendar.php" class="calendar-link" title="Calendar" aria-label="Calendar">
+            <img src="cal_logo.png" alt="Calendar">
+        </a>
         <div class="bell-wrap">
             <a href="student_notifications.php" class="bell-link" title="Notifications">
                 <img src="bell.png" alt="Notifications">
@@ -2099,7 +2131,7 @@ if ($myGroup) {
                             </div>
                             <div class="detail-box">
                                 <h4>Deadline</h4>
-                                <p><?php echo $t['due_date'] ? date('d M Y', strtotime($t['due_date'])) : '—'; ?></p>
+                                <p><?php echo $t['due_date'] ? date('d M Y', strtotime($t['due_date'])) . (!empty($t['due_time']) ? ' ' . date('H:i', strtotime($t['due_time'])) : '') : '—'; ?></p>
                             </div>
                             <div class="detail-box">
                                 <h4>Priority</h4>
@@ -2311,32 +2343,22 @@ if ($myGroup) {
                                 <option value="">-- Select Member --</option>
                                 <?php foreach ($groupMembers as $m): ?>
                                     <?php if ((int)$m['student_id'] !== $studentID): ?>
-                                        <option value="<?php echo (int)$m['student_id']; ?>">
-                                            <?php echo htmlspecialchars($m['name']); ?>
-                                            (<?php echo htmlspecialchars($m['student_number']); ?>)
-                                        </option>
+                                        <option value="<?php echo (int)$m['student_id']; ?>"><?php echo htmlspecialchars($m['name']); ?> (<?php echo htmlspecialchars($m['student_number']); ?>)</option>
                                     <?php endif; ?>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
-                        <div class="form-group">
-                            <label for="taskDeadline">Deadline</label>
-                            <input type="date" id="taskDeadline" name="taskDeadline" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
                         <div class="form-group">
                             <label for="taskPriority">Priority</label>
                             <select id="taskPriority" name="taskPriority" required>
-                                <option value="High">High</option>
-                                <option value="Medium" selected>Medium</option>
-                                <option value="Low">Low</option>
+                                <option value="High">High</option><option value="Medium" selected>Medium</option><option value="Low">Low</option>
                             </select>
                         </div>
                     </div>
-
+                    <div class="form-row">
+                        <div class="form-group"><label for="taskDeadline">Deadline Date</label><input type="date" id="taskDeadline" name="taskDeadline" required></div>
+                        <div class="form-group"><label for="taskDeadlineTime">Deadline Time</label><input type="time" id="taskDeadlineTime" name="taskDeadlineTime" required></div>
+                    </div>
                 </div>
 
                 <div class="modal-footer">

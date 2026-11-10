@@ -363,6 +363,40 @@ if (!function_exists('formatDate')) {
         .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
         .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
+        .calendar-page-link {
+            position: absolute;
+            right: 52px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            padding: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            text-decoration: none;
+            transition: background .2s ease, transform .2s ease;
+        }
+        .calendar-page-link:hover {
+            background: rgba(255,255,255,.15);
+            transform: translateY(-50%) scale(1.04);
+        }
+        .calendar-page-link:focus-visible {
+            outline: 2px solid white;
+            outline-offset: 2px;
+        }
+        .calendar-page-link img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            display: block;
+        }
+        @media (max-width: 600px) {
+            .calendar-page-link { right: 44px; width: 38px; height: 38px; }
+            .calendar-page-link img { width: 22px; height: 22px; }
+        }
+
         /* =========================================================
            鈴鐺 + 未讀通知預覽
            ========================================================= */
@@ -847,6 +881,9 @@ if (!function_exists('formatDate')) {
             <span>TeamBox</span>
         </div>
 
+        <a href="student_calendar.php" class="calendar-page-link" title="Calendar" aria-label="Open calendar page">
+            <img src="cal_logo.png" alt="Calendar">
+        </a>
         <div class="bell-wrap">
             <a href="student_notifications.php" class="bell-link" title="Notifications">
                 <img src="bell.png" alt="Notifications">

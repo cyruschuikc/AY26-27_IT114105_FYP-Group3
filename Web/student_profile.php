@@ -378,6 +378,24 @@ if (!function_exists('timeAgo')) {
         .logo-area img { width: 65px; height: 65px; object-fit: contain; display: block; }
         .logo-area span { color: white; font-size: 30px; font-weight: bold; }
 
+        /* Calendar logo beside notification bell */
+        .calendar-link {
+            position: absolute;
+            right: 52px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 7px;
+            border-radius: 50%;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .calendar-link:hover { background: rgba(255, 255, 255, 0.15); }
+        .calendar-link img { width: 28px; height: 28px; object-fit: contain; display: block; }
         /* =========================================================
            鈴鐺 + 未讀通知預覽
            ========================================================= */
@@ -709,6 +727,8 @@ if (!function_exists('timeAgo')) {
             .logo-area img { width: 55px; height: 55px; }
             .logo-area span { font-size: 26px; }
 
+            .calendar-link { right: 44px; width: 38px; height: 38px; }
+            .calendar-link img { width: 22px; height: 22px; }
             .bell-link { width: 38px; height: 38px; }
             .bell-link img { width: 22px; height: 22px; }
             .bell-preview { width: calc(100vw - 40px); right: -8px; }
@@ -739,6 +759,9 @@ if (!function_exists('timeAgo')) {
             <span>TeamBox</span>
         </div>
 
+        <a href="student_calendar.php" class="calendar-link" title="Calendar" aria-label="Calendar">
+            <img src="cal_logo.png" alt="Calendar">
+        </a>
         <div class="bell-wrap">
             <a href="student_notifications.php" class="bell-link" title="Notifications">
                 <img src="bell.png" alt="Notifications">
