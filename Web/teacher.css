@@ -702,7 +702,7 @@ ul li:last-child {
     padding: 12px 14px;
     background: #fff;
     border: 1px solid #e6e8eb;
-    border-radius: var(--r-pill);
+    border-radius: var(--r-item);
     font-size: 14px;
     color: #2c2f36;
     font-family: inherit;

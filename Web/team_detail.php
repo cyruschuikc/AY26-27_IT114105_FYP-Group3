@@ -30,7 +30,7 @@ if ($rowTeacher) {
 }
 
 if ($teacherId <= 0) {
-    header('Location: teacher_login.php');
+    header('Location: login.php');
     exit;
 }
 

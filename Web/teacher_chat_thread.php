@@ -27,7 +27,7 @@ $teacher = mysqli_fetch_assoc($rs);
 mysqli_stmt_close($stmt);
 
 if (!$teacher) {
-    header('Location: teacher_login.php');
+    header('Location: login.php');
     exit;
 }
 $teacherId = (int) $teacher['id'];
