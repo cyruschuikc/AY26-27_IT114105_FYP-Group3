@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機: 127.0.0.1
--- 產生時間： 2026-11-02 11:26:58
+-- 產生時間： 2026-11-10 08:41:37
 -- 伺服器版本: 10.1.30-MariaDB
 -- PHP 版本： 5.6.33
 
@@ -177,7 +177,10 @@ INSERT INTO `activities` (`id`, `project_id`, `group_id`, `actor_id`, `action`, 
 (300, 2, 5, 6, 'contributed', 'logged contribution \"ABC\"', '2026-11-01 07:01:32'),
 (301, 2, 5, 6, 'contributed', 'logged contribution \"DFG\"', '2026-11-01 07:01:55'),
 (302, 2, 5, 8, 'contributed', 'logged contribution \"thdhuiop\"', '2026-11-01 07:08:28'),
-(303, 2, 5, 8, 'contributed', 'logged contribution \"thdhuiop\"', '2026-11-01 07:12:18');
+(303, 2, 5, 8, 'contributed', 'logged contribution \"thdhuiop\"', '2026-11-01 07:12:18'),
+(304, 2, 5, 7, 'created', 'created task \"nhjkl\"', '2026-11-03 09:04:33'),
+(305, 2, 5, 7, 'created', 'created task \"dfgh\"', '2026-11-03 09:06:19'),
+(306, 2, 5, 7, 'created', 'created task \"fgh\"', '2026-11-09 16:10:29');
 
 -- --------------------------------------------------------
 
@@ -233,6 +236,33 @@ INSERT INTO `announcement_targets` (`id`, `announcement_id`, `target_type`, `tar
 -- --------------------------------------------------------
 
 --
+-- 資料表結構 `calendar_events`
+--
+
+CREATE TABLE `calendar_events` (
+  `id` int(11) NOT NULL,
+  `creator_user_id` int(11) NOT NULL,
+  `group_id` int(11) DEFAULT NULL,
+  `event_type` enum('personal','group') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `event_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `event_date` date NOT NULL,
+  `start_time` time NOT NULL,
+  `end_time` time NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- 資料表的匯出資料 `calendar_events`
+--
+
+INSERT INTO `calendar_events` (`id`, `creator_user_id`, `group_id`, `event_type`, `event_name`, `event_date`, `start_time`, `end_time`, `description`, `created_at`) VALUES
+(1, 6, NULL, 'personal', 'ffff', '2026-11-01', '00:00:00', '00:00:00', '', '2026-11-09 15:44:51'),
+(2, 6, NULL, 'personal', 'vbjkl', '2026-11-01', '09:00:00', '10:00:00', '', '2026-11-09 16:15:22');
+
+-- --------------------------------------------------------
+
+--
 -- 資料表結構 `chat_polls`
 --
 
@@ -243,13 +273,6 @@ CREATE TABLE `chat_polls` (
   `title` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- 資料表的匯出資料 `chat_polls`
---
-
-INSERT INTO `chat_polls` (`id`, `group_id`, `creator_id`, `title`, `created_at`) VALUES
-(1, 5, 1, 'xc', '2026-10-31 10:26:41');
 
 -- --------------------------------------------------------
 
@@ -262,14 +285,6 @@ CREATE TABLE `chat_poll_options` (
   `poll_id` int(11) NOT NULL,
   `option_text` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- 資料表的匯出資料 `chat_poll_options`
---
-
-INSERT INTO `chat_poll_options` (`id`, `poll_id`, `option_text`) VALUES
-(1, 1, 'cc'),
-(2, 1, 'fff');
 
 -- --------------------------------------------------------
 
@@ -284,14 +299,6 @@ CREATE TABLE `chat_poll_votes` (
   `voter_id` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- 資料表的匯出資料 `chat_poll_votes`
---
-
-INSERT INTO `chat_poll_votes` (`id`, `poll_id`, `option_id`, `voter_id`, `created_at`) VALUES
-(1, 1, 2, 1, '2026-10-31 10:26:43'),
-(2, 1, 1, 2, '2026-10-31 16:57:09');
 
 -- --------------------------------------------------------
 
@@ -942,8 +949,8 @@ CREATE TABLE `messages` (
 --
 
 INSERT INTO `messages` (`id`, `group_id`, `sender_id`, `sender_user_id`, `recipient_id`, `content`, `attachment_id`, `created_at`, `is_pinned`, `pinned_at`, `pinned_by_user_id`) VALUES
-(42, 5, 1, NULL, NULL, '__POLL__:1', NULL, '2026-10-31 10:26:41', 0, NULL, NULL),
-(43, 5, NULL, 1, NULL, 'hello', NULL, '2026-10-31 17:44:11', 0, NULL, NULL);
+(43, 5, NULL, 1, NULL, 'hello', NULL, '2026-10-31 17:44:11', 0, NULL, NULL),
+(44, 5, 1, NULL, NULL, 'hello', NULL, '2026-11-03 09:20:47', 1, '2026-11-03 17:20:50', 6);
 
 -- --------------------------------------------------------
 
@@ -964,9 +971,9 @@ CREATE TABLE `message_reads` (
 --
 
 INSERT INTO `message_reads` (`id`, `user_id`, `group_id`, `last_read_message_id`, `updated_at`) VALUES
-(112, 6, 5, 43, '2026-10-31 10:41:01'),
+(112, 6, 5, 44, '2026-11-03 09:20:47'),
 (113, 1, 5, 43, '2026-10-31 17:44:11'),
-(168, 7, 5, 43, '2026-10-31 17:49:48'),
+(168, 7, 5, 44, '2026-11-09 16:10:06'),
 (169, 8, 5, 43, '2026-11-01 07:13:17');
 
 -- --------------------------------------------------------
@@ -1040,7 +1047,10 @@ CREATE TABLE `notifications` (
 INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `link`, `is_read`, `created_at`) VALUES
 (120, 7, 'task', 'New Task Assigned', 'You have been assigned \"Abc\".', 'student_task.php?group_id=5', 1, '2026-10-31 10:58:50'),
 (121, 7, 'task', 'New Task Assigned', 'You have been assigned \"ftgyh\".', 'student_task.php?group_id=5', 1, '2026-10-31 11:38:48'),
-(122, 6, 'task', 'New Task Assigned', 'You have been assigned \"ABC\".', 'student_task.php?group_id=5', 1, '2026-10-31 17:50:04');
+(122, 6, 'task', 'New Task Assigned', 'You have been assigned \"ABC\".', 'student_task.php?group_id=5', 1, '2026-10-31 17:50:04'),
+(123, 6, 'task', 'New Task Assigned', 'You have been assigned \"nhjkl\".', 'student_task.php?group_id=5', 1, '2026-11-03 09:04:33'),
+(124, 6, 'task', 'New Task Assigned', 'You have been assigned \"dfgh\".', 'student_task.php?group_id=5', 1, '2026-11-03 09:06:19'),
+(125, 6, 'task', 'New Task Assigned', 'You have been assigned \"fgh\".', 'student_task.php?group_id=5', 1, '2026-11-09 16:10:29');
 
 -- --------------------------------------------------------
 
@@ -1373,6 +1383,7 @@ CREATE TABLE `tasks` (
   `status` enum('Pending','In Progress','Waiting_Confirm','Completed') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
   `priority` enum('Low','Medium','High') COLLATE utf8mb4_unicode_ci DEFAULT 'Medium',
   `due_date` date DEFAULT NULL,
+  `due_time` time DEFAULT NULL,
   `completed_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1381,68 +1392,71 @@ CREATE TABLE `tasks` (
 -- 資料表的匯出資料 `tasks`
 --
 
-INSERT INTO `tasks` (`id`, `project_id`, `group_id`, `title`, `description`, `assigned_to`, `created_by`, `status`, `priority`, `due_date`, `completed_at`, `created_at`) VALUES
-(80, 1, 1, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 182, 187, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(81, 1, 1, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 183, 187, 'In Progress', 'Medium', '2026-10-19', NULL, '2026-10-20 13:29:03'),
-(82, 1, 2, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 186, 191, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(83, 1, 2, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 187, 191, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(84, 1, 4, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 194, 199, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(85, 1, 4, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 195, 199, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(86, 2, 5, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 1, 6, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(87, 2, 5, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 2, 6, 'In Progress', 'Medium', '2026-10-19', NULL, '2026-10-20 13:29:03'),
-(88, 2, 6, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 242, 247, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(89, 2, 6, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 243, 247, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(90, 2, 8, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 250, 255, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(91, 2, 8, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 251, 255, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(92, 3, 9, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 258, 263, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(93, 3, 9, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 259, 263, 'In Progress', 'Medium', '2026-10-19', NULL, '2026-10-20 13:29:03'),
-(94, 3, 10, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 262, 267, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(95, 3, 10, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 263, 267, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(96, 3, 12, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 270, 275, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(97, 3, 12, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 271, 275, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(98, 4, 13, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 202, 207, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(99, 4, 13, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 203, 207, 'In Progress', 'Medium', '2026-10-19', NULL, '2026-10-20 13:29:03'),
-(100, 4, 14, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 206, 211, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(101, 4, 14, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 207, 211, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(102, 4, 15, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 210, 215, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(103, 4, 15, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 211, 215, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(104, 4, 16, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 214, 219, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(105, 4, 16, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 215, 219, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(106, 5, 17, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 278, 283, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(107, 5, 17, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 279, 283, 'In Progress', 'Medium', '2026-10-19', NULL, '2026-10-20 13:29:03'),
-(108, 5, 18, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 282, 287, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(109, 5, 18, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 283, 287, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(110, 5, 19, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 286, 291, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(111, 5, 19, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 287, 291, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(112, 5, 20, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 290, 295, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(113, 5, 20, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 291, 295, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(114, 6, 21, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 222, 227, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(115, 6, 21, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 223, 227, 'In Progress', 'Medium', '2026-10-19', NULL, '2026-10-20 13:29:03'),
-(116, 6, 22, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 226, 231, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(117, 6, 22, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 227, 231, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(118, 6, 23, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 230, 235, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(119, 6, 23, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 231, 235, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(120, 6, 24, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 234, 239, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(121, 6, 24, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 235, 239, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(122, 7, 25, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 298, 303, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(123, 7, 25, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 299, 303, 'In Progress', 'Medium', '2026-10-19', NULL, '2026-10-20 13:29:03'),
-(124, 7, 26, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 302, 307, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(125, 7, 26, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 303, 307, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(126, 7, 27, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 306, 311, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(127, 7, 27, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 307, 311, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(128, 7, 28, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 310, 315, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(129, 7, 28, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 311, 315, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(130, 8, 29, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 318, 323, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(131, 8, 29, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 319, 323, 'In Progress', 'Medium', '2026-10-19', NULL, '2026-10-20 13:29:03'),
-(132, 8, 30, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 322, 327, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(133, 8, 30, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 323, 327, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(134, 8, 31, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 326, 331, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(135, 8, 31, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 327, 331, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(136, 8, 32, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 330, 335, 'Completed', 'Medium', '2026-10-06', '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
-(137, 8, 32, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 331, 335, 'In Progress', 'Medium', '2026-10-27', NULL, '2026-10-20 13:29:03'),
-(138, 2, 5, 'Abc', 'dfghyujk', 2, 6, 'Pending', 'Medium', '2026-11-11', NULL, '2026-10-31 10:58:50'),
-(139, 2, 5, 'ftgyh', 'fgbn', 2, 6, 'Pending', 'Medium', '2026-11-18', NULL, '2026-10-31 11:38:48'),
-(140, 2, 5, 'ABC', 'DTGHJK', 1, 7, 'Pending', 'Medium', '2026-11-18', NULL, '2026-10-31 17:50:04');
+INSERT INTO `tasks` (`id`, `project_id`, `group_id`, `title`, `description`, `assigned_to`, `created_by`, `status`, `priority`, `due_date`, `due_time`, `completed_at`, `created_at`) VALUES
+(80, 1, 1, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 182, 187, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(81, 1, 1, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 183, 187, 'In Progress', 'Medium', '2026-10-19', NULL, NULL, '2026-10-20 13:29:03'),
+(82, 1, 2, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 186, 191, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(83, 1, 2, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 187, 191, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(84, 1, 4, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 194, 199, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(85, 1, 4, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 195, 199, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(86, 2, 5, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 1, 6, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(87, 2, 5, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 2, 6, 'In Progress', 'Medium', '2026-10-19', NULL, NULL, '2026-10-20 13:29:03'),
+(88, 2, 6, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 242, 247, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(89, 2, 6, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 243, 247, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(90, 2, 8, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 250, 255, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(91, 2, 8, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 251, 255, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(92, 3, 9, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 258, 263, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(93, 3, 9, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 259, 263, 'In Progress', 'Medium', '2026-10-19', NULL, NULL, '2026-10-20 13:29:03'),
+(94, 3, 10, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 262, 267, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(95, 3, 10, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 263, 267, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(96, 3, 12, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 270, 275, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(97, 3, 12, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 271, 275, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(98, 4, 13, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 202, 207, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(99, 4, 13, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 203, 207, 'In Progress', 'Medium', '2026-10-19', NULL, NULL, '2026-10-20 13:29:03'),
+(100, 4, 14, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 206, 211, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(101, 4, 14, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 207, 211, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(102, 4, 15, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 210, 215, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(103, 4, 15, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 211, 215, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(104, 4, 16, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 214, 219, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(105, 4, 16, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 215, 219, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(106, 5, 17, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 278, 283, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(107, 5, 17, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 279, 283, 'In Progress', 'Medium', '2026-10-19', NULL, NULL, '2026-10-20 13:29:03'),
+(108, 5, 18, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 282, 287, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(109, 5, 18, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 283, 287, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(110, 5, 19, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 286, 291, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(111, 5, 19, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 287, 291, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(112, 5, 20, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 290, 295, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(113, 5, 20, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 291, 295, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(114, 6, 21, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 222, 227, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(115, 6, 21, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 223, 227, 'In Progress', 'Medium', '2026-10-19', NULL, NULL, '2026-10-20 13:29:03'),
+(116, 6, 22, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 226, 231, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(117, 6, 22, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 227, 231, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(118, 6, 23, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 230, 235, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(119, 6, 23, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 231, 235, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(120, 6, 24, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 234, 239, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(121, 6, 24, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 235, 239, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(122, 7, 25, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 298, 303, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(123, 7, 25, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 299, 303, 'In Progress', 'Medium', '2026-10-19', NULL, NULL, '2026-10-20 13:29:03'),
+(124, 7, 26, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 302, 307, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(125, 7, 26, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 303, 307, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(126, 7, 27, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 306, 311, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(127, 7, 27, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 307, 311, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(128, 7, 28, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 310, 315, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(129, 7, 28, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 311, 315, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(130, 8, 29, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 318, 323, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(131, 8, 29, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 319, 323, 'In Progress', 'Medium', '2026-10-19', NULL, NULL, '2026-10-20 13:29:03'),
+(132, 8, 30, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 322, 327, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(133, 8, 30, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 323, 327, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(134, 8, 31, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 326, 331, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(135, 8, 31, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 327, 331, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(136, 8, 32, 'Prepare project proposal', 'Create the initial proposal and agree on team responsibilities.', 330, 335, 'Completed', 'Medium', '2026-10-06', NULL, '2026-10-10 15:29:03', '2026-10-20 13:29:03'),
+(137, 8, 32, 'Complete prototype checkpoint', 'Prepare the current prototype and document the completed work.', 331, 335, 'In Progress', 'Medium', '2026-10-27', NULL, NULL, '2026-10-20 13:29:03'),
+(138, 2, 5, 'Abc', 'dfghyujk', 2, 6, 'Pending', 'Medium', '2026-11-11', NULL, NULL, '2026-10-31 10:58:50'),
+(139, 2, 5, 'ftgyh', 'fgbn', 2, 6, 'Pending', 'Medium', '2026-11-18', NULL, NULL, '2026-10-31 11:38:48'),
+(140, 2, 5, 'ABC', 'DTGHJK', 1, 7, 'Pending', 'Medium', '2026-11-18', NULL, NULL, '2026-10-31 17:50:04'),
+(141, 2, 5, 'nhjkl', 'cvbnmk', 1, 7, 'Pending', 'Medium', '2026-11-11', NULL, NULL, '2026-11-03 09:04:33'),
+(142, 2, 5, 'dfgh', 'fffff', 1, 7, 'Pending', 'Medium', '2026-11-09', NULL, NULL, '2026-11-03 09:06:19'),
+(143, 2, 5, 'fgh', 'zsder', 1, 7, 'Pending', 'Medium', '2026-12-04', '22:15:00', NULL, '2026-11-09 16:10:29');
 
 -- --------------------------------------------------------
 
@@ -1729,13 +1743,13 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `role`, `last_active_at`, `created_at`) VALUES
-(1, 'Esther Yuen', 'wyyuen@vtc.edu.hk', '12345', 'teacher', '2026-11-01 01:44:03', '2026-10-07 11:11:58'),
+(1, 'Esther Yuen', 'wyyuen@vtc.edu.hk', '12345', 'teacher', '2026-11-03 16:27:23', '2026-10-07 11:11:58'),
 (2, 'Dr. Alan Ho', 'alanho@vtc.edu.hk', '12345', 'teacher', '2026-10-20 18:36:02', '2026-10-07 11:11:58'),
 (3, 'Prof. Rebecca Lam', 'rebeccalam@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
 (4, 'Dr. Vincent Ng', 'vincentng@vtc.edu.hk', '12345', 'teacher', NULL, '2026-10-07 11:11:58'),
 (5, 'Ms. Karen Tsang', 'karentsang@vtc.edu.hk', '12345', 'teacher', '2026-10-20 15:08:34', '2026-10-07 11:11:58'),
-(6, 'CHAN Ho Yin', '260222111@stu.vtc.edu.hk', '12345', 'student', '2026-11-01 14:39:46', '2026-10-07 11:11:58'),
-(7, 'CHUI Ka Chun', '260222112@stu.vtc.edu.hk', '12345', 'student', '2026-11-01 15:07:09', '2026-10-07 11:11:58'),
+(6, 'CHAN Ho Yin', '260222111@stu.vtc.edu.hk', '12345', 'student', '2026-11-10 00:10:38', '2026-10-07 11:11:58'),
+(7, 'CHUI Ka Chun', '260222112@stu.vtc.edu.hk', '12345', 'student', '2026-11-10 00:10:06', '2026-10-07 11:11:58'),
 (8, 'LAI Ka-Yu Savio', '260222113@stu.vtc.edu.hk', '12345', 'student', '2026-11-01 15:30:29', '2026-10-07 11:11:58'),
 (9, 'MIAO Tung', '260222114@stu.vtc.edu.hk', '12345', 'student', '2026-11-01 15:07:35', '2026-10-07 11:11:58'),
 (187, 'AU Ka Chun', 'student1@student.teambox.local', '12345', 'student', NULL, '2026-10-20 13:29:02'),
@@ -1924,6 +1938,14 @@ ALTER TABLE `announcement_targets`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_ann` (`announcement_id`),
   ADD KEY `idx_target` (`target_type`,`target_id`);
+
+--
+-- 資料表索引 `calendar_events`
+--
+ALTER TABLE `calendar_events`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_calendar_creator_date` (`creator_user_id`,`event_date`),
+  ADD KEY `idx_calendar_group_date` (`group_id`,`event_date`);
 
 --
 -- 資料表索引 `chat_polls`
@@ -2189,7 +2211,7 @@ ALTER TABLE `users`
 -- 使用資料表 AUTO_INCREMENT `activities`
 --
 ALTER TABLE `activities`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=304;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=307;
 
 --
 -- 使用資料表 AUTO_INCREMENT `announcements`
@@ -2204,22 +2226,28 @@ ALTER TABLE `announcement_targets`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
+-- 使用資料表 AUTO_INCREMENT `calendar_events`
+--
+ALTER TABLE `calendar_events`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- 使用資料表 AUTO_INCREMENT `chat_polls`
 --
 ALTER TABLE `chat_polls`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- 使用資料表 AUTO_INCREMENT `chat_poll_options`
 --
 ALTER TABLE `chat_poll_options`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- 使用資料表 AUTO_INCREMENT `chat_poll_votes`
 --
 ALTER TABLE `chat_poll_votes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- 使用資料表 AUTO_INCREMENT `classes`
@@ -2285,7 +2313,7 @@ ALTER TABLE `leader_votes`
 -- 使用資料表 AUTO_INCREMENT `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
 -- 使用資料表 AUTO_INCREMENT `message_reads`
@@ -2303,7 +2331,7 @@ ALTER TABLE `milestones`
 -- 使用資料表 AUTO_INCREMENT `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=123;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=126;
 
 --
 -- 使用資料表 AUTO_INCREMENT `projects`
@@ -2339,7 +2367,7 @@ ALTER TABLE `students`
 -- 使用資料表 AUTO_INCREMENT `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=141;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=144;
 
 --
 -- 使用資料表 AUTO_INCREMENT `teachers`
@@ -2384,6 +2412,13 @@ ALTER TABLE `announcements`
 --
 ALTER TABLE `announcement_targets`
   ADD CONSTRAINT `announcement_targets_ibfk_1` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`) ON DELETE CASCADE;
+
+--
+-- 資料表的 Constraints `calendar_events`
+--
+ALTER TABLE `calendar_events`
+  ADD CONSTRAINT `fk_calendar_event_creator` FOREIGN KEY (`creator_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_calendar_event_group` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE;
 
 --
 -- 資料表的 Constraints `classes`
