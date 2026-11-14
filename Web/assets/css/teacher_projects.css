@@ -18,16 +18,16 @@
     justify-content: center;
     min-height: 36px;
     padding: 8px 16px;
-    border: 1px solid var(--ink);
+    border: 1px solid var(--accent);
     border-radius: var(--r-pill);
-    background: var(--ink);
+    background: var(--accent);
     color: #fff;
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
 }
-.create-project-btn:hover { background: var(--ink-2); border-color: var(--ink-2); }
+.create-project-btn:hover { background: #24408F; border-color: #24408F; }
 .create-project-btn:focus-visible,
 .project-title-block a:focus-visible,
 .project-open:focus-visible,
@@ -40,18 +40,17 @@
 .projects-kpi {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    overflow: hidden;
-    margin-bottom: 16px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-card);
-    background: var(--surface-solid);
+    gap: 14px;
+    margin-bottom: 20px;
 }
 .kpi-item {
     min-width: 0;
-    padding: 13px 16px;
-    border-right: 1px solid var(--line);
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-item);
 }
-.kpi-item:last-child { border-right: none; }
 .kpi-label {
     display: block;
     overflow: hidden;
@@ -82,11 +81,11 @@
 }
 .section-heading h2 {
     margin: 0;
-    color: var(--ink-2);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
 }
 .section-heading span { color: var(--muted); font-size: 12px; }
 .archived-heading { margin-top: 24px; }
@@ -156,6 +155,11 @@
     background: var(--sunken);
     color: var(--muted);
 }
+.status-recruiting { background: #FBF1E3; border-color: #F0DFC0; color: #B5781A; }
+.status-waiting_send { background: #F3EBFB; border-color: #E5D3F5; color: #8A4BC2; }
+.status-voting { background: #E9EEFB; border-color: #D7E0F7; color: #1F46A1; }
+.status-executing { background: #1F46A1; border-color: #1F46A1; color: #FFFFFF; }
+.status-completed { background: #E9F7EE; border-color: #D4ECD9; color: #2FA35C; }
 .project-context {
     display: flex;
     align-items: center;
@@ -211,8 +215,8 @@
     place-items: center;
     border-radius: 50%;
     background: conic-gradient(
-            var(--ink) calc(var(--progress) * 1%),
-            rgba(20, 20, 25, .06) 0
+            var(--accent) calc(var(--progress) * 1%),
+            rgba(31, 70, 161, .08) 0
     );
 }
 .progress-ring::before {
@@ -266,16 +270,41 @@
     justify-content: center;
     min-height: 31px;
     padding: 6px 12px;
-    border: 1px solid var(--ink);
+    border: 1px solid var(--accent);
     border-radius: var(--r-pill);
-    background: var(--ink);
+    background: var(--accent);
     color: #fff;
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
 }
-.project-open:hover { border-color: var(--ink-2); background: var(--ink-2); }
+.project-open:hover { border-color: #24408F; background: #24408F; }
+.project-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.project-random {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 31px;
+    padding: 6px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.project-random:hover {
+    border-color: var(--ink);
+    background: var(--surface-solid);
+}
 
 .projects-empty {
     padding: 24px 16px;
@@ -342,8 +371,6 @@
     .page-head-simple { flex-wrap: wrap; align-items: center; gap: 8px 16px; }
     .page-head-simple .create-project-btn { margin-left: auto; }
     .projects-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .kpi-item:nth-child(2) { border-right: none; }
-    .kpi-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
     .projects-grid { grid-template-columns: 1fr; }
     .archived-empty { align-items: flex-start; flex-direction: column; gap: 5px; }
     .archived-row {

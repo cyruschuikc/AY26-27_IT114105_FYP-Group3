@@ -1,48 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
 /* =========================================================
-   TeamBox — Design Tokens（唯一变量源）
-   暖白磨砂玻璃 · 单色极简
+   TeamBox — Design Tokens（DS 蓝白主题）
    颜色 / 圆角 / 阴影 / 动效统一从这里取值。
    ========================================================= */
 
 :root {
-    --bg: #EDEBE7;
-    --bg-edge: #E3E1DC;
-    --surface: rgba(255, 255, 255, .72);
-    --surface-solid: #F8F7F4;
-    --sunken: rgba(20, 20, 25, .035);
-    --rail: #2A2A2C;
-    --ink: #17171A;
-    --ink-2: #55554F;
-    --muted: #6B6B66;
-    --muted-soft: #9A9A96;
-    --line: rgba(0, 0, 0, .07);
-    --line-strong: rgba(0, 0, 0, .12);
-    --edge: rgba(255, 255, 255, .60);
-    --accent: #CFE7DA;
-    --accent-soft: rgba(207, 231, 218, .55);
-    --accent-ink: #3A6650;
-    --danger: #B3463A;
-    --warn: #A5803C;
+    --bg: #EDF3F2;
+    --bg-edge: #E2ECEC;
+    --surface: #FFFFFF;
+    --surface-solid: #FFFFFF;
+    --sunken: #EEF3FC;
+    --rail: #F6F9FD;
+    --ink: #111A33;
+    --ink-2: #2B3450;
+    --muted: #8A93A9;
+    --muted-soft: #A6AEC2;
+    --line: #E9EDF6;
+    --line-strong: #D8E0F0;
+    --edge: #FFFFFF;
+    --accent: #1F46A1;
+    --accent-soft: #E9EEFB;
+    --accent-ink: #1F46A1;
+    --danger: #FF6F70;
+    --warn: #F0A33A;
 
-    --r-panel: 28px;
+    --r-panel: 40px;
     --r-card: 16px;
     --r-item: 12px;
     --r-pill: 999px;
 
-    --shadow-panel: 0 24px 60px -20px rgba(20, 20, 25, .18),
-                    0 2px 8px rgba(20, 20, 25, .04);
-    --shadow-item: 0 8px 20px -12px rgba(20, 20, 25, .20);
-    --shadow-float: 0 18px 40px -12px rgba(20, 20, 25, .22);
+    --shadow-panel: 0 30px 70px rgba(22, 52, 63, .10),
+                    0 6px 18px rgba(22, 52, 63, .04);
+    --shadow-item: 0 8px 20px rgba(28, 48, 90, .05);
+    --shadow-float: 0 18px 40px -12px rgba(28, 48, 90, .16);
 
     --ease: cubic-bezier(.2, .8, .2, 1);
     --dur: 160ms;
 
-    --font: "Inter", -apple-system, "Helvetica Neue", "PingFang SC",
-            "Microsoft YaHei", sans-serif;
+    --font: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI",
+            Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei",
+            sans-serif;
 
-    /* 系统反馈层（alert/toast）低透明度背景，teacher_ui.css 改造时引用 */
-    --alert-info: rgba(20, 20, 25, .04);
-    --alert-success: rgba(63, 110, 88, .08);
-    --alert-warning: rgba(165, 128, 60, .08);
-    --alert-error: rgba(196, 87, 74, .08);
+    --alert-info: rgba(31, 70, 161, .06);
+    --alert-success: rgba(47, 163, 92, .08);
+    --alert-warning: rgba(240, 163, 58, .10);
+    --alert-error: rgba(255, 111, 112, .10);
 }

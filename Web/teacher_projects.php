@@ -246,7 +246,7 @@ if (isset($_GET['msg'])) {
                                     </a>
                                 </h3>
                             </div>
-                            <span class="project-status <?php echo $isDraft ? 'status-draft' : ''; ?>"
+                            <span class="project-status <?php echo $isDraft ? 'status-draft' : 'status-' . strtolower((string) $p['status']); ?>"
                                   tabindex="0"
                                   data-tooltip="Current project status: <?= htmlspecialchars($statusLabel) ?>">
                                 <?php echo htmlspecialchars($statusLabel); ?>
@@ -307,9 +307,14 @@ if (isset($_GET['msg'])) {
                                     <small><?php echo htmlspecialchars($deadlineMeta); ?></small>
                                 <?php endif; ?>
                             </div>
-                            <a href="project_detail.php?id=<?php echo (int) $p['id']; ?>" class="project-open">
-                                Open Project
-                            </a>
+                            <div class="project-actions">
+                                <a href="RandomStudents.php?id=<?php echo (int) $p['id']; ?>" class="project-random">
+                                    Random
+                                </a>
+                                <a href="project_detail.php?id=<?php echo (int) $p['id']; ?>" class="project-open">
+                                    Open Project
+                                </a>
+                            </div>
                         </div>
                     </article>
                 <?php endforeach; ?>

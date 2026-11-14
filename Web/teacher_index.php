@@ -151,11 +151,6 @@ foreach ($teams as $t) {
         $reasons[] = $n . ' overdue task' . ($n === 1 ? '' : 's');
         $priority  = min($priority, 2);
     }
-    if (empty($t['last_activity'])
-            || strtotime($t['last_activity']) < strtotime('-7 days')) {
-        $reasons[] = 'No activity for 7+ days';
-        $priority  = min($priority, 4);
-    }
 
     if (count($reasons) > 0) {
         $t['reasons']  = $reasons;
@@ -175,7 +170,6 @@ usort($attentionTeams, function ($a, $b) {
     return ($a['priority'] < $b['priority']) ? -1 : 1;
 });
 $attentionTeamTotal = count($attentionTeams);
-$attentionTeams = array_slice($attentionTeams, 0, 5);
 
 // Upcoming team task deadlines (future only).
 $upcomingDeadlines = array();
@@ -301,6 +295,58 @@ while ($row = mysqli_fetch_assoc($rs)) {
     $activities[] = $row;
 }
 mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 4. 待审阅文件（Dashboard 第三行 Files to Review）
+// =========================================================
+$pendingFiles = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT f.id, f.file_name, f.display_name, f.file_type, f.uploaded_at,
+           g.name AS group_name
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    LEFT JOIN `groups` g ON g.id = f.group_id
+    WHERE f.status = 'Unviewed'
+      AND p.supervisor_id = ?
+    ORDER BY f.uploaded_at DESC
+    LIMIT 8
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $pendingFiles[] = $row; }
+mysqli_stmt_close($stmt);
+
+
+// =========================================================
+// 5. 日历数据：当前老师项目下所有未完成任务，按截止日期分组
+//    （用于日历打点、未来 7 天列表、点选日期查看）
+// =========================================================
+$calendarTasks = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT t.title, t.due_date, g.name AS group_name, p.name AS project_name
+    FROM `tasks` t
+    INNER JOIN `projects` p ON p.id = t.project_id
+    LEFT JOIN `groups` g ON g.id = t.group_id
+    WHERE p.supervisor_id = ?
+      AND t.due_date IS NOT NULL
+      AND t.status <> 'Completed'
+    ORDER BY t.due_date ASC
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) {
+    $d = (string) $row['due_date'];
+    if (!isset($calendarTasks[$d])) { $calendarTasks[$d] = array(); }
+    $calendarTasks[$d][] = array(
+        'title'   => (string) $row['title'],
+        'group'   => (string) ($row['group_name'] !== null ? $row['group_name'] : ''),
+        'project' => (string) ($row['project_name'] !== null ? $row['project_name'] : ''),
+    );
+}
+mysqli_stmt_close($stmt);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -313,231 +359,321 @@ mysqli_stmt_close($stmt);
     <link rel="stylesheet" href="assets/css/soft-glass.css?v=<?= filemtime('assets/css/soft-glass.css') ?>">
     <link rel="stylesheet" href="assets/css/teacher_index.css?v=<?= filemtime('assets/css/teacher_index.css') ?>">
     <link rel="stylesheet" href="teacher_ui.css?v=<?= filemtime('teacher_ui.css') ?>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/teacher_index_ds.css?v=<?= filemtime('assets/css/teacher_index_ds.css') ?>">
 </head>
 <body class="sg-teacher">
 
 <?php include 'teacher_nav.php'; ?>
 
 <main class="main">
-    <div class="content">
+    <div class="content ds-dash">
 
         <h1 class="sr-only">Instructor Dashboard</h1>
 
-        <div class="dash-layout">
-            <div class="dash-main">
+        <div class="ds-row ds-row-top">
 
-                <div class="attention-strip">
-                    <?php $stripEmpty = true; ?>
-                    <?php if ((int) $formationCounts['Awaiting Approval'] > 0): $stripEmpty = false; ?>
-                        <a href="teacher_teams.php?status=pending" class="strip-chip">
-                            <strong><?php echo (int) $formationCounts['Awaiting Approval']; ?></strong> awaiting approval
-                        </a>
-                    <?php endif; ?>
-                    <?php if ($overdueTeamCount > 0): $stripEmpty = false; ?>
-                        <a href="teacher_teams.php?status=overdue" class="strip-chip">
-                            <strong><?php echo (int) $overdueTeamCount; ?></strong> teams overdue
-                        </a>
-                    <?php endif; ?>
-                    <?php if ((int) $formationCounts['Choosing Leader'] > 0): $stripEmpty = false; ?>
-                        <a href="teacher_teams.php?status=Voting" class="strip-chip">
-                            <strong><?php echo (int) $formationCounts['Choosing Leader']; ?></strong> choosing leader
-                        </a>
-                    <?php endif; ?>
-                    <?php if ($stripEmpty): ?>
-                        <span class="strip-ok">All teams are up to date.</span>
-                    <?php endif; ?>
-                    <a href="teacher_teams.php" class="strip-link">View teams →</a>
+            <section class="ds-hero">
+                <h2>Good Afternoon, <?php echo htmlspecialchars($teacherName); ?>!</h2>
+                <?php
+                $heroBits = array();
+                $awaiting = (int) $formationCounts['Awaiting Approval'];
+                if ($awaiting > 0) {
+                    $heroBits[] = $awaiting . ' team request' . ($awaiting === 1 ? '' : 's') . ' awaiting approval';
+                }
+                if ($overdueTeamCount > 0) {
+                    $heroBits[] = $overdueTeamCount . ' team' . ($overdueTeamCount === 1 ? '' : 's') . ' with overdue tasks';
+                }
+                $heroText = count($heroBits) > 0 ? implode(' · ', $heroBits) : 'All teams are up to date.';
+                ?>
+                <p><?php echo htmlspecialchars($heroText); ?></p>
+                <a class="cta" href="teacher_teams.php">View Teams</a>
+                <div class="clock">
+                    <div class="t" id="tbClock"><?php echo date('H:i:s'); ?></div>
+                    <div class="d" id="tbClockDate"><?php echo date('l, j M Y'); ?></div>
                 </div>
+            </section>
 
-        <div class="section-head">
-            <h2>Teams Needing Attention</h2>
-            <span>Top <?php echo min(5, (int) $attentionTeamTotal); ?> of <?php echo (int) $attentionTeamTotal; ?></span>
-        </div>
-        <div class="card">
-            <table class="attention-table">
-                <tr>
-                    <th style="width: 26%;">Team</th>
-                    <th style="width: 24%;">Project</th>
-                    <th>Needs Attention</th>
-                    <th style="width: 60px;"></th>
-                </tr>
-
-                <?php if (count($attentionTeams) === 0): ?>
-                    <tr>
-                        <td colspan="4" class="muted" style="text-align: center; padding: 30px;">
-                            All teams are up to date.
-                        </td>
-                    </tr>
-                <?php endif; ?>
-
-                <?php foreach ($attentionTeams as $t): ?>
-                    <tr>
-                        <td>
-                            <strong><?php echo htmlspecialchars($t['name']); ?></strong>
-                            <div class="muted team-sub">
-                                <?php echo htmlspecialchars($t['leader_name'] ?: 'No leader'); ?>
-                            </div>
-                        </td>
-                        <td title="<?php echo htmlspecialchars($t['project_name']); ?>">
-                            <?php echo htmlspecialchars($t['project_name']); ?>
-                        </td>
-                        <td>
-                            <div class="reason-chips">
-                                <?php foreach ($t['reasons'] as $reason): ?>
-                                    <span class="reason-chip"><?php echo htmlspecialchars($reason); ?></span>
-                                <?php endforeach; ?>
-                            </div>
-                        </td>
-                        <td><a href="team_detail.php?id=<?php echo (int) $t['id']; ?>" class="link">View</a></td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
-        </div>
-
-        <div class="dashboard-bottom">
-            <div class="card">
-                <div class="card-head">
-                    <div class="section-head">
-                        <h2>Upcoming Team Tasks</h2>
-                        <span>Next 7 days</span>
-                    </div>
-                </div>
-                <?php if (count($upcomingDeadlines) === 0): ?>
-                    <div class="empty-note">No team tasks are due in the next 7 days.</div>
-                <?php else: ?>
-                    <ul class="deadline-list">
-                        <?php foreach ($upcomingDeadlines as $deadline): ?>
-                            <?php $deadlineLabel = dashboardDeadlineLabel($deadline['due_date']); ?>
-                            <li>
-                                <div class="deadline-main">
-                                    <div class="deadline-title"><?php echo htmlspecialchars($deadline['title']); ?></div>
-                                    <div class="deadline-meta">
-                                        <?php echo htmlspecialchars($deadline['group_name']); ?>
-                                        · <?php echo htmlspecialchars($deadline['project_name']); ?>
-                                        · <?php echo date('d M', strtotime($deadline['due_date'])); ?>
-                                    </div>
-                                </div>
-                                <span class="deadline-badge">
-                                    <?php echo htmlspecialchars($deadlineLabel['label']); ?>
-                                </span>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-            </div>
-
-            <div class="card">
-                <div class="card-head">
-                    <div class="section-head">
-                        <h2>Recent Activity</h2>
-                        <span>Latest <?php echo count($activities); ?></span>
-                    </div>
-                </div>
-                <ul class="activity-list">
-                    <?php if (count($activities) === 0): ?>
-                        <li class="muted">No activity yet.</li>
-                    <?php endif; ?>
-
-                    <?php foreach ($activities as $a): ?>
-                        <li>
-                            <span class="act-detail">
-                                <?php if (!empty($a['actor_name'])): ?>
-                                    <strong><?php echo htmlspecialchars($a['actor_name']); ?></strong>
-                                <?php endif; ?>
-                                <?php echo htmlspecialchars($a['detail']); ?>
-                            </span>
-                            <span class="muted act-time"><?php echo timeAgo($a['created_at']); ?></span>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        </div>
-
-            </div>
-
-            <aside class="dash-rail">
-                <div class="rail-card">
-                    <h3>Today</h3>
-                    <div class="clock-time" id="tbClock"><?php echo date('H:i:s'); ?></div>
-                    <div class="clock-date" id="tbClockDate"><?php echo date('l, j M Y'); ?></div>
-                    <div class="clock-term">Academic year 2026/27</div>
-                </div>
-
-                <div class="rail-card">
-                    <h3>Next Deadline</h3>
-                    <?php if ($countdown): ?>
-                        <a href="project_detail.php?id=<?php echo (int) $countdown['id']; ?>" class="countdown-name">
-                            <?php echo htmlspecialchars($countdown['name']); ?>
-                        </a>
-                        <div class="countdown-days"
-                             id="tbCountdown"
-                             data-target="<?php echo $countdown['end_ts'] * 1000; ?>"
-                             data-start="<?php echo $countdown['start_ts'] * 1000; ?>">
-                            <?php echo (int) $countdown['days']; ?>d
-                            <?php printf('%02d:%02d:%02d', $countdown['hours'], $countdown['mins'], $countdown['secs']); ?>
-                        </div>
-                        <div class="countdown-label" id="tbCountdownLabel">
-                            until deadline · <?php echo htmlspecialchars($countdown['end_label']); ?>
-                        </div>
-                        <div class="countdown-track">
-                            <div class="countdown-fill" id="tbCountdownBar"
-                                 style="width: <?php echo (int) $countdown['elapsed_pct']; ?>%;"></div>
-                        </div>
-                        <div class="countdown-meta">
-                            <?php echo htmlspecialchars($countdown['class_code'] ?: 'No class'); ?>
-                            · due <?php echo htmlspecialchars($countdown['end_label']); ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="empty-note">No upcoming project deadlines.</div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="rail-card">
-                    <h3>Project Overview</h3>
+            <section class="ds-card ds-projects">
+                <div class="card-head"><h3>Project Overview</h3><a class="see-more" href="teacher_projects.php">see more</a></div>
+                <div class="proj-list">
                     <?php if (count($projectTeamHealth) === 0): ?>
-                        <div class="empty-note">No projects yet.</div>
-                    <?php else: ?>
-                        <?php foreach ($projectTeamHealth as $projectHealth): ?>
-                            <?php
-                            $barTotal = max(1, (int) $projectHealth['total']);
-                            $barSegments = array(
-                                array('awaiting',  (int) $projectHealth['awaiting']),
-                                array('choosing',  (int) $projectHealth['choosing']),
-                                array('active',    (int) $projectHealth['active']),
-                                array('completed', (int) $projectHealth['completed']),
-                            );
-                            ?>
-                            <div class="rail-ph-row">
-                                <a href="project_detail.php?id=<?php echo (int) $projectHealth['project_id']; ?>"
-                                   class="rail-ph-name">
-                                    <?php echo htmlspecialchars($projectHealth['project_name']); ?>
-                                </a>
-                                <span class="rail-ph-meta">
-                                    <?php echo htmlspecialchars($projectHealth['class_code'] ?: 'No class'); ?>
-                                    · <?php echo (int) $projectHealth['total']; ?> teams
-                                    <?php if ((int) $projectHealth['overdue'] > 0): ?>
-                                        · <strong><?php echo (int) $projectHealth['overdue']; ?></strong> overdue
-                                    <?php endif; ?>
-                                </span>
-                                <div class="rail-ph-bar">
-                                    <?php foreach ($barSegments as $seg): ?>
-                                        <?php if ($seg[1] > 0): ?>
-                                            <div class="rail-ph-seg ph-seg--<?php echo $seg[0]; ?>"
-                                                 style="width: <?php echo round($seg[1] / $barTotal * 100, 2); ?>%;"
-                                                 title="<?php echo htmlspecialchars(ucfirst($seg[0]) . ': ' . $seg[1]); ?>"></div>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
+                        <div class="empty">No projects yet.</div>
+                    <?php else: $projCount = 0; foreach ($projectTeamHealth as $ph): if ($projCount >= 3) break; $projCount++; ?>
+                        <?php
+                        $phTotal = max(1, (int) $ph['total']);
+                        $phDone = (int) $ph['completed'];
+                        $phPct = (int) round($phDone / $phTotal * 100);
+                        ?>
+                        <div class="proj-row">
+                            <div class="proj-inner">
+                                <span class="proj-icon">FYP</span>
+                                <div class="proj-main">
+                                    <div class="proj-name"><?php echo htmlspecialchars($ph['project_name']); ?></div>
+                                    <div class="proj-meta"><?php echo htmlspecialchars($ph['class_code'] ?: 'No class'); ?> · <?php echo (int) $ph['total']; ?> teams</div>
+                                </div>
+                                <span class="proj-score"><?php echo $phDone; ?>/<?php echo (int) $ph['total']; ?></span>
+                            </div>
+                            <div class="proj-bar"><div class="done" style="width:<?php echo $phPct; ?>%"></div><div class="rest" style="width:<?php echo 100 - $phPct; ?>%"></div></div>
+                        </div>
+                    <?php endforeach; endif; ?>
+                </div>
+            </section>
+
+        </div>
+
+        <div class="ds-row ds-row-mid">
+            <div class="ds-mid-left">
+
+                <section class="ds-card ds-teams">
+                    <div class="card-head">
+                        <h3>Teams Needing Attention</h3>
+                        <div class="team-pager" id="teamPager">
+                            <button type="button" class="pager-btn" id="teamPrev" aria-label="Previous teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                            <button type="button" class="pager-btn" id="teamNext" aria-label="Next teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                        </div>
+                    </div>
+                    <div class="teams-viewport">
+                        <div class="teams-track" id="teamsTrack">
+                            <?php if (count($attentionTeams) === 0): ?>
+                                <div class="empty">All teams are up to date.</div>
+                            <?php else: foreach ($attentionTeams as $t): ?>
+                                <?php
+                                $iconClass = 'grey';
+                                if ((int) $t['priority'] === 1) { $iconClass = 'amber'; }
+                                elseif ((int) $t['priority'] === 2) { $iconClass = 'coral'; }
+                                $initials = strtoupper(substr((string) $t['name'], 0, 2));
+                                $taskTotal = max(0, (int) $t['total_tasks']);
+                                $taskDone = max(0, (int) $t['completed_tasks']);
+                                $taskPct = $taskTotal > 0 ? (int) round($taskDone / $taskTotal * 100) : 0;
+                                ?>
+                                <div class="team-card">
+                                    <div class="team-top">
+                                        <span class="team-icon <?php echo $iconClass; ?>"><?php echo htmlspecialchars($initials); ?></span>
+                                        <div>
+                                            <div class="team-title"><?php echo htmlspecialchars($t['name']); ?></div>
+                                            <div class="team-sub"><?php echo htmlspecialchars($t['project_name']); ?> · <?php echo htmlspecialchars($t['project_category'] ?: '—'); ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="team-prog">
+                                        <div class="track"><?php if ($taskTotal > 0): ?><div class="fill" style="width:<?php echo $taskPct; ?>%"></div><?php endif; ?></div>
+                                        <span class="val"><?php echo $taskDone; ?>/<?php echo $taskTotal; ?></span>
+                                    </div>
+                                    <div class="chips">
+                                        <?php foreach ($t['reasons'] as $reason): ?>
+                                            <span class="chip"><?php echo htmlspecialchars($reason); ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <a class="team-view" href="team_detail.php?id=<?php echo (int) $t['id']; ?>">View</a>
+                                </div>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ds-card ds-files">
+                    <div class="card-head"><h3>Files to Review</h3><a class="see-more" href="teacher_review.php">Review Center</a></div>
+                    <div class="files-list" id="filesList">
+                        <?php if (count($pendingFiles) === 0): ?>
+                            <div class="empty">No files waiting for review.</div>
+                        <?php else: foreach ($pendingFiles as $f): ?>
+                            <?php $ftype = strtoupper(substr((string) ($f['file_type'] ?: 'FILE'), 0, 3)); ?>
+                            <div class="file-row">
+                                <span class="file-icon"><?php echo htmlspecialchars($ftype); ?></span>
+                                <div class="file-main">
+                                    <div class="file-name"><?php echo htmlspecialchars($f['display_name'] ?: $f['file_name']); ?></div>
+                                    <div class="file-meta"><?php echo htmlspecialchars($f['group_name'] ?: '—'); ?> · uploaded <?php echo htmlspecialchars(timeAgo($f['uploaded_at'])); ?></div>
+                                </div>
+                                <div class="file-acts">
+                                    <a class="act dl" href="download_file.php?id=<?php echo (int) $f['id']; ?>" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg></a>
+                                    <a class="act view" href="file_view.php?id=<?php echo (int) $f['id']; ?>" title="Preview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg></a>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                        <?php endforeach; endif; ?>
+                    </div>
+                    <div class="files-foot" id="filesFoot" hidden>
+                        <button type="button" class="files-toggle" id="filesToggle"></button>
+                    </div>
+                </section>
+
+            </div>
+
+            <section class="ds-card ds-cal">
+                <div class="cal">
+                    <div class="cal-head">
+                        <button type="button" class="cal-nav" id="calPrev" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg></button>
+                        <span class="cal-title" id="calTitle"></span>
+                        <button type="button" class="cal-nav" id="calNext" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg></button>
+                    </div>
+                    <div class="cal-week"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thr</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+                    <div class="cal-days" id="calDays"></div>
                 </div>
-            </aside>
+                <div class="upcoming" id="upcomingWrap">
+                    <div class="upcoming-head"><h4 id="upcomingTitle">Upcoming</h4><span id="upcomingRange">Next 7 days</span><a class="upc-back" id="upcomingBack" href="#">← 7 days</a></div>
+                    <ul class="upcoming-list" id="upcomingList"></ul>
+                </div>
+            </section>
+
         </div>
 
     </div>
 </main>
 
 <script src="teacher_ui.js?v=<?= filemtime('teacher_ui.js') ?>"></script>
+<script>
+var TEAMBOX_CAL_TASKS = <?= json_encode($calendarTasks) ?>;
+var TEAMBOX_TODAY = <?= json_encode(date('Y-m-d')) ?>;
+(function () {
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function dateKey(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
+    function parseKey(key) { var p = key.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+    function esc(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    var today = parseKey(TEAMBOX_TODAY);
+    var viewYear = today.getFullYear(), viewMonth = today.getMonth();
+    var selectedKey = null;
+    var mShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var mNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    function tasksOn(key) { return TEAMBOX_CAL_TASKS[key] || []; }
+
+    function badgeFor(date) {
+        var diff = Math.round((date - today) / 86400000);
+        if (diff < 0) return Math.abs(diff) + 'd overdue';
+        if (diff === 0) return 'Today';
+        if (diff === 1) return 'Tomorrow';
+        return 'In ' + diff + ' days';
+    }
+
+    function itemHTML(t, date) {
+        var meta = [t.group, t.project].filter(Boolean).join(' · ');
+        return '<li><div class="upc-main">'
+            + '<div class="upc-title">' + esc(t.title) + '</div>'
+            + '<div class="upc-meta">' + esc(meta) + '</div></div>'
+            + '<span class="upc-badge">' + badgeFor(date) + '</span></li>';
+    }
+
+    function renderList(items, title, range, isDay) {
+        var wrap = document.getElementById('upcomingWrap');
+        document.getElementById('upcomingTitle').textContent = title;
+        document.getElementById('upcomingRange').textContent = range;
+        wrap.classList.toggle('is-day', isDay);
+        var ul = document.getElementById('upcomingList');
+        if (!items.length) {
+            ul.innerHTML = '<li class="upc-empty">No tasks due.</li>';
+            return;
+        }
+        ul.innerHTML = items.map(function (it) { return itemHTML(it.task, it.date); }).join('');
+    }
+
+    function showSevenDays() {
+        selectedKey = null;
+        var list = [];
+        for (var i = 0; i < 7; i++) {
+            var dt = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+            var key = dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+            tasksOn(key).forEach(function (t) { list.push({ task: t, date: dt }); });
+        }
+        renderList(list, 'Upcoming', 'Next 7 days', false);
+        renderCal();
+    }
+
+    function selectDate(key) {
+        selectedKey = key;
+        var dt = parseKey(key);
+        var isToday = key === TEAMBOX_TODAY;
+        var title = isToday ? 'Today' : (dt.getDate() + ' ' + mShort[dt.getMonth()]);
+        var range = dayNames[dt.getDay()] + ', ' + dt.getDate() + ' ' + mShort[dt.getMonth()];
+        var list = tasksOn(key).map(function (t) { return { task: t, date: dt }; });
+        renderList(list, title, range, true);
+        renderCal();
+    }
+
+    function renderCal() {
+        document.getElementById('calTitle').textContent = mNames[viewMonth] + ' ' + viewYear;
+        var first = new Date(viewYear, viewMonth, 1);
+        var startOffset = (first.getDay() + 6) % 7;
+        var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        var daysInPrev = new Date(viewYear, viewMonth, 0).getDate();
+        var html = '';
+        for (var i = 0; i < startOffset; i++) {
+            html += '<span class="day dim"><span class="num">' + (daysInPrev - startOffset + 1 + i) + '</span></span>';
+        }
+        for (var d = 1; d <= daysInMonth; d++) {
+            var key = dateKey(viewYear, viewMonth, d);
+            var isToday = (key === TEAMBOX_TODAY);
+            var isSelected = (key === selectedKey);
+            var hasDot = tasksOn(key).length > 0;
+            var dotClass = hasDot ? (key < TEAMBOX_TODAY ? ' dot overdue' : ' dot') : '';
+            html += '<span class="day' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '')
+                + '" data-date="' + key + '"><span class="num">' + d + '</span>'
+                + (hasDot ? '<i class="' + (dotClass.trim()) + '"></i>' : '') + '</span>';
+        }
+        document.getElementById('calDays').innerHTML = html;
+    }
+
+    document.getElementById('calDays').addEventListener('click', function (e) {
+        var el = e.target.closest('.day');
+        if (!el || !el.dataset.date) return;
+        selectDate(el.dataset.date);
+    });
+    document.getElementById('upcomingBack').addEventListener('click', function (e) { e.preventDefault(); showSevenDays(); });
+    document.getElementById('calPrev').addEventListener('click', function () { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } renderCal(); });
+    document.getElementById('calNext').addEventListener('click', function () { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } renderCal(); });
+
+    selectDate(TEAMBOX_TODAY);
+})();
+</script>
+<script>
+(function () {
+    var track = document.getElementById('teamsTrack');
+    if (!track) return;
+    var pager = document.getElementById('teamPager');
+    var prev = document.getElementById('teamPrev');
+    var next = document.getElementById('teamNext');
+    var cards = track.querySelectorAll('.team-card');
+    if (cards.length <= 2 && pager) { pager.style.display = 'none'; }
+    function step() {
+        var c = cards[0];
+        return c ? (c.getBoundingClientRect().width + 14) : 300;
+    }
+    function update() {
+        if (prev) prev.disabled = track.scrollLeft <= 2;
+        if (next) next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+    }
+    if (prev) prev.addEventListener('click', function () { track.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    if (next) next.addEventListener('click', function () { track.scrollBy({ left: step(), behavior: 'smooth' }); });
+    track.addEventListener('scroll', update);
+    update();
+})();
+</script>
+<script>
+(function () {
+    var list = document.getElementById('filesList');
+    var foot = document.getElementById('filesFoot');
+    var btn = document.getElementById('filesToggle');
+    if (!list || !btn || !foot) return;
+    var rows = list.querySelectorAll('.file-row');
+    var visibleCount = 3;
+    if (rows.length <= visibleCount) return;
+    var collapsed = true;
+    foot.hidden = false;
+    function render() {
+        rows.forEach(function (r, i) {
+            if (i >= visibleCount) r.classList.toggle('collapsed', collapsed);
+        });
+        btn.textContent = collapsed ? ('+ ' + (rows.length - visibleCount) + ' more') : 'Show less';
+    }
+    btn.addEventListener('click', function () { collapsed = !collapsed; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
