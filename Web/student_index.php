@@ -551,12 +551,17 @@ if (!function_exists('formatDate')) {
             gap: 20px; margin-bottom: 30px;
         }
         .dashboard-card {
+            display: block;
+            color: inherit;
+            text-decoration: none;
+            cursor: pointer;
             min-height: 155px; padding: 25px;
             background: white; border-left: 5px solid black;
             border-radius: 15px; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s, box-shadow 0.3s;
         }
         .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); }
+        .dashboard-card:focus-visible { outline: 3px solid #175196; outline-offset: 3px; }
         .dashboard-card h2 { margin-bottom: 18px; color: #555; font-size: 17px; }
         .dashboard-card .number { color: black; font-size: 38px; font-weight: bold; }
         .dashboard-card .description { margin-top: 8px; color: #777; font-size: 14px; }
@@ -944,26 +949,26 @@ if (!function_exists('formatDate')) {
     </section>
 
     <section class="dashboard-grid">
-        <div class="dashboard-card">
+        <a href="my_team.php" class="dashboard-card" aria-label="Open active projects and teams">
             <h2>Active Projects</h2>
             <p class="number"><?php echo $activeProjects; ?></p>
             <p class="description">Projects currently in progress</p>
-        </div>
-        <div class="dashboard-card">
+        </a>
+        <a href="student_task.php?filter=assigned" class="dashboard-card" aria-label="Open assigned tasks">
             <h2>Assigned Tasks</h2>
             <p class="number"><?php echo $assignedTasks; ?></p>
             <p class="description">Tasks assigned to you</p>
-        </div>
-        <div class="dashboard-card">
+        </a>
+        <a href="student_task.php?filter=completed" class="dashboard-card" aria-label="Open completed tasks">
             <h2>Completed Tasks</h2>
             <p class="number"><?php echo $completedTasks; ?></p>
             <p class="description">Tasks completed by you</p>
-        </div>
-        <div class="dashboard-card">
+        </a>
+        <a href="student_notifications.php" class="dashboard-card" aria-label="Open notifications">
             <h2>Notifications</h2>
             <p class="number"><?php echo $unreadNotifications; ?></p>
             <p class="description">Unread notifications</p>
-        </div>
+        </a>
     </section>
 
     <!-- Announcements -->

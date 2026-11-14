@@ -87,6 +87,8 @@ $stmt = mysqli_prepare($conn, "
         g.created_at,
         p.name          AS project_name,
         p.supervisor_id AS supervisor_id,
+            p.post_deadline_action,
+            p.team_deadline,
         t.user_id       AS supervisor_user_id,
         tu.username     AS supervisor_name,
         c.code          AS course_code,
@@ -156,6 +158,8 @@ if ($myGroup && $myGroup['status'] === 'Voting') {
             g.created_at,
             p.name          AS project_name,
             p.supervisor_id AS supervisor_id,
+            p.post_deadline_action,
+            p.team_deadline,
             t.user_id       AS supervisor_user_id,
             tu.username     AS supervisor_name,
             c.code          AS course_code,
@@ -247,6 +251,22 @@ if ($myGroup) {
     mysqli_stmt_close($stmt);
 }
 
+// =========================================================
+// 5.5 Pending teacher approval for active group
+// =========================================================
+$hasPendingApproval = false;
+if ($myGroup) {
+    $stmt = mysqli_prepare($conn, "
+        SELECT 1 FROM `group_requests`
+        WHERE project_id = ? AND group_name = ? AND status = 'Pending'
+        LIMIT 1
+    ");
+    mysqli_stmt_bind_param($stmt, "is", $myGroup['project_id'], $myGroup['group_name']);
+    mysqli_stmt_execute($stmt);
+    $rs = mysqli_stmt_get_result($stmt);
+    $hasPendingApproval = (mysqli_fetch_assoc($rs) !== null);
+    mysqli_stmt_close($stmt);
+}
 // =========================================================
 // 6. Vote results
 // =========================================================
@@ -1038,7 +1058,7 @@ if (!function_exists('statusClass')) {
         <p>
             Name your group, choose the course and project,
             invite classmates by Student ID, then send the group
-            to your supervisor once it is full. Voting starts after that.
+            when the team is full. Depending on the project rule, voting starts immediately after notifying the teacher or after teacher approval.
         </p>
     </section>
 
@@ -1058,7 +1078,11 @@ if (!function_exists('statusClass')) {
         <?php elseif ($_GET['msg'] === 'voted'): ?>
             <div class="alert alert-success">Your vote has been recorded.</div>
         <?php elseif ($_GET['msg'] === 'sent'): ?>
-            <div class="alert alert-success">Group has been submitted. Voting is now open (48-hour window).</div>
+            <div class="alert alert-success">Teacher notified. Group leader voting is now open for 48 hours.</div>
+        <?php elseif ($_GET['msg'] === 'approvalpending'): ?>
+            <div class="alert alert-success">Group submitted for teacher approval. Voting will open after the teacher confirms.</div>
+        <?php elseif ($_GET['msg'] === 'alreadyrequested'): ?>
+            <div class="alert alert-error">This group already has a pending teacher approval request.</div>
         <?php elseif ($_GET['msg'] === 'notfound'): ?>
             <div class="alert alert-error">Student ID not found.</div>
         <?php elseif ($_GET['msg'] === 'notfull'): ?>
@@ -1208,9 +1232,7 @@ if (!function_exists('statusClass')) {
             </div>
 
             <?php if (count($availableProjects) === 0): ?>
-                <div class="alert alert-error" style="margin-top: 8px; margin-bottom: 0;">
-                    No eligible project is available. You may already belong to a team, or the teacher has not opened free team formation.
-                </div>
+
             <?php endif; ?>
 
             <button type="submit" class="primary-btn" <?= count($availableProjects) === 0 ? 'disabled' : '' ?>>Create Group</button>
@@ -1481,21 +1503,34 @@ if (!function_exists('statusClass')) {
                     </p>
 
                 <?php elseif ($myGroup['status'] === 'Waiting_Send' && $isCreator): ?>
-
-                    <button type="button" class="primary-btn" disabled style="margin-top: 20px;">
-                        🔒 Team Full — Ready to Submit
-                    </button>
-
-                    <form action="send_to_supervisor_process.php" method="post" style="margin-top: 12px;"
-                          onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Sending...';">
-                        <input type="hidden" name="groupID" value="<?php echo (int)$myGroup['group_id']; ?>">
-                        <button type="submit" class="primary-btn">
-                            Send to Supervisor
-                            <?php if (!empty($myGroup['supervisor_name'])): ?>
-                                (<?php echo htmlspecialchars($myGroup['supervisor_name']); ?>)
-                            <?php endif; ?>
+                    <?php $requiresApproval = ($myGroup['post_deadline_action'] === 'Lock'); ?>
+                    <?php if ($requiresApproval && $hasPendingApproval): ?>
+                        <button type="button" class="primary-btn" disabled style="margin-top:20px;">
+                            Approval Request Submitted
                         </button>
-                    </form>
+                        <p class="muted" style="margin-top:12px;font-size:13px;">
+                            Waiting for teacher approval. Voting remains locked.
+                        </p>
+                    <?php else: ?>
+                        <button type="button" class="primary-btn" disabled style="margin-top:20px;">
+                            🔒 Team Full — Ready to Submit
+                        </button>
+                        <form action="send_to_supervisor_process.php" method="post" style="margin-top:12px;"
+                              onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Sending...';">
+                            <input type="hidden" name="groupID" value="<?php echo (int)$myGroup['group_id']; ?>">
+                            <button type="submit" class="primary-btn">
+                                <?php echo $requiresApproval ? 'Submit for Teacher Approval' : 'Notify Teacher & Start Voting'; ?>
+                                <?php if (!empty($myGroup['supervisor_name'])): ?>
+                                    (<?php echo htmlspecialchars($myGroup['supervisor_name']); ?>)
+                                <?php endif; ?>
+                            </button>
+                        </form>
+                        <p class="muted" style="margin-top:10px;font-size:13px;">
+                            <?php echo $requiresApproval
+                                    ? 'Voting remains locked until the teacher approves this team.'
+                                    : 'The teacher is notified and voting starts immediately.'; ?>
+                        </p>
+                    <?php endif; ?>
 
                 <?php elseif ($myGroup['status'] === 'Waiting_Send' && !$isCreator): ?>
 
@@ -1504,7 +1539,7 @@ if (!function_exists('statusClass')) {
                     </button>
                     <p class="muted" style="margin-top: 12px; font-size: 13px;">
                         Only the group creator can send the group to the supervisor.
-                        Voting will start after that.
+                        Voting follows the project approval rule shown to the creator.
                     </p>
 
                 <?php endif; ?>
