@@ -271,6 +271,40 @@ $filterCounts = array(
     'risk'       => $atRiskStudents,
 );
 
+// 按班级分组
+$groupedStudents = array();
+foreach ($directoryStudents as $student) {
+    $classKey = $student['class_code'] !== null && $student['class_code'] !== ''
+            ? $student['class_code']
+            : 'No class';
+    if (!isset($groupedStudents[$classKey])) {
+        $groupedStudents[$classKey] = array(
+            'class_code' => $classKey,
+            'students'   => array(),
+            'count'      => 0,
+            'unassigned' => 0,
+            'at_risk'    => 0,
+        );
+    }
+    $groupedStudents[$classKey]['students'][] = $student;
+    $groupedStudents[$classKey]['count']++;
+    if (!$student['is_assigned']) {
+        $groupedStudents[$classKey]['unassigned']++;
+    }
+    if ($student['overdue_tasks'] > 0) {
+        $groupedStudents[$classKey]['at_risk']++;
+    }
+}
+ksort($groupedStudents);
+
+// 逾期学生（拎出来单独展示）
+$atRiskList = array();
+foreach ($directoryStudents as $student) {
+    if ($student['overdue_tasks'] > 0) {
+        $atRiskList[] = $student;
+    }
+}
+
 if (!function_exists('studentInitials')) {
     function studentInitials($name)
     {
@@ -282,7 +316,6 @@ if (!function_exists('studentInitials')) {
     }
 }
 
-$avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -306,24 +339,31 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
         <h1>Students</h1>
         <p class="subtitle">Students assigned to you · <?php echo $totalStudents; ?> students</p>
 
-        <div class="summary-grid">
-            <div class="summary-item">
-                <div class="label">Total Students</div>
-                <div class="value"><?php echo $totalStudents; ?></div>
+        <?php if (count($atRiskList) > 0): ?>
+            <div class="risk-students">
+                <div class="risk-head">
+                    <h2>At Risk Students</h2>
+                    <span><?php echo count($atRiskList); ?> student<?php echo count($atRiskList) === 1 ? '' : 's'; ?> with overdue tasks</span>
+                </div>
+                <div class="risk-track">
+                    <?php foreach ($atRiskList as $riskStudent): ?>
+                        <?php
+                        $riskInitials = studentInitials($riskStudent['name']);
+                        $riskTeam = !empty($riskStudent['teams']) ? $riskStudent['teams'][0] : null;
+                        $riskLink = $riskTeam ? 'team_detail.php?id=' . (int) $riskTeam['team_id'] : '#';
+                        $riskTeamName = $riskTeam ? $riskTeam['team_name'] : 'No team';
+                        ?>
+                        <a class="risk-student-card" href="<?php echo htmlspecialchars($riskLink); ?>">
+                            <div class="risk-avatar"><?php echo htmlspecialchars($riskInitials); ?></div>
+                            <div class="risk-info">
+                                <div class="risk-name"><?php echo htmlspecialchars($riskStudent['name']); ?></div>
+                                <div class="risk-meta"><?php echo htmlspecialchars($riskTeamName); ?></div>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             </div>
-            <div class="summary-item">
-                <div class="label">Assigned to Teams</div>
-                <div class="value"><?php echo $assignedStudents; ?></div>
-            </div>
-            <div class="summary-item">
-                <div class="label">Unassigned</div>
-                <div class="value"><?php echo $unassignedStudents; ?></div>
-            </div>
-            <div class="summary-item">
-                <div class="label">At Risk</div>
-                <div class="value"><?php echo $atRiskStudents; ?></div>
-            </div>
-        </div>
+        <?php endif; ?>
 
         <div class="student-toolbar">
             <div class="field field-search">
@@ -352,53 +392,46 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
             <?php endforeach; ?>
         </div>
 
-        <?php if ($unassignedStudents > 0 && count($formationDeadlineItems) > 0): ?>
-            <div class="formation-notice <?php echo $hasPassedFormationDeadline ? 'passed' : ''; ?>">
-                <div>
-                    <?php if ($hasPassedFormationDeadline): ?>
-                        <strong>Team formation deadline has passed.</strong>
-                        Remaining students are now the teacher's responsibility to assign randomly.
-                    <?php else: ?>
-                        Unassigned students will be randomly assigned by the teacher after the
-                        team formation deadline.
-                    <?php endif; ?>
-                </div>
-                <div class="formation-dates">
-                    <?php foreach ($formationDeadlineItems as $deadlineItem): ?>
-                        <span class="formation-date <?php echo $deadlineItem['passed'] ? 'passed' : ''; ?>">
-                            <?php echo htmlspecialchars($deadlineItem['project_name']); ?> ·
-                            <?php echo date('d M Y', strtotime($deadlineItem['deadline'])); ?>
-                        </span>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        <?php endif; ?>
+        <div class="student-groups">
+            <?php foreach ($groupedStudents as $group): ?>
+                <div class="student-group">
+                    <button type="button" class="student-group-head" aria-expanded="false">
+                        <div class="group-title">
+                            <span class="group-class"><?php echo htmlspecialchars($group['class_code']); ?></span>
+                            <span class="group-count"><?php echo (int) $group['count']; ?> students</span>
+                        </div>
+                        <div class="group-meta">
+                            <?php if ($group['at_risk'] > 0): ?>
+                                <span class="group-flag risk"><?php echo (int) $group['at_risk']; ?> at risk</span>
+                            <?php endif; ?>
+                            <?php if ($group['unassigned'] > 0): ?>
+                                <span class="group-flag unassigned"><?php echo (int) $group['unassigned']; ?> unassigned</span>
+                            <?php endif; ?>
+                        </div>
+                    </button>
 
-        <div class="card students-card">
-            <div class="student-head">
-                <span>Student</span>
-                <span>Class</span>
-                <span>Team</span>
-                <span>Role</span>
-                <span>Tasks</span>
-                <span>Risk</span>
-            </div>
+                    <div class="student-head">
+                        <span>Student</span>
+                        <span>Team</span>
+                    </div>
 
-            <?php foreach ($directoryStudents as $student): ?>
-                <?php
-                $initials = studentInitials($student['name']);
-                $avatarBg = $avatarPalette[abs(crc32($student['name'])) % count($avatarPalette)];
-                $pct = $student['total_tasks'] > 0
-                    ? (int) round($student['done_tasks'] / $student['total_tasks'] * 100)
-                    : 0;
-                $statusKey = $student['is_assigned'] ? 'assigned' : 'unassigned';
-                ?>
-                <div class="student-row"
-                     data-status="<?php echo $statusKey; ?>"
-                     data-risk="<?php echo $student['overdue_tasks'] > 0 ? '1' : '0'; ?>"
-                     data-search="<?php echo htmlspecialchars($student['search_text'] . ' ' . $statusKey); ?>">
+                    <?php foreach ($group['students'] as $studentIndex => $student): ?>
+                        <?php
+                        $initials = studentInitials($student['name']);
+                        $pct = $student['total_tasks'] > 0
+                                ? (int) round($student['done_tasks'] / $student['total_tasks'] * 100)
+                                : 0;
+                        $statusKey = $student['is_assigned'] ? 'assigned' : 'unassigned';
+                        $rowClass = $student['overdue_tasks'] > 0
+                                ? 'risk'
+                                : ($student['is_assigned'] ? '' : 'unassigned');
+                        ?>
+                        <div class="student-row <?php echo $rowClass . ($studentIndex >= 5 ? ' extra' : ''); ?>"
+                             data-status="<?php echo $statusKey; ?>"
+                             data-risk="<?php echo $student['overdue_tasks'] > 0 ? '1' : '0'; ?>"
+                             data-search="<?php echo htmlspecialchars($student['search_text'] . ' ' . $statusKey); ?>">
                     <div class="student-main">
-                        <div class="student-avatar" style="background: <?php echo $avatarBg; ?>;">
+                        <div class="student-avatar <?php echo $student['overdue_tasks'] > 0 ? 'risk' : ''; ?>">
                             <?php echo htmlspecialchars($initials); ?>
                         </div>
                         <div>
@@ -407,10 +440,6 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
                                 <?php echo htmlspecialchars($student['student_number']); ?>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="student-class">
-                        <?php echo htmlspecialchars(formatClass($student['major'], $student['grade_level'], $student['class_code'])); ?>
                     </div>
 
                     <div class="student-team">
@@ -423,55 +452,23 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
                                    href="team_detail.php?id=<?php echo (int) $team['team_id']; ?>">
                                     <?php echo htmlspecialchars($team['team_name']); ?>
                                 </a>
+                                <span class="role-tag <?php echo htmlspecialchars($team['role']); ?>"
+                                      title="<?php echo htmlspecialchars($team['team_name'] . ' - ' . ucfirst($team['role'])); ?>">
+                                    <?php echo htmlspecialchars(ucfirst($team['role'])); ?>
+                                </span>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <span class="unassigned-pill">Unassigned</span>
                         <?php endif; ?>
                     </div>
 
-                    <div class="student-role">
-                        <?php if ($student['is_assigned']): ?>
-                            <?php foreach ($student['teams'] as $teamIndex => $team): ?>
-                                <?php
-                                $roleLabel = ucfirst($team['role']);
-                                $roleTooltip = $team['team_name'] . ' - ' . $roleLabel;
-                                if ($teamIndex > 0):
-                                ?>
-                                    <span class="team-separator">·</span>
-                                <?php endif; ?>
-                                <span class="role-tag <?php echo htmlspecialchars($team['role']); ?>"
-                                      title="<?php echo htmlspecialchars($roleTooltip); ?>"
-                                      aria-label="<?php echo htmlspecialchars($roleTooltip); ?>">
-                                    <?php echo htmlspecialchars($roleLabel); ?>
-                                </span>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <span class="muted">—</span>
-                        <?php endif; ?>
-                    </div>
-
-                    <div>
-                        <?php if ($student['is_assigned']): ?>
-                            <span class="student-task-count">
-                                <?php echo $student['done_tasks']; ?> / <?php echo $student['total_tasks']; ?>
-                            </span>
-                            <div class="student-task-bar">
-                                <i style="width: <?php echo $pct; ?>%;"></i>
-                            </div>
-                        <?php else: ?>
-                            <span class="muted">—</span>
-                        <?php endif; ?>
-                    </div>
-
-                    <div>
-                        <?php if ($student['overdue_tasks'] > 0): ?>
-                            <span class="risk-pill">
-                                <?php echo $student['overdue_tasks']; ?> overdue
-                            </span>
-                        <?php else: ?>
-                            <span class="muted">—</span>
-                        <?php endif; ?>
-                    </div>
+                        </div>
+                    <?php endforeach; ?>
+                    <?php if ($group['count'] > 5): ?>
+                        <button type="button" class="group-expand">
+                            + <?php echo (int) ($group['count'] - 5); ?> more
+                        </button>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
 
@@ -515,6 +512,14 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
 
         empty.hidden = visible > 0;
 
+        document.querySelectorAll('.student-group').forEach(function (group) {
+            var anyVisible = Array.prototype.some.call(
+                group.querySelectorAll('.student-row'),
+                function (row) { return !row.hidden; }
+            );
+            group.hidden = !anyVisible;
+        });
+
         buttons.forEach(function (button) {
             var active = button.getAttribute('data-filter') === current;
             button.classList.toggle('active', active);
@@ -531,6 +536,28 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
 
     search.addEventListener('input', applyFilters);
     applyFilters();
+
+    document.querySelectorAll('.student-group').forEach(function (group) {
+        var head = group.querySelector('.student-group-head');
+        var expandBtn = group.querySelector('.group-expand');
+        var extraCount = group.querySelectorAll('.student-row.extra').length;
+
+        function toggle() {
+            var expanded = group.classList.toggle('expanded');
+            head.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            if (expandBtn) {
+                expandBtn.textContent = expanded ? 'Show less' : ('+ ' + extraCount + ' more');
+            }
+        }
+
+        head.addEventListener('click', toggle);
+        if (expandBtn) {
+            expandBtn.addEventListener('click', function (event) {
+                event.stopPropagation();
+                toggle();
+            });
+        }
+    });
 })();
 </script>
 

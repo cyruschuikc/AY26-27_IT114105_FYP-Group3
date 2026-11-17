@@ -4,6 +4,114 @@
              → teacher_students.css
    ========================================================= */
 
+.summary-grid {
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.summary-item {
+    min-width: 0;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-item);
+}
+.summary-item .label {
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+.summary-item .value {
+    color: var(--ink);
+    font-size: 25px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+
+.risk-students {
+    margin-bottom: 16px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-item);
+}
+.risk-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.risk-head h2 {
+    margin: 0;
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: 600;
+}
+.risk-head span { color: var(--muted); font-size: 12px; }
+.risk-track {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+.risk-student-card {
+    flex: 0 0 220px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-item);
+    background: #FFFFFF;
+    text-decoration: none;
+}
+.risk-student-card:hover { border-color: var(--line-strong); }
+.risk-avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(140deg, #FF8C8D, #E5484D);
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 700;
+}
+.risk-info { flex: 1; min-width: 0; }
+.risk-name {
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.risk-meta {
+    margin-top: 2px;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.risk-overdue {
+    flex: 0 0 auto;
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    background: var(--alert-error);
+    color: var(--danger);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
 .student-toolbar { margin-bottom: 12px; }
 .student-toolbar .field-search input {
     width: 100%;
@@ -90,11 +198,61 @@
 }
 .formation-date.passed { border-color: var(--danger); color: var(--danger); }
 
-.students-card { overflow-x: auto; }
+.student-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+.student-group {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-item);
+}
+.student-group[hidden] { display: none; }
+.student-group-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    background: var(--sunken);
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.student-group-head::after {
+    flex: 0 0 auto;
+    color: var(--muted-soft);
+    font-size: 17px;
+    content: "›";
+    transform: rotate(90deg);
+    transition: transform 0.15s ease;
+}
+.student-group.expanded .student-group-head::after { transform: rotate(-90deg); }
+.group-title { display: flex; align-items: baseline; gap: 8px; }
+.group-class { color: var(--ink); font-size: 14px; font-weight: 700; }
+.group-count { color: var(--muted); font-size: 12px; }
+.group-meta { display: flex; align-items: center; gap: 8px; }
+.group-flag {
+    padding: 2px 9px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 600;
+}
+.group-flag.risk { background: var(--alert-error); color: var(--danger); }
+.group-flag.unassigned { background: var(--alert-warning); color: var(--warn); }
+
 .student-head,
 .student-row {
     display: grid;
-    grid-template-columns: minmax(170px, 1.4fr) 52px minmax(96px, 0.9fr) 92px 62px 64px;
+    grid-template-columns: minmax(150px, 1fr) minmax(140px, 1fr);
     gap: 6px;
     align-items: center;
 }
@@ -116,6 +274,23 @@
 .student-row:last-child { border-bottom: none; }
 .student-row.alt { background: var(--sunken); }
 .student-row[hidden] { display: none; }
+.student-row.extra { display: none; }
+.student-group.expanded .student-row.extra { display: grid; }
+.group-expand {
+    display: block;
+    width: 100%;
+    padding: 9px 14px;
+    border: none;
+    border-top: 1px solid var(--line);
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+}
+.group-expand:hover { background: var(--sunken); }
 
 .student-main {
     display: flex;
@@ -131,9 +306,13 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    color: var(--ink);
+    background: linear-gradient(140deg, #7C9ADF, #2C4A93);
+    color: #FFFFFF;
     font-size: 11px;
     font-weight: 700;
+}
+.student-avatar.risk {
+    background: linear-gradient(140deg, #FF8C8D, #E5484D);
 }
 .student-name {
     overflow: hidden;
@@ -159,36 +338,34 @@
     min-width: 0;
 }
 .team-link {
-    color: var(--ink);
+    color: var(--accent);
     font-size: 12px;
     font-weight: 600;
     text-decoration: underline;
     text-underline-offset: 3px;
     white-space: nowrap;
 }
-.team-link:hover { color: var(--ink-2); }
+.team-link:hover { color: #24408F; }
 .team-separator {
     color: var(--muted-soft);
     font-size: 12px;
 }
 .role-tag {
-    color: var(--ink-2);
-    font-size: 12px;
-    text-decoration: underline dotted var(--muted-soft);
-    text-underline-offset: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
     white-space: nowrap;
-    cursor: help;
 }
 .role-tag.leader {
-    color: var(--ink);
+    color: var(--accent-ink);
     font-weight: 700;
 }
 .unassigned-pill {
     display: inline-block;
     padding: 3px 9px;
     border-radius: var(--r-pill);
-    background: var(--sunken);
-    color: var(--muted);
+    background: var(--alert-warning);
+    color: var(--warn);
     font-size: 11.5px;
     font-weight: 600;
 }
@@ -234,6 +411,5 @@
 @media (max-width: 1080px) {
     .formation-notice { flex-direction: column; gap: 6px; }
     .formation-dates { justify-content: flex-start; }
-    .student-head,
-    .student-row { min-width: 590px; }
+    .student-groups { grid-template-columns: 1fr; }
 }

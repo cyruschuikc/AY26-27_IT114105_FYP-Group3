@@ -59,6 +59,12 @@ $stmt = mysqli_prepare($conn, "
             WHERE t2.group_id = g.id AND t2.status = 'Completed') AS completed_tasks,
         (SELECT COUNT(*) FROM `tasks` t3 WHERE t3.group_id = g.id) AS total_tasks,
         (SELECT MAX(a.created_at) FROM `activities` a WHERE a.group_id = g.id) AS last_activity,
+        (SELECT MIN(t4.due_date)
+            FROM `tasks` t4
+            WHERE t4.group_id = g.id
+              AND t4.status <> 'Completed'
+              AND t4.due_date IS NOT NULL
+              AND t4.due_date >= CURDATE()) AS next_deadline,
         (SELECT COUNT(*) FROM `group_requests` r
             WHERE r.project_id = g.project_id
               AND r.group_name = g.name
@@ -101,6 +107,32 @@ mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 while ($team = mysqli_fetch_assoc($rs)) {
     $allTeams[] = $team;
+}
+mysqli_stmt_close($stmt);
+
+// =========================================================
+// 团队成员名单（用于头像堆叠）
+// =========================================================
+$teamMembers = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT gm.group_id, u.username AS name, gm.role
+    FROM `group_members` gm
+    INNER JOIN `groups`   g ON g.id = gm.group_id
+    INNER JOIN `projects` p ON p.id = g.project_id
+    INNER JOIN `students` s ON s.id = gm.student_id
+    INNER JOIN `users`    u ON u.id = s.user_id
+    WHERE p.supervisor_id = ?
+    ORDER BY gm.group_id, (gm.role = 'leader') DESC, u.username
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($memberRow = mysqli_fetch_assoc($rs)) {
+    $gid = (int) $memberRow['group_id'];
+    if (!isset($teamMembers[$gid])) {
+        $teamMembers[$gid] = array();
+    }
+    $teamMembers[$gid][] = $memberRow['name'];
 }
 mysqli_stmt_close($stmt);
 
@@ -210,7 +242,7 @@ $search = isset($_GET['q']) ? trim($_GET['q']) : '';
 $status = isset($_GET['status']) ? trim($_GET['status']) : 'all';
 $classFilter = isset($_GET['class']) ? trim($_GET['class']) : 'all';
 $categoryFilter = isset($_GET['category']) ? trim($_GET['category']) : 'all';
-$sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'project';
+$sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'attention';
 
 $validStatuses = array('all', 'pending', 'Voting', 'Executing', 'Completed', 'overdue');
 if (!in_array($status, $validStatuses, true)) {
@@ -222,8 +254,8 @@ if ($classFilter !== 'all' && !in_array($classFilter, $teacherClasses, true)) {
 if ($categoryFilter !== 'all' && !in_array($categoryFilter, $teacherCategories, true)) {
     $categoryFilter = 'all';
 }
-if (!in_array($sort, array('project', 'team', 'overdue', 'recent'), true)) {
-    $sort = 'project';
+if (!in_array($sort, array('attention', 'project', 'team', 'overdue', 'recent'), true)) {
+    $sort = 'attention';
 }
 
 // Keep status-chip counts relevant to the selected class.
@@ -283,6 +315,14 @@ foreach ($allTeams as $team) {
 
 // ★ 修正 1 & 2：<=> 係 PHP 7.0+，改用 if/else 比較
 usort($filteredTeams, function ($a, $b) use ($sort) {
+    if ($sort === 'attention') {
+        $aP = (int) $a['priority'];
+        $bP = (int) $b['priority'];
+        if ($aP !== $bP) return $aP < $bP ? -1 : 1;
+        $aO = (int) $a['overdue_count'];
+        $bO = (int) $b['overdue_count'];
+        if ($aO !== $bO) return $aO > $bO ? -1 : 1;
+    }
     if ($sort === 'team') {
         return strnatcasecmp($a['name'], $b['name']);
     }
@@ -318,6 +358,7 @@ $chipDefs = array(
         'Voting'     => $teamStatusLabels['Voting'],
         'Executing'  => $teamStatusLabels['Executing'],
         'Completed'  => $teamStatusLabels['Completed'],
+        'overdue'    => 'Overdue',
 );
 
 $groupedTeams = array();
@@ -343,7 +384,7 @@ foreach ($filteredTeams as $team) {
     }
 }
 $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
-        || $categoryFilter !== 'all' || $sort !== 'project');
+        || $categoryFilter !== 'all' || $sort !== 'attention');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -365,7 +406,25 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
     <div class="content">
 
         <h1>Teams</h1>
-        <p class="subtitle">Project teams under your supervision · 2026/27</p>
+
+        <div class="teams-kpi">
+            <div class="kpi-item">
+                <span class="kpi-label">Total Teams</span>
+                <strong class="kpi-value"><?php echo (int) $totalTeams; ?></strong>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Awaiting Approval</span>
+                <strong class="kpi-value"><?php echo (int) $awaitingApproval; ?></strong>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Active Teams</span>
+                <strong class="kpi-value"><?php echo (int) $activeTeams; ?></strong>
+            </div>
+            <div class="kpi-item">
+                <span class="kpi-label">Overdue Teams</span>
+                <strong class="kpi-value"><?php echo (int) $overdueTeams; ?></strong>
+            </div>
+        </div>
 
         <div class="teams-control-bar">
             <form method="get" action="teacher_teams.php" class="team-search">
@@ -385,21 +444,10 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="class-filter category-filter">
-                    <label for="categoryFilter" class="sr-only">Filter by category</label>
-                    <select id="categoryFilter" name="category" onchange="this.form.submit()">
-                        <option value="all" <?php echo $categoryFilter === 'all' ? 'selected' : ''; ?>>All categories</option>
-                        <?php foreach ($teacherCategories as $category): ?>
-                            <option value="<?php echo htmlspecialchars($category); ?>"
-                                    <?php echo $categoryFilter === $category ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($category); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
                 <div class="class-filter sort-filter">
                     <label for="sortFilter" class="sr-only">Sort teams</label>
                     <select id="sortFilter" name="sort" onchange="this.form.submit()">
+                        <option value="attention" <?= $sort === 'attention' ? 'selected' : '' ?>>Needs attention</option>
                         <option value="project" <?= $sort === 'project' ? 'selected' : '' ?>>Project</option>
                         <option value="team" <?= $sort === 'team' ? 'selected' : '' ?>>Team name</option>
                         <option value="overdue" <?= $sort === 'overdue' ? 'selected' : '' ?>>Most overdue</option>
@@ -424,27 +472,13 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
                             ));
                     ?>
                     <a href="<?php echo htmlspecialchars($chipUrl); ?>"
-                       class="<?= $status === $key ? 'active' : '' ?>"
+                       class="<?= $status === $key ? 'active' : '' ?> <?= $key === 'overdue' ? 'overdue-chip' : '' ?>"
                             <?php echo $status === $key ? 'aria-current="page"' : ''; ?>>
                         <?php echo htmlspecialchars($label); ?>
                         <span><?php echo (int) $statusCounts[$key]; ?></span>
                     </a>
                 <?php endforeach; ?>
             </nav>
-            <?php
-            $overdueUrl = 'teacher_teams.php?' . http_build_query(array(
-                            'status' => 'overdue',
-                            'q' => $search,
-                            'class' => $classFilter,
-                            'category' => $categoryFilter,
-                            'sort' => $sort,
-                    ));
-            ?>
-            <a href="<?= htmlspecialchars($overdueUrl) ?>"
-               class="overdue-filter <?= $status === 'overdue' ? 'active' : '' ?>">
-                Overdue teams
-                <span><?= (int) $statusCounts['overdue'] ?></span>
-            </a>
         </div>
 
         <?php if (count($filteredTeams) === 0): ?>
@@ -479,14 +513,7 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
                         </div>
                     </summary>
 
-                    <div class="team-table-head" aria-hidden="true">
-                        <span>Team</span>
-                        <span>Project title</span>
-                        <span>Leader / members</span>
-                        <span>Progress</span>
-                        <span>Actions</span>
-                    </div>
-
+                    <div class="team-cards">
                     <?php foreach ($group['teams'] as $team): ?>
                         <?php
                         $pending = (int) $team['pending_requests'];
@@ -502,72 +529,85 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
                                         ? $teamStatusLabels[$team['status']]
                                         : $team['status']);
 
+                        $statusClass = 'status-neutral';
+                        if ($pending > 0) {
+                            $statusClass = 'status-pending';
+                        } elseif ($team['status'] === 'Voting') {
+                            $statusClass = 'status-voting';
+                        } elseif ($team['status'] === 'Executing') {
+                            $statusClass = 'status-executing';
+                        } elseif ($team['status'] === 'Completed') {
+                            $statusClass = 'status-completed';
+                        } elseif ($team['status'] === 'Waiting_Send') {
+                            $statusClass = 'status-waiting';
+                        }
+
                         $displayTopic = $team['topic_mode'] === 'Fixed'
                                 ? $team['fixed_topic_title']
                                 : $team['topic_title'];
                         $canMessage = ($pending === 0
                                 && in_array($team['status'], array('Voting', 'Executing'), true));
                         ?>
-                        <div class="team-row <?= $overdue > 0 ? 'attention-overdue' : '' ?>">
-                            <div class="team-identity">
-                                <a href="team_detail.php?id=<?= (int) $team['id'] ?>" class="team-name">
-                                    <?= htmlspecialchars($team['name']) ?>
-                                </a>
-                                <span class="team-subline">
-                                    <span class="team-status-inline"><?= htmlspecialchars($displayStatus) ?></span>
-                                </span>
+                        <article class="team-card <?= $overdue > 0 ? 'attention-overdue' : '' ?>">
+                            <div class="card-top">
+                                <span class="team-name"><?= htmlspecialchars($team['name']) ?></span>
+                                <span class="card-topic"><?= htmlspecialchars($displayTopic ?: ($team['topic_mode'] === 'Self' ? 'Awaiting proposal' : 'Not selected')) ?></span>
                             </div>
 
-                            <div class="project-title-cell">
-                                <strong>
-                                    <?= htmlspecialchars($displayTopic ?: ($team['topic_mode'] === 'Self' ? 'Awaiting proposal' : 'Not selected')) ?>
-                                </strong>
-                                <?php if ($team['topic_mode'] !== 'Fixed' && $team['topic_status']): ?>
-                                    <span><?= htmlspecialchars(topicProposalStatusLabel($team['topic_status'])) ?></span>
-                                <?php endif; ?>
-                            </div>
-
-                            <div class="team-owner-cell">
-                                <strong><?= htmlspecialchars($team['leader_name'] ?: 'No leader') ?></strong>
-                                <span><?= (int) $team['member_count'] ?> / <?= (int) $team['max_members'] ?> members</span>
-                            </div>
-
-                            <div class="progress-cell <?= $overdue > 0 ? 'is-overdue' : '' ?>">
+                            <div class="card-progress">
                                 <div class="progress-line">
                                     <strong><?= $total > 0 ? $done . ' / ' . $total : 'No tasks' ?></strong>
-                                    <span><?= $pct ?>%</span>
                                 </div>
                                 <div class="progress-track" aria-label="Task progress">
                                     <div class="progress-fill" style="width: <?= $pct ?>%;"></div>
                                 </div>
-                                <div class="activity-line <?= $overdue > 0 ? 'danger' : '' ?>">
-                                    <?= $overdue > 0 ? $overdue . ' overdue' : htmlspecialchars(timeAgo($team['last_activity'])) ?>
+                                <div class="activity-line">
+                                    <?php if ($overdue > 0): ?>
+                                        <span class="danger"><?= $overdue ?> overdue</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($team['next_deadline'])): ?>
+                                        <?php if ($overdue > 0): ?> · <?php endif; ?>Due <?= date('d M', strtotime($team['next_deadline'])) ?>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
-                            <div class="team-actions-cell">
-                                <?php if ($pending > 0): ?>
-                                    <a href="teacher_review.php#requests" class="team-action primary">Review</a>
-                                    <details class="row-actions-menu">
-                                        <summary aria-label="More actions for <?= htmlspecialchars($team['name']) ?>">⋯</summary>
-                                        <div class="row-actions-popover">
-                                            <a href="team_detail.php?id=<?= (int) $team['id'] ?>">Open team</a>
-                                        </div>
-                                    </details>
-                                <?php else: ?>
-                                    <a href="team_detail.php?id=<?= (int) $team['id'] ?>" class="team-action primary">Open</a>
-                                    <?php if ($canMessage): ?>
-                                        <details class="row-actions-menu">
-                                            <summary aria-label="More actions for <?= htmlspecialchars($team['name']) ?>">⋯</summary>
-                                            <div class="row-actions-popover">
-                                                <a href="teacher_messages.php?group_id=<?= (int) $team['id'] ?>">Message team</a>
-                                            </div>
-                                        </details>
+                            <div class="card-extra">
+                                <?php
+                                $members = isset($teamMembers[$team['id']]) ? $teamMembers[$team['id']] : array();
+                                $shownMembers = array_slice($members, 0, 4);
+                                $extraMembers = count($members) - count($shownMembers);
+                                ?>
+                                <div class="member-stack">
+                                    <?php foreach ($shownMembers as $memberName): ?>
+                                        <?php
+                                        $memberParts = preg_split('/\s+/', trim((string) $memberName));
+                                        $memberInitials = count($memberParts) >= 2
+                                                ? strtoupper(substr($memberParts[0], 0, 1) . substr($memberParts[count($memberParts) - 1], 0, 1))
+                                                : strtoupper(substr((string) $memberName, 0, 2));
+                                        ?>
+                                        <span class="member-avatar" title="<?php echo htmlspecialchars($memberName); ?>"><?php echo htmlspecialchars($memberInitials); ?></span>
+                                    <?php endforeach; ?>
+                                    <?php if ($extraMembers > 0): ?>
+                                        <span class="member-avatar member-more">+<?php echo (int) $extraMembers; ?></span>
                                     <?php endif; ?>
-                                <?php endif; ?>
+                                </div>
+                                <div class="card-leader"><?= htmlspecialchars($team['leader_name'] ?: 'No leader') ?></div>
                             </div>
-                        </div>
+
+                            <div class="card-footer">
+                                <div class="card-actions">
+                                    <a href="team_detail.php?id=<?= (int) $team['id'] ?>" class="team-action primary">More</a>
+                                    <?php if ($pending > 0): ?>
+                                        <a href="teacher_review.php#requests" class="team-action">Review</a>
+                                    <?php elseif ($canMessage): ?>
+                                        <a href="teacher_messages.php?group_id=<?= (int) $team['id'] ?>" class="team-action">Message</a>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="team-status-inline <?php echo $statusClass; ?>"><?= htmlspecialchars($displayStatus) ?></span>
+                            </div>
+                        </article>
                     <?php endforeach; ?>
+                    </div>
                 </details>
             <?php endforeach; ?>
         </div>
@@ -576,5 +616,16 @@ $hasFilters = ($search !== '' || $status !== 'all' || $classFilter !== 'all'
 </main>
 
 <script src="teacher_ui.js?v=<?= filemtime('teacher_ui.js') ?>"></script>
+<script>
+(function () {
+    var cards = document.querySelectorAll('.team-card');
+    cards.forEach(function (card) {
+        card.addEventListener('click', function (e) {
+            if (e.target.closest('a, button, summary, select, input')) return;
+            card.classList.toggle('open');
+        });
+    });
+})();
+</script>
 </body>
 </html>

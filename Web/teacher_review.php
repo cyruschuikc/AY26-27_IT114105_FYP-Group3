@@ -714,7 +714,6 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
         <div class="review-title-row">
             <div>
                 <h1>Review Center</h1>
-                <p class="subtitle">Review student files, group formation requests and topic proposals</p>
             </div>
             <?php if ($reviewAttentionCount > 0): ?>
                 <div class="review-desktop-actions">
@@ -728,21 +727,11 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
             <?php endif; ?>
         </div>
 
-        <?php if ($reviewAttentionCount > 0): ?>
-            <div class="tb-alert tb-alert--warning review-attention-alert">
-                <span><strong><?= (int) $reviewAttentionCount ?> item<?= $reviewAttentionCount === 1 ? '' : 's' ?></strong> <?= $reviewAttentionCount === 1 ? 'requires' : 'require' ?> review.</span>
-            </div>
-        <?php endif; ?>
-
         <!-- Tabs -->
         <div class="tabs">
             <a href="#" class="tab active" data-tab="files">
                 All Files
                 <span class="tab-count"><?php echo $totalFiles; ?></span>
-            </a>
-            <a href="#" class="tab" data-tab="unviewed">
-                Unviewed Files
-                <span class="tab-count"><?php echo count($unviewedFiles); ?></span>
             </a>
             <a href="#" class="tab" data-tab="requests">
                 Group Requests
@@ -801,9 +790,6 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                 <span>
                     Showing <strong><?php echo $filteredCount; ?></strong>
                     of <?php echo $totalFiles; ?> files
-                </span>
-                <span class="range-text">
-                    Date range: <?php echo htmlspecialchars($rangeText); ?>
                 </span>
             </div>
 
@@ -873,66 +859,6 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
         <!-- =========================================================
              TAB 2 — UNVIEWED FILES
         ========================================================= -->
-        <div class="tab-panel" id="panel-unviewed">
-
-            <h2>Unviewed Files</h2>
-            <p class="muted gap-below">
-                Task attachments that students uploaded but you have not reviewed yet.
-                Open one to accept or reject it.
-            </p>
-
-            <div class="card">
-                <table>
-                    <tr>
-                        <th>File</th>
-                        <th>Team</th>
-                        <th>Uploaded By</th>
-                        <th>Uploaded On</th>
-                        <th>Size</th>
-                        <th>Action</th>
-                    </tr>
-
-                    <?php if (count($unviewedFiles) === 0): ?>
-                        <tr>
-                            <td colspan="6" class="muted empty-cell">
-                                Nothing to review — all files have been viewed.
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-
-                    <?php foreach ($unviewedFiles as $f): ?>
-                        <tr>
-                            <td class="file-name-cell">
-                                <a href="file_view.php?id=<?php echo (int)$f['id']; ?>"
-                                   class="file-name-link"
-                                   data-tooltip="Open the complete file review"
-                                   title="<?php echo htmlspecialchars($f['file_name']); ?>">
-                                    <?php echo htmlspecialchars($f['file_name']); ?>
-                                </a>
-                                <?php if (!empty($f['task_title'])): ?>
-                                    <div class="file-task-label">Task: <?php echo htmlspecialchars($f['task_title']); ?></div>
-                                <?php endif; ?>
-                                <?php if ((int) $f['version_count'] > 1): ?>
-                                    <div class="file-version-label">
-                                        Version <?= (int) $f['version_number'] ?> of <?= (int) $f['version_count'] ?>
-                                        <?= (int) $f['prior_rejections'] > 0 ? ' · Resubmitted' : '' ?>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                            <td><?php echo htmlspecialchars($f['team_name']); ?></td>
-                            <td><?php echo htmlspecialchars($f['uploader_name']); ?></td>
-                            <td class="muted"><?php echo date('Y-m-d', strtotime($f['uploaded_at'])); ?></td>
-                            <td class="muted"><?php echo htmlspecialchars($f['file_size']); ?></td>
-                            <td>
-                                <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">Review</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </table>
-            </div>
-
-        </div>
-
         <!-- =========================================================
              TAB 3 — GROUP REQUESTS
         ========================================================= -->

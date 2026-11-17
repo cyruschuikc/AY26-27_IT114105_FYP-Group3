@@ -4,6 +4,40 @@
              → teacher_teams.css
    ========================================================= */
 
+.teams-kpi {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.teams-kpi .kpi-item {
+    min-width: 0;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-item);
+}
+.teams-kpi .kpi-label {
+    display: block;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.teams-kpi .kpi-value {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink);
+    font-size: 25px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+    line-height: 1.1;
+}
 .teams-control-bar {
     position: sticky;
     top: 12px;
@@ -19,6 +53,10 @@
     background: var(--surface);
     -webkit-backdrop-filter: blur(24px) saturate(1.15);
     backdrop-filter: blur(24px) saturate(1.15);
+    transition: box-shadow 0.2s ease;
+}
+.teams-control-bar.is-stuck {
+    box-shadow: 0 10px 26px rgba(28, 48, 90, .10);
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .teams-control-bar { background: var(--surface-solid); }
@@ -31,7 +69,7 @@
     min-width: 0;
 }
 .team-search input {
-    flex: 1 1 180px;
+    flex: 1 1 100%;
     width: 100%;
     height: 40px;
     padding: 0 14px;
@@ -47,7 +85,6 @@
     flex: 0 0 120px;
     min-width: 0;
 }
-.category-filter { flex-basis: 144px; }
 .sort-filter { flex-basis: 128px; }
 .class-filter .sg-select__trigger {
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -94,9 +131,17 @@
 .segmented-filter a:hover { color: var(--ink); background: rgba(0, 0, 0, .04); }
 .segmented-filter a.active {
     color: #fff;
-    background: var(--ink);
+    background: var(--accent);
 }
 .segmented-filter a.active span { color: rgba(255, 255, 255, .72); }
+.segmented-filter a.overdue-chip { color: var(--danger); }
+.segmented-filter a.overdue-chip span { color: var(--danger); }
+.segmented-filter a.overdue-chip:hover { background: var(--alert-error); color: var(--danger); }
+.segmented-filter a.overdue-chip.active {
+    background: var(--danger);
+    color: #fff;
+}
+.segmented-filter a.overdue-chip.active span { color: rgba(255, 255, 255, .85); }
 .overdue-filter {
     display: inline-flex;
     flex: 0 0 auto;
@@ -178,122 +223,107 @@
 }
 .danger-text { color: var(--danger); font-weight: 600; }
 
-.team-table-head,
-.team-row {
-    display: grid;
-    grid-template-columns: minmax(120px, 1fr) minmax(190px, 1.55fr) minmax(130px, 0.9fr) 100px 74px;
-    gap: 10px;
-    align-items: center;
+.team-cards {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 14px;
 }
-.team-table-head {
-    padding: 8px 14px;
-    border-bottom: 1px solid var(--line);
-    background: var(--sunken);
-    color: var(--ink-2);
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-.team-row {
+.team-card {
     position: relative;
-    min-height: 64px;
-    padding: 9px 13px;
-    border-bottom: 1px solid var(--line);
-    transition: background 0.14s;
+    flex: 0 0 280px;
+    min-height: 170px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-item);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.team-row:last-child { border-bottom: none; }
-.team-row:hover { background: var(--sunken); }
-.team-row.attention-overdue { background: var(--alert-error); }
+.team-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-float);
+}
+.team-card.open { box-shadow: var(--shadow-float); }
+.team-card.attention-overdue {
+    box-shadow: inset 4px 0 0 var(--danger), var(--shadow-item);
+}
 
-.team-identity,
-.project-title-cell,
-.team-owner-cell,
-.progress-cell,
-.team-actions-cell { min-width: 0; }
+.card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
 .team-name {
-    display: block;
-    overflow: hidden;
     color: var(--ink);
     font-size: 14px;
     font-weight: 700;
     line-height: 1.35;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
-.team-name:hover { color: var(--ink-2); }
-.team-class {
-    display: inline;
-    color: var(--muted);
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 11.5px;
-    letter-spacing: 0.02em;
+.card-progress { margin-top: 14px; }
+.card-extra {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
 }
-.team-subline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 3px;
+.team-card.open .card-extra { display: block; }
+.card-topic {
     color: var(--ink-2);
     font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    line-height: 1.4;
 }
+.card-leader {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
 .team-status-inline {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    padding: 3px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--sunken);
     color: var(--ink-2);
-    font-size: 12px;
-    font-weight: 600;
-}
-.team-status-inline::before {
-    width: 5px;
-    height: 5px;
-    flex: 0 0 5px;
-    border-radius: 50%;
-    background: var(--muted-soft);
-    content: "";
-}
-.team-subline-separator {
-    color: var(--muted-soft);
     font-size: 11px;
-}
-.project-title-cell strong,
-.team-owner-cell strong {
-    display: block;
-    overflow: hidden;
-    color: var(--ink);
-    font-size: 13px;
     font-weight: 600;
-    line-height: 1.4;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
-.project-title-cell span,
-.team-owner-cell span {
-    display: block;
-    overflow: hidden;
-    margin-top: 2px;
-    color: var(--muted);
-    font-size: 11.5px;
-    line-height: 1.35;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.team-assignment-line {
+.team-status-inline.status-neutral { background: #F0F1F5; border-color: #E3E6EC; color: #5F6880; }
+.team-status-inline.status-pending { background: #FBF1E3; border-color: #F0DFC0; color: #B5781A; }
+.team-status-inline.status-voting { background: #E9EEFB; border-color: #D7E0F7; color: #1F46A1; }
+.team-status-inline.status-executing { background: #1F46A1; border-color: #1F46A1; color: #FFFFFF; }
+.team-status-inline.status-completed { background: #E9F7EE; border-color: #D4ECD9; color: #2FA35C; }
+.team-status-inline.status-waiting { background: #F3EBFB; border-color: #E5D3F5; color: #8A4BC2; }
+
+.member-stack {
     display: flex;
-    align-items: center;
-    gap: 5px;
 }
-.team-assignment-line > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
+.member-avatar {
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    margin-left: -6px;
+    border: 2px solid #FFFFFF;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-size: 9px;
+    font-weight: 700;
 }
-.team-meta-separator {
-    flex: 0 0 auto;
-    color: var(--muted-soft);
+.member-avatar:first-child { margin-left: 0; }
+.member-avatar.member-more {
+    background: var(--sunken);
+    color: var(--muted);
+    font-size: 8px;
 }
 
 .progress-line {
@@ -319,32 +349,34 @@
 .progress-fill {
     height: 100%;
     border-radius: inherit;
-    background: var(--ink);
+    background: var(--accent);
 }
 .activity-line {
     margin-top: 4px;
     color: var(--muted);
     font-size: 12px;
 }
-.activity-line.danger { color: var(--danger); font-weight: 600; }
-.progress-cell.is-overdue {
-    margin: -5px;
-    padding: 5px;
-    border-radius: var(--r-item);
-    background: var(--alert-error);
-}
+.activity-line .danger { color: var(--danger); font-weight: 600; }
 
-.team-actions-cell {
+.card-footer {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 14px;
+}
+.card-actions {
+    display: flex;
+    align-items: center;
     gap: 5px;
 }
 .team-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 30px;
-    padding: 6px 12px;
+    flex: 0 0 auto;
+    height: 30px;
+    padding: 0 12px;
     border: 1px solid var(--line);
     border-radius: var(--r-pill);
     background: var(--surface-solid);
@@ -352,16 +384,17 @@
     font-family: inherit;
     font-size: 12px;
     font-weight: 600;
+    line-height: 1;
     text-decoration: none;
     white-space: nowrap;
 }
 .team-action:hover { border-color: var(--line-strong); background: var(--sunken); }
 .team-action.primary {
-    border-color: var(--ink);
-    background: var(--ink);
+    border-color: var(--accent);
+    background: var(--accent);
     color: #fff;
 }
-.team-action.primary:hover { border-color: var(--ink-2); background: var(--ink-2); }
+.team-action.primary:hover { border-color: #24408F; background: #24408F; }
 
 .row-actions-menu {
     position: relative;
@@ -378,8 +411,8 @@
     color: var(--ink-2);
     cursor: pointer;
     list-style: none;
-    font-size: 16px;
-    line-height: 1;
+    font-size: 18px;
+    line-height: 0;
 }
 .row-actions-menu > summary::-webkit-details-marker { display: none; }
 .row-actions-menu[open] > summary {
@@ -425,6 +458,7 @@
 .teams-empty span { font-size: 12px; }
 
 @media (max-width: 900px) {
+    .teams-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .teams-control-bar {
         position: static;
         align-items: stretch;
@@ -439,20 +473,4 @@
         width: 100%;
         margin-left: 0;
     }
-    .team-table-head { display: none; }
-    .team-row {
-        grid-template-columns: minmax(0, 1fr) auto;
-        grid-template-areas:
-            "identity identity"
-            "project project"
-            "owner owner"
-            "progress actions";
-        gap: 9px 14px;
-        padding: 12px 14px;
-    }
-    .team-identity { grid-area: identity; }
-    .project-title-cell { grid-area: project; }
-    .team-owner-cell { grid-area: owner; }
-    .progress-cell { grid-area: progress; }
-    .team-actions-cell { grid-area: actions; justify-content: flex-start; }
 }

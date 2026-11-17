@@ -406,7 +406,7 @@ $avatarPalette = array('#dbeafe', '#e9d5ff', '#fce7f3', '#d1fae5', '#fef3c7');
             if (wasNearBottom) scrollToBottom();
         })
         .catch(function () {});
-    }, 5000);
+    }, 3000);
 })();
 </script>
 <?php endif; ?>
