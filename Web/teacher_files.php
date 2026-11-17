@@ -321,7 +321,7 @@ mysqli_stmt_close($stmt);
                             </span>
                         </td>
                         <td class="file-actions">
-                            <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">View</a>
+                            <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="files-view-btn">View</a>
                         </td>
                     </tr>
 
@@ -350,7 +350,7 @@ mysqli_stmt_close($stmt);
                                             </td>
                                             <td class="muted"><?php echo htmlspecialchars($v['review_note'] ?: '—'); ?></td>
                                             <td>
-                                                <a href="file_view.php?id=<?php echo (int) $v['id']; ?>" class="link">View</a>
+                                                <a href="file_view.php?id=<?php echo (int) $v['id']; ?>" class="files-view-btn">View</a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -389,7 +389,7 @@ mysqli_stmt_close($stmt);
                         <td class="muted"><?php echo timeAgo($t['last_upload']); ?></td>
                         <td>
                             <a href="teacher_review.php?q=<?php echo urlencode($t['team_name']); ?>"
-                               class="link">Open</a>
+                               class="files-view-btn">Open</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

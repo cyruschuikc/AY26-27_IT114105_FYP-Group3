@@ -354,6 +354,10 @@ $filterFrom   = isset($_GET['from'])   ? trim($_GET['from'])   : '';
 $filterTo     = isset($_GET['to'])     ? trim($_GET['to'])     : '';
 $filterStatus = isset($_GET['status']) ? trim($_GET['status']) : 'all';
 $filterSearch = isset($_GET['q'])      ? trim($_GET['q'])      : '';
+$filterClass    = isset($_GET['class'])    ? trim($_GET['class'])    : 'all';
+$filterCategory = isset($_GET['category']) ? trim($_GET['category']) : 'all';
+$filterTeam     = isset($_GET['team'])     ? trim($_GET['team'])     : 'all';
+$filterType     = isset($_GET['type'])     ? trim($_GET['type'])     : 'all';
 
 $where  = array("p.supervisor_id = ?", "f.task_id IS NOT NULL");
 $params = array($teacherId);
@@ -362,6 +366,30 @@ $types  = 'i';
 if ($filterStatus !== 'all' && $filterStatus !== '') {
     $where[]  = "f.status = ?";
     $params[] = $filterStatus;
+    $types   .= 's';
+}
+
+if ($filterClass !== 'all' && $filterClass !== '') {
+    $where[]  = "c.class_code = ?";
+    $params[] = $filterClass;
+    $types   .= 's';
+}
+
+if ($filterCategory !== 'all' && $filterCategory !== '') {
+    $where[]  = "p.category = ?";
+    $params[] = $filterCategory;
+    $types   .= 's';
+}
+
+if ($filterTeam !== 'all' && $filterTeam !== '') {
+    $where[]  = "g.name = ?";
+    $params[] = $filterTeam;
+    $types   .= 's';
+}
+
+if ($filterType !== 'all' && $filterType !== '') {
+    $where[]  = "f.file_type = ?";
+    $params[] = $filterType;
     $types   .= 's';
 }
 
@@ -421,12 +449,15 @@ $sql = "
         g.id     AS group_id,
         g.name   AS team_name,
         p.name   AS project_name,
+        p.category AS project_category,
+        c.class_code AS class_code,
         t.title  AS task_title,
         s.id     AS uploader_id,
         s.student_number,
         u.username AS uploader_name
     FROM `files` f
     INNER JOIN `projects` p ON p.id = f.project_id
+    LEFT JOIN `classes`  c ON c.id = p.class_id
     LEFT JOIN `groups`   g ON g.id = f.group_id
     LEFT JOIN `tasks`    t ON t.id = f.task_id
     LEFT JOIN `students` s ON s.id = f.uploader_id
@@ -440,6 +471,77 @@ mysqli_stmt_bind_param($stmt, $types, ...$params);
 mysqli_stmt_execute($stmt);
 $rs = mysqli_stmt_get_result($stmt);
 while ($row = mysqli_fetch_assoc($rs)) { $allFiles[] = $row; }
+mysqli_stmt_close($stmt);
+
+// 筛选选项（班级 / 科目 / Team / 文件格式）
+$classOptions = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT DISTINCT c.class_code
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    LEFT JOIN `classes` c ON c.id = p.class_id
+    WHERE p.supervisor_id = ?
+      AND f.task_id IS NOT NULL
+      AND c.class_code IS NOT NULL
+      AND c.class_code <> ''
+    ORDER BY c.class_code
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $classOptions[] = $row['class_code']; }
+mysqli_stmt_close($stmt);
+
+$categoryOptions = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT DISTINCT p.category
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE p.supervisor_id = ?
+      AND f.task_id IS NOT NULL
+      AND p.category IS NOT NULL
+      AND p.category <> ''
+    ORDER BY p.category
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $categoryOptions[] = $row['category']; }
+mysqli_stmt_close($stmt);
+
+$teamOptions = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT DISTINCT g.name
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    LEFT JOIN `groups` g ON g.id = f.group_id
+    WHERE p.supervisor_id = ?
+      AND f.task_id IS NOT NULL
+      AND g.name IS NOT NULL
+      AND g.name <> ''
+    ORDER BY g.name
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $teamOptions[] = $row['name']; }
+mysqli_stmt_close($stmt);
+
+$typeOptions = array();
+$stmt = mysqli_prepare($conn, "
+    SELECT DISTINCT f.file_type
+    FROM `files` f
+    INNER JOIN `projects` p ON p.id = f.project_id
+    WHERE p.supervisor_id = ?
+      AND f.task_id IS NOT NULL
+      AND f.file_type IS NOT NULL
+      AND f.file_type <> ''
+    ORDER BY f.file_type
+");
+mysqli_stmt_bind_param($stmt, "i", $teacherId);
+mysqli_stmt_execute($stmt);
+$rs = mysqli_stmt_get_result($stmt);
+while ($row = mysqli_fetch_assoc($rs)) { $typeOptions[] = $row['file_type']; }
 mysqli_stmt_close($stmt);
 
 // Total Files（我的项目下的）
@@ -717,12 +819,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
             </div>
             <?php if ($reviewAttentionCount > 0): ?>
                 <div class="review-desktop-actions">
-                    <span><?= (int) $reviewAttentionCount ?> pending</span>
-                    <?php if ($startReview): ?>
-                        <a href="<?= htmlspecialchars($startReview['url']) ?>" class="btn-primary">
-                            Start Review
-                        </a>
-                    <?php endif; ?>
+                    <span><?= (int) $reviewAttentionCount ?> files</span>
                 </div>
             <?php endif; ?>
         </div>
@@ -757,26 +854,18 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                            value="<?php echo htmlspecialchars($filterSearch); ?>">
                 </div>
 
-                <div class="filter-field date">
-                    <label for="from">From date</label>
-                    <input type="date" id="from" name="from"
-                           value="<?php echo htmlspecialchars($filterFrom); ?>">
-                </div>
+                <div class="filter-dates">
+                    <div class="filter-field date">
+                        <label for="from">From date</label>
+                        <input type="date" id="from" name="from"
+                               value="<?php echo htmlspecialchars($filterFrom); ?>">
+                    </div>
 
-                <div class="filter-field date">
-                    <label for="to">To date</label>
-                    <input type="date" id="to" name="to"
-                           value="<?php echo htmlspecialchars($filterTo); ?>">
-                </div>
-
-                <div class="filter-field status">
-                    <label for="status">Status</label>
-                    <select id="status" name="status">
-                        <option value="all"      <?php echo $filterStatus==='all'?'selected':''; ?>>All Status</option>
-                        <option value="Unviewed" <?php echo $filterStatus==='Unviewed'?'selected':''; ?>>Unviewed</option>
-                        <option value="Accepted" <?php echo $filterStatus==='Accepted'?'selected':''; ?>>Accepted</option>
-                        <option value="Rejected" <?php echo $filterStatus==='Rejected'?'selected':''; ?>>Rejected</option>
-                    </select>
+                    <div class="filter-field date">
+                        <label for="to">To date</label>
+                        <input type="date" id="to" name="to"
+                               value="<?php echo htmlspecialchars($filterTo); ?>">
+                    </div>
                 </div>
 
                 <div class="filter-actions">
@@ -794,22 +883,60 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
             </div>
 
             <div class="card">
+                <form method="get" action="teacher_review.php#files" class="table-filter-bar">
+                    <input type="hidden" name="q" value="<?php echo htmlspecialchars($filterSearch); ?>">
+                    <input type="hidden" name="from" value="<?php echo htmlspecialchars($filterFrom); ?>">
+                    <input type="hidden" name="to" value="<?php echo htmlspecialchars($filterTo); ?>">
+
+                    <select name="class" onchange="this.form.submit()">
+                        <option value="all">All classes</option>
+                        <?php foreach ($classOptions as $opt): ?>
+                            <option value="<?php echo htmlspecialchars($opt); ?>" <?php echo $filterClass === $opt ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($opt); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <select name="category" onchange="this.form.submit()">
+                        <option value="all">All categories</option>
+                        <?php foreach ($categoryOptions as $opt): ?>
+                            <option value="<?php echo htmlspecialchars($opt); ?>" <?php echo $filterCategory === $opt ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($opt); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <select name="team" onchange="this.form.submit()">
+                        <option value="all">All teams</option>
+                        <?php foreach ($teamOptions as $opt): ?>
+                            <option value="<?php echo htmlspecialchars($opt); ?>" <?php echo $filterTeam === $opt ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($opt); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <select name="type" onchange="this.form.submit()">
+                        <option value="all">All types</option>
+                        <?php foreach ($typeOptions as $opt): ?>
+                            <option value="<?php echo htmlspecialchars($opt); ?>" <?php echo $filterType === $opt ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($opt); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+
                 <table class="file-table">
                     <tr>
                         <th>File</th>
                         <th>Team</th>
-                        <th>Uploaded By</th>
                         <th>Uploaded On</th>
                         <th>Size</th>
-                        <th>Status</th>
                         <th style="width: 72px;">Action</th>
                     </tr>
 
                     <?php if ($filteredCount === 0): ?>
                         <tr>
-                        <td colspan="7" class="muted empty-cell">
-                                No files match your filter.
-                            </td>
+                            <td colspan="5" class="muted empty-cell">No files match your filter.</td>
                         </tr>
                     <?php endif; ?>
 
@@ -817,12 +944,22 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                         <?php $statusLower = strtolower($f['status']); ?>
                         <tr>
                             <td class="file-name-cell">
-                                <a href="file_view.php?id=<?php echo (int)$f['id']; ?>"
-                                   class="file-name-link"
-                                   data-tooltip="Open the complete file review"
-                                   title="<?php echo htmlspecialchars($f['file_name']); ?>">
-                                    <?php echo htmlspecialchars($f['file_name']); ?>
-                                </a>
+                                <div class="file-name-wrap">
+                                    <a href="file_view.php?id=<?php echo (int)$f['id']; ?>"
+                                       class="file-name-link"
+                                       data-tooltip="Open the complete file review"
+                                       title="<?php echo htmlspecialchars($f['file_name']); ?>">
+                                        <?php if ($f['status'] === 'Accepted'): ?>
+                                            <span class="file-mark" title="Accepted">✅</span>
+                                        <?php elseif ($f['status'] === 'Rejected'): ?>
+                                            <span class="file-mark" title="Rejected">❌</span>
+                                        <?php endif; ?>
+                                        <?php echo htmlspecialchars($f['file_name']); ?>
+                                    </a>
+                                    <?php if ($f['status'] === 'Unviewed'): ?>
+                                        <span class="unread-dot" title="Unviewed"></span>
+                                    <?php endif; ?>
+                                </div>
                                 <?php if (!empty($f['task_title'])): ?>
                                     <div class="file-task-label">Task: <?php echo htmlspecialchars($f['task_title']); ?></div>
                                 <?php endif; ?>
@@ -834,20 +971,10 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                                 <?php endif; ?>
                             </td>
                             <td><?php echo htmlspecialchars($f['team_name']); ?></td>
-                            <td><?php echo htmlspecialchars($f['uploader_name']); ?></td>
                             <td class="muted"><?php echo date('Y-m-d', strtotime($f['uploaded_at'])); ?></td>
                             <td class="muted"><?php echo htmlspecialchars($f['file_size']); ?></td>
                             <td>
-                                <span class="status-pill <?php echo $statusLower; ?>"
-                                      tabindex="0"
-                                      data-tooltip="Review status: <?= htmlspecialchars($f['status']) ?>">
-                                    <?php echo htmlspecialchars($f['status']); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <div class="row-actions">
-                                    <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="link">View</a>
-                                </div>
+                                <a href="file_view.php?id=<?php echo (int)$f['id']; ?>" class="file-view-btn">View</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -878,6 +1005,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                 </div>
             <?php endif; ?>
 
+            <div class="request-cards">
             <?php foreach ($groupRequests as $req): ?>
                 <div class="request-card">
 
@@ -906,35 +1034,27 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
                     <?php endif; ?>
 
                     <div class="request-body request-members" id="requestMembers<?= (int) $req['id'] ?>">
-                        <table>
-                            <tr>
-                                <th>Name</th>
-                                <th>Student Number</th>
-                                <th>Role</th>
-                            </tr>
+                        <div class="member-chips">
                             <?php foreach ($req['members'] as $m): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($m['name']); ?></td>
-                                    <td><?php echo htmlspecialchars($m['student_number']); ?></td>
-                                    <td>
-                                        <?php if ((int)$m['is_leader'] === 1): ?>
-                                            <span class="pill">Leader</span>
-                                        <?php else: ?>
-                                            <span class="muted">Member</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
+                                <?php
+                                $mName = trim((string) $m['name']);
+                                $mParts = preg_split('/\s+/', $mName);
+                                $mInitials = count($mParts) >= 2
+                                        ? strtoupper(substr($mParts[0], 0, 1) . substr($mParts[count($mParts) - 1], 0, 1))
+                                        : strtoupper(substr($mName, 0, 2));
+                                ?>
+                                <div class="member-chip">
+                                    <span class="member-avatar"><?php echo htmlspecialchars($mInitials); ?></span>
+                                    <span class="member-name"><?php echo htmlspecialchars($m['name']); ?></span>
+                                    <?php if ((int)$m['is_leader'] === 1): ?>
+                                        <span class="pill">Leader</span>
+                                    <?php endif; ?>
+                                </div>
                             <?php endforeach; ?>
-                        </table>
+                        </div>
                     </div>
 
                     <div class="request-foot">
-                        <button type="button" class="member-toggle"
-                                data-target="requestMembers<?= (int) $req['id'] ?>"
-                                data-count="<?= count($req['members']) ?>"
-                                aria-expanded="false">
-                            View members (<?= count($req['members']) ?>)
-                        </button>
                         <button type="button" class="btn-primary js-accept"
                                 data-id="<?php echo (int)$req['id']; ?>"
                                 data-name="<?php echo htmlspecialchars($req['group_name']); ?>"
@@ -950,6 +1070,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
 
                 </div>
             <?php endforeach; ?>
+            </div>
 
         </div>
 
@@ -1169,11 +1290,7 @@ $startReview = count($queueCandidates) > 0 ? $queueCandidates[0] : null;
         if (!filter || !tabs || !filesPanel) return;
 
         function syncFilterPosition() {
-            if (media.matches) {
-                if (filter.nextElementSibling !== tabs) {
-                    tabs.parentNode.insertBefore(filter, tabs);
-                }
-            } else if (filter.parentNode !== filesPanel) {
+            if (filter.parentNode !== filesPanel) {
                 filesPanel.insertBefore(filter, filesPanel.firstChild);
             }
             const activeTab = document.querySelector('.tab.active');

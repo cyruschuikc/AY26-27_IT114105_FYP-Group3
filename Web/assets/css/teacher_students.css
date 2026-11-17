@@ -113,20 +113,36 @@
 }
 
 .student-toolbar { margin-bottom: 12px; }
-.student-toolbar .field-search input {
-    width: 100%;
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     height: 40px;
-    padding: 0 14px;
-    border: 1px solid transparent;
-    border-radius: var(--r-pill);
-    background: var(--sunken);
+    padding: 0 12px;
+    border: 1px solid #D5DAE3;
+    border-radius: var(--r-item);
+    background: #FFFFFF;
+    box-shadow: var(--shadow-item);
+}
+.search-icon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    color: var(--muted);
+}
+body.sg-teacher .field-search .search-box input,
+body.sg-teacher .field-search .search-box input:focus-visible {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
     color: var(--ink);
     font-size: 13px;
+    outline: none;
 }
-.student-toolbar .field-search input:focus {
-    outline: 2px solid var(--accent-ink);
-    outline-offset: 2px;
-}
+.search-box:focus-within { border-color: #8A93A9; }
 
 .student-filters {
     display: flex;

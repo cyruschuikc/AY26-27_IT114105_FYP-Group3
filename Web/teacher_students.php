@@ -367,9 +367,14 @@ if (!function_exists('studentInitials')) {
 
         <div class="student-toolbar">
             <div class="field field-search">
-                <label for="studentSearch">Search</label>
-                <input type="search" id="studentSearch"
-                       placeholder="Search name, student ID, class, team or project">
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <path d="m20 20-3.6-3.6"></path>
+                    </svg>
+                    <input type="search" id="studentSearch"
+                           placeholder="Search name, student ID, class, team or project">
+                </div>
             </div>
         </div>
 
