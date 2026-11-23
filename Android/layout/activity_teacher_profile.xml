@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F0F1F3">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Teacher Profile"
+            android:textColor="#2C2F36"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/card_background"
+            android:elevation="4dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#175196"
+                android:padding="14dp"
+                android:text="Profile Information"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold" />
+
+            <TableLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TableRow>
+                    <TextView android:text="Name" android:background="#EEF0F3" android:padding="12dp"/>
+                    <TextView android:id="@+id/tvTeacherName" android:padding="12dp"/>
+                </TableRow>
+
+                <TableRow>
+                    <TextView android:text="Teacher ID" android:background="#EEF0F3" android:padding="12dp"/>
+                    <TextView android:id="@+id/tvTID" android:padding="12dp"/>
+                </TableRow>
+
+                <TableRow>
+                    <TextView android:text="Gender" android:background="#EEF0F3" android:padding="12dp"/>
+                    <TextView android:id="@+id/tvGender" android:padding="12dp"/>
+                </TableRow>
+
+                <TableRow>
+                    <TextView android:text="Department" android:background="#EEF0F3" android:padding="12dp"/>
+                    <TextView android:id="@+id/tvDepartment" android:padding="12dp"/>
+                </TableRow>
+
+                <TableRow>
+                    <TextView android:text="Position" android:background="#EEF0F3" android:padding="12dp"/>
+                    <TextView android:id="@+id/tvPosition" android:padding="12dp"/>
+                </TableRow>
+
+                <TableRow>
+                    <TextView android:text="Faculty" android:background="#EEF0F3" android:padding="12dp"/>
+                    <TextView android:id="@+id/tvFaculty" android:padding="12dp"/>
+                </TableRow>
+
+                <TableRow>
+                    <TextView android:text="Email" android:background="#EEF0F3" android:padding="12dp"/>
+                    <TextView android:id="@+id/tvEmail" android:padding="12dp"/>
+                </TableRow>
+
+            </TableLayout>
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Back"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#175196" />
+
+    </LinearLayout>
+
+</ScrollView>

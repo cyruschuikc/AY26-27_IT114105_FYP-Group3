@@ -1,0 +1,3 @@
+Put "card_background.xml" in
+
+res/drawable/card_background.xml
